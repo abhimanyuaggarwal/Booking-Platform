@@ -14,6 +14,7 @@ export default function BookForCaller({ guruSlug, initialSlotId, onDone, onCance
   const [slotId, setSlotId] = useState(initialSlotId ?? '');
   const [source, setSource] = useState<Source>('direct');
   const [question, setQuestion] = useState('');
+  const [pays, setPays] = useState<'link' | 'cash' | 'upi'>('link');
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +23,7 @@ export default function BookForCaller({ guruSlug, initialSlotId, onDone, onCance
     setBusy(true);
     setProblem(null);
     try {
-      onDone(await api<BookingRow>('/bookings', { method: 'POST', json: { phone, name, forWhom, slotId, source, question } }));
+      onDone(await api<BookingRow>('/bookings', { method: 'POST', json: { phone, name, forWhom, slotId, source, question, paidOutside: pays === 'link' ? '' : pays } }));
     } catch (err) {
       setProblem((err as Error).message);
       setBusy(false);
@@ -54,12 +55,21 @@ export default function BookForCaller({ guruSlug, initialSlotId, onDone, onCance
             </label>
           </div>
           <label>What she wants to ask, if she said<input value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={300} /></label>
+          <label>How she pays
+            <select value={pays} onChange={(e) => setPays(e.target.value as 'link' | 'cash' | 'upi')}>
+              <option value="link">She pays the link we send on WhatsApp</option>
+              <option value="cash">Already paid in cash</option>
+              <option value="upi">Already paid by UPI to the ashram</option>
+            </select>
+          </label>
         </div>
-        <p className="muted">The time is held for ten minutes and she gets a Pay button on WhatsApp. Once she pays, it is confirmed like any other booking.</p>
+        <p className="muted">{pays === 'link'
+          ? 'The time is held for ten minutes and she gets a Pay button on WhatsApp. Once she pays, it is confirmed like any other booking.'
+          : 'The time is confirmed now, the dakshina is recorded as taken by hand, and she gets the join link on WhatsApp.'}</p>
         {problem && <p className="banner problem">{problem}</p>}
         <footer className="sheet-foot">
           <button type="button" className="quiet" onClick={onCancel}>Cancel</button>
-          <button className="primary" disabled={busy || !slotId}>{busy ? 'Holding the time' : 'Hold the time and send the pay link'}</button>
+          <button className="primary" disabled={busy || !slotId}>{busy ? 'One moment' : pays === 'link' ? 'Hold the time and send the pay link' : 'Book it as paid'}</button>
         </footer>
       </form>
     </div>

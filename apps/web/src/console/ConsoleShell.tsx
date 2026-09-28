@@ -72,7 +72,7 @@ export default function ConsoleShell() {
               onCancel={() => setBookFor({ open: false })}
               onDone={(b) => {
                 setBookFor({ open: false });
-                setNotice(`${b.name} has the pay link on WhatsApp. ${b.time} is held for ten minutes.`);
+                setNotice(b.paid ? `${b.name} is booked for ${b.time} and has the join link on WhatsApp.` : `${b.name} has the pay link on WhatsApp. ${b.time} is held for ten minutes.`);
                 announceChange();
                 openBooking(b.id);
               }}

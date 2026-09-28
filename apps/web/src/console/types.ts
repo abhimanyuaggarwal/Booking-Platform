@@ -65,7 +65,7 @@ export interface Marketing {
 }
 export interface Settings {
   id: string; slug: string; name: string; domain: string | null; about: string; marketing: Marketing;
-  dakshinaPaise: number; whatsappNumber: string | null; pattern: Pattern; closedDates: string[];
+  dakshinaPaise: number; whatsappNumber: string | null; guruPhone?: string | null; pattern: Pattern; closedDates: string[];
 }
 
 export type EventKind = 'satsang' | 'live' | 'meetup';
@@ -101,7 +101,7 @@ export interface BookingRow {
   id: string; slotId: string; time: string; date: string; status: BookingStatus; source: Source;
   name: string; phone: string; paid: boolean; question: string | null; hasVoiceNote: boolean;
 }
-export type BookingAction = 'message' | 'reschedule' | 'cancel' | 'refund' | 'no_show' | 'send_link';
+export type BookingAction = 'message' | 'reschedule' | 'cancel' | 'refund' | 'no_show' | 'send_link' | 'mark_paid' | 'tell_guru';
 export interface BookingDetail {
   id: string; slotId: string; time: string; date: string; dateLabel: string; status: BookingStatus; source: Source;
   question: string | null; hasVoiceNote: boolean; paidAt: string | null; createdAt: string; rescheduledFromId: string | null;

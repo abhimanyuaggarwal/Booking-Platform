@@ -3,6 +3,7 @@
 // sent to a devotee goes through conversation.js.
 
 import express from 'express';
+import { describeSlot } from '@expert-sessions/shared';
 import { consoleAuth } from './console-auth.js';
 import { findGuruBySlug, validatePattern, validateSite, updatePattern, updateSite } from './gurus.js';
 import {
@@ -148,14 +149,18 @@ export function consoleRoutes(env, conversation) {
   // She called: the team holds the time for her and she gets the pay link on WhatsApp.
   router.post('/bookings', handle(async (req, res) => {
     const phone = String(req.body?.phone ?? '').replace(/\D/g, '');
-    const { slotId, name, forWhom, question } = req.body ?? {};
+    const { slotId, name, forWhom, question, paidOutside } = req.body ?? {};
     const source = SOURCES.includes(req.body?.source) ? req.body.source : 'direct';
+    if (paidOutside != null && paidOutside !== '' && !['cash', 'upi'].includes(paidOutside)) return res.status(400).json({ error: 'Paid outside must be cash or upi' });
     if (phone.length < 10 || phone.length > 15) return res.status(400).json({ error: 'Her WhatsApp number, with country code, like 919876543210' });
     if (!SLOT.test(slotId ?? '')) return res.status(400).json({ error: 'Pick a time' });
 
     let devotee = await devotees.findOrCreateDevotee(req.guru.id, phone);
     if (name || forWhom) devotee = await devotees.updateDevotee(devotee.id, { name, forWhom });
-    const booking = await conversation.startPayment({ guru: req.guru, devotee, slotId, source, team: true });
+    // She rang and will pay the link — or the team already has the dakshina in hand and confirms now.
+    const booking = paidOutside
+      ? await conversation.bookPaidOutside({ guru: req.guru, devotee, slotId, source, method: paidOutside })
+      : await conversation.startPayment({ guru: req.guru, devotee, slotId, source, team: true });
     if (!booking) return res.status(409).json({ error: 'That time was just taken. Pick another.' });
     if (typeof question === 'string' && question.trim()) await bookings.setQuestion(booking.id, { text: question.trim() });
     res.status(201).json(bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }));
@@ -209,6 +214,26 @@ export function consoleRoutes(env, conversation) {
     const devotee = await devotees.findDevoteeById(b.devotee_id);
     const note = await tell(() => conversation.sendRefundNote({ guru: req.guru, devotee, booking: refunded, amountPaise: paid.amount_paise, viaCredit: paid.kind === 'credit_used' }));
     res.json({ booking: bookingRow({ ...refunded, phone: devotee.phone, devotee_name: devotee.name }), amountPaise: paid.amount_paise, viaCredit: paid.kind === 'credit_used', notified: note.ok, notDelivered: note.reason ?? null });
+  }));
+
+  // The team took the dakshina by hand after holding the time. Confirms it and sends her the join link.
+  router.post('/bookings/:id/mark-paid', handle(async (req, res) => {
+    const b = await ownBooking(req, res); if (!b) return;
+    const method = req.body?.method;
+    if (!['cash', 'upi'].includes(method)) return res.status(400).json({ error: 'Say how she paid: cash or upi' });
+    const booking = await bookings.confirmOffline({ bookingId: b.id, method, amountPaise: req.guru.dakshina_paise });
+    const devotee = await devotees.findDevoteeById(b.devotee_id);
+    const note = await tell(() => conversation.sendConfirmation({ guru: req.guru, devotee, booking }));
+    res.json({ booking: bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }), notified: note.ok, notDelivered: note.reason ?? null });
+  }));
+
+  // A note to guruji's own WhatsApp about this sitting, now.
+  router.post('/bookings/:id/tell-guru', handle(async (req, res) => {
+    const b = await ownBooking(req, res); if (!b) return;
+    const devotee = await devotees.findDevoteeById(b.devotee_id);
+    const text = conversation.copy.guruNow({ devoteeName: devotee.name ?? `…${devotee.phone.slice(-4)}`, time: describeSlot(b.slotId), question: b.question_text });
+    await conversation.tellGuru({ guru: req.guru, devotee, booking: b, text, kind: 'note.guru' });
+    res.json({ told: true });
   }));
 
   router.post('/bookings/:id/no-show', handle(async (req, res) => {
@@ -293,6 +318,6 @@ function eventFields(b) {
 export function settingsView(g) {
   return {
     id: g.id, slug: g.slug, name: g.name, domain: g.domain, about: g.about, marketing: g.marketing_json,
-    dakshinaPaise: g.dakshina_paise, whatsappNumber: g.whatsapp_number, pattern: g.pattern_json, closedDates: g.closed_dates,
+    dakshinaPaise: g.dakshina_paise, whatsappNumber: g.whatsapp_number, guruPhone: g.guru_phone, pattern: g.pattern_json, closedDates: g.closed_dates,
   };
 }

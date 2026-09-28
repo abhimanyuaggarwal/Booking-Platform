@@ -353,6 +353,8 @@ export function allowedActions(b) {
   if (b.status === 'confirmed' && !past) actions.push('cancel');
   if (b.status === 'confirmed' && past) actions.push('no_show');
   if (b.status === 'expired' && b.slot_start > new Date()) actions.push('send_link');
+  if (b.status === 'held') actions.push('mark_paid');           // the team took the dakshina by hand
+  if (b.status === 'confirmed' && !past) actions.push('tell_guru'); // a note to his own WhatsApp
   return actions;
 }
 
@@ -474,7 +476,7 @@ async function moneyKpis(guruId, { today, monday }) {
        coalesce(sum(amount_paise) filter (where kind = 'payment' and created_at >= $4 and created_at < $5), 0)::int as collected_week,
        coalesce(sum(amount_paise) filter (where kind = 'refund'  and created_at >= $4 and created_at < $5), 0)::int as returned_week,
        coalesce(sum(case kind when 'payment' then amount_paise when 'refund' then -amount_paise else 0 end)
-                filter (where created_at >= $6), 0)::int as due_to_settle
+                filter (where created_at >= $6 and coalesce(provider_ref, '') not like 'offline:%'), 0)::int as due_to_settle
      from ledger_entries where guru_id = $1`,
     [guruId, todayStart, todayEnd, weekStart, weekEnd, settleStart]);
   return {

@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react';
 import { describeDate, formatRupees } from '@expert-sessions/shared';
 import { useApi } from './api';
 import { useOpenBooking } from './open-booking';
+import { paymentWords } from './BookingDrawer';
 import { addDays, todayYmd } from './format';
 import type { LedgerEntry, MoneyReport } from './types';
 
@@ -98,7 +99,7 @@ export function MoneyView({ report: r, today, showAllAtFirst = false }: { report
 // The ledger's four kinds, in the words she would use on the phone.
 export function entryText(e: LedgerEntry) {
   switch (e.kind) {
-    case 'payment': return 'Paid by UPI';
+    case 'payment': return paymentWords(e.providerRef);
     case 'refund': return 'Returned to her';
     case 'credit_issued': return 'Kept as her credit';
     case 'credit_used': return 'Paid with her credit';

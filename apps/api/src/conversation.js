@@ -36,6 +36,8 @@ export const copy = {
   noTimes: ({ guruName }) =>
     `Namaste 🙏 ${guruName} has no open times this week. Please send Hi again in a few days.`,
   slotTaken: () => 'That time was just taken. Here are the next ones:',
+  guruNow: ({ devoteeName, time, question }) =>
+    `${devoteeName} is booked for ${time}.${question ? `\n\nShe wishes to speak about: ${question}` : ''}\n\nYour team sent this note.`,
   paymentUnavailable: () => 'The payment page could not be opened just now, so nothing is booked. Please send Hi again in a few minutes, or write to his team.',
   refundedAsCredit: ({ guruName, slotId, dakshina }) =>
     `${guruName} could not sit at ${describeSlot(slotId)}. Your dakshina of ${dakshina} is back in your credit — book any other time with it within thirty days.`,
@@ -102,6 +104,39 @@ export function createConversation(env) {
     const payUrl = payLink(booking, guru);
     if (notify) await speak(guru, devotee, booking.id).link(copy.held({ guruName: guru.name, slotId, dakshina }), `Pay ${dakshina}`, payUrl);
     return { ...booking, payUrl };
+  }
+
+  /**
+   * The team took the dakshina by hand and books the time on her behalf: held and confirmed in one
+   * go, no Razorpay, and she gets the same confirmation and join link as anyone who paid online.
+   * Returns null if the slot was taken.
+   */
+  async function bookPaidOutside({ guru, devotee, slotId, source, method }) {
+    await bookings.assertBookable(guru, slotId, { team: true });
+    const held = await bookings.holdSlot({ guruId: guru.id, devoteeId: devotee.id, slotId, source });
+    if (!held) return null;
+    const booking = await bookings.confirmOffline({ bookingId: held.id, method, amountPaise: guru.dakshina_paise });
+    await sendConfirmation({ guru, devotee, booking });
+    return booking;
+  }
+
+  /**
+   * A short note to guruji's own WhatsApp about one sitting: from the ten-minute reminder, or from
+   * the console when his team wants him to know now. Recorded against the booking (kind
+   * `reminder.guru` or `note.guru`) so it is sent once and shows in the drawer. Throws
+   * BookingRuleError when he has no number yet.
+   */
+  async function tellGuru({ guru, devotee, booking, text, kind = 'note.guru' }) {
+    if (!guru.guru_phone) throw new BookingRuleError('Guruji has no WhatsApp number yet. Add it in Settings, His website, and try again.');
+    const payload = { body: text, to: 'guru' };
+    try {
+      await wa.text(guru.guru_phone, text);
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+      await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: booking.id, direction: 'out', kind, payload: { ...payload, delivered: false, reason: err.message } });
+      throw err;
+    }
+    await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: booking.id, direction: 'out', kind, payload: { ...payload, delivered: true } });
   }
 
   async function sendConfirmation({ guru, devotee, booking }) {
@@ -199,5 +234,5 @@ export function createConversation(env) {
     return env.JOIN_LINK_BASE || (guru?.domain ? `https://${guru.domain}` : env.APP_BASE_URL);
   }
 
-  return { speak, startPayment, sendConfirmation, sendPaidTooLateNote, resendPaymentLink, sendHeardAfterSession, sendNewTime, sendCancelledNote, sendRefundNote, sendWaitingMessage, receiveWaitingMessage, joinLink, payLink };
+  return { speak, startPayment, sendConfirmation, sendPaidTooLateNote, resendPaymentLink, sendHeardAfterSession, sendNewTime, sendCancelledNote, sendRefundNote, sendWaitingMessage, receiveWaitingMessage, joinLink, payLink, bookPaidOutside, tellGuru, copy };
 }

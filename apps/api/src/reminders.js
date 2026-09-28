@@ -17,6 +17,8 @@ const NIGHT_BEFORE_FROM = 19;            // IST, the evening before
 const NIGHT_BEFORE_TO = 23;              // wide on purpose: an api down at 8 pm still reminds at 10
 
 export const copy = {
+  guruSoon: ({ devoteeName, time, question }) =>
+    `In ten minutes: ${devoteeName} at ${time}.${question ? `\n\nShe wishes to speak about: ${question}` : ''}\n\nOpen your day to join.`,
   night: ({ guruName, slotId }) =>
     `A reminder: your time with ${guruName} is tomorrow, ${describeSlot(slotId).split(', ').slice(1).join(', ')}.\n\nOpen the link we sent you at your time to join.`,
   soon: ({ guruName }) =>
@@ -46,9 +48,10 @@ export function reminderDue({ slotStart, now }) {
  */
 export async function sendDue({ conversation, now = new Date() }) {
   const { rows } = await query(
-    `select b.id, b.guru_id, b.devotee_id, b.slot_start,
-            g.name as guru_name, g.slug,
+    `select b.id, b.guru_id, b.devotee_id, b.slot_start, b.question_text,
+            g.name as guru_name, g.slug, g.guru_phone,
             d.phone, d.name as devotee_name,
+            exists (select 1 from messages_log m where m.booking_id = b.id and m.kind = 'reminder.guru') as had_guru,
             exists (select 1 from messages_log m where m.booking_id = b.id and m.kind = 'reminder.night') as had_night,
             exists (select 1 from messages_log m where m.booking_id = b.id and m.kind = 'reminder.soon') as had_soon
        from bookings b join gurus g on g.id = b.guru_id join devotees d on d.id = b.devotee_id
@@ -74,6 +77,20 @@ export async function sendDue({ conversation, now = new Date() }) {
       refused += 1;
       // Written down so the team can see it and so we do not try again every minute.
       await record(row, due, { text, delivered: false, reason: err.message });
+    }
+    // Ten minutes before, guruji hears too, once, if his team has given his number.
+    if (due === 'soon' && row.guru_phone && !row.had_guru) {
+      try {
+        await conversation.tellGuru({
+          guru: { id: row.guru_id, name: row.guru_name, guru_phone: row.guru_phone },
+          devotee: { id: row.devotee_id }, booking: { id: row.id }, kind: 'reminder.guru',
+          text: copy.guruSoon({ devoteeName: row.devotee_name ?? `…${row.phone.slice(-4)}`, time: describeSlot(slotId).split(', ').pop(), question: row.question_text }),
+        });
+        sent += 1;
+      } catch (err) {
+        if (!(err instanceof ProviderError)) throw err;
+        refused += 1; // recorded by tellGuru; not tried again
+      }
     }
   }
   return { sent, refused };

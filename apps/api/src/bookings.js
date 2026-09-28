@@ -112,6 +112,25 @@ export async function confirmByPayment({ paymentLinkId, providerRef, amountPaise
 }
 
 /**
+ * The team took the dakshina by hand — cash at the ashram, or UPI straight to its account — and
+ * confirms the held time themselves. Same transition as a Razorpay payment, same ledger row; the
+ * provider reference says it never touched Razorpay, so Money keeps it out of the settlement.
+ * `method` is 'cash' or 'upi'. Returns the booking, confirmed; throws BookingRuleError if not held.
+ */
+export async function confirmOffline({ bookingId, method, amountPaise }) {
+  const booking = await findById(bookingId);
+  if (!booking) throw new BookingRuleError('No such booking');
+  if (booking.status === 'confirmed') return booking;
+  const next = transition(booking.status, 'pay');
+  const updated = await query(
+    `update bookings set status = $2, paid_at = now() where id = $1 and status = 'held' returning *`,
+    [booking.id, next]);
+  if (updated.rowCount === 0) return findById(booking.id);
+  await recordPayment(booking, { providerRef: `offline:${method}:${booking.id}`, amountPaise });
+  return withSlotId(updated.rows[0]);
+}
+
+/**
  * Razorpay retries any webhook it thinks we missed, so the same payment can arrive twice.
  * Keyed on the provider's own payment id, a second delivery writes nothing.
  */

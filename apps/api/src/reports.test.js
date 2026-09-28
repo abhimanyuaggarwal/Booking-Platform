@@ -111,9 +111,16 @@ test("Today's strip names only what she must decide, as person, time and why", (
 test('the console only offers moves the state machine allows', () => {
   const future = new Date(Date.now() + 3600000);
   const past = new Date(Date.now() - 3600000);
-  assert.deepEqual(allowedActions({ status: 'confirmed', slot_start: future }), ['message', 'reschedule', 'refund', 'cancel']); // cancel-to-credit only while the time is ahead
+  assert.deepEqual(allowedActions({ status: 'confirmed', slot_start: future }), ['message', 'reschedule', 'refund', 'cancel', 'tell_guru']); // cancel-to-credit only while the time is ahead
   assert.deepEqual(allowedActions({ status: 'confirmed', slot_start: past }), ['message', 'reschedule', 'refund', 'no_show']);
   assert.deepEqual(allowedActions({ status: 'expired', slot_start: future }), ['send_link']);
   assert.deepEqual(allowedActions({ status: 'completed', slot_start: past }), []);
-  assert.deepEqual(allowedActions({ status: 'held', slot_start: future }), []);
+  assert.deepEqual(allowedActions({ status: 'held', slot_start: future }), ['mark_paid']); // the team may confirm money it took by hand
+});
+
+test('a held time can be confirmed by hand, and a coming sitting can be told to guruji', () => {
+  const soon = new Date(Date.now() + 3600000);
+  assert.deepEqual(allowedActions({ status: 'held', slot_start: soon }), ['mark_paid']);
+  assert.ok(allowedActions({ status: 'confirmed', slot_start: soon }).includes('tell_guru'));
+  assert.ok(!allowedActions({ status: 'confirmed', slot_start: new Date(Date.now() - 3600000) }).includes('tell_guru'));
 });

@@ -285,3 +285,12 @@ test('a reminder that was sent shows once in the transcript, as a reminder', () 
   ];
   expect(withoutDoubleReminders(rows).map((m) => m.id)).toEqual(['2', '3']);
 });
+
+import { paymentWords } from './BookingDrawer';
+
+test('money the team took by hand is named by where it went, and stays out of the settlement words', () => {
+  expect(paymentWords('pay_ThMshPn7SV7bBw')).toBe('Paid by UPI');
+  expect(paymentWords('offline:cash:abc')).toBe('Paid in cash at the ashram');
+  expect(paymentWords('offline:upi:abc')).toBe('Paid by UPI to the ashram');
+  expect(paymentWords(null)).toBe('Paid by UPI');
+});

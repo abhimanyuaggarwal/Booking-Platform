@@ -73,7 +73,7 @@ If a task seems to need one of these, stop and say so instead of building it.
 
 ```
 gurus            id, slug, domain, name, about, marketing_json, dakshina_paise, whatsapp_number,
-                 pattern_json, closed_dates
+                 guru_phone (his own WhatsApp, for the ten-minute note), pattern_json, closed_dates
 events           id, guru_id, title, kind (satsang|live|meetup), starts_at, link, location, notes
 devotees         id, guru_id, phone (unique per guru), name?, for_whom?
 bookings         id, guru_id, devotee_id, slot_start (timestamptz), status, source, question_text,

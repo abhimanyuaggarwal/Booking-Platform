@@ -97,6 +97,16 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
                 await api(`/bookings/${d.id}/no-show`, { method: 'POST' });
                 return 'Marked as did not join.';
               }); }}>Did not join</button>}
+              {can('mark_paid') && ['cash', 'upi'].map((method) => (
+                <button key={method} disabled={busy} onClick={() => { if (window.confirm(`Confirm ${name}'s time as paid ${method === 'cash' ? 'in cash' : 'by UPI to the ashram'}? She gets the join link on WhatsApp.`)) act('Mark paid', async () => {
+                  const r = await api<{ notified: boolean }>(`/bookings/${d.id}/mark-paid`, { method: 'POST', json: { method } });
+                  return `Confirmed, paid ${method === 'cash' ? 'in cash' : 'by UPI to the ashram'}.${r.notified ? ' She has the join link on WhatsApp.' : ' WhatsApp did not deliver. Call her.'}`;
+                }); }}>{method === 'cash' ? 'Paid in cash' : 'Paid by UPI to the ashram'}</button>
+              ))}
+              {can('tell_guru') && <button disabled={busy} onClick={() => act('Tell guruji', async () => {
+                await api(`/bookings/${d.id}/tell-guru`, { method: 'POST' });
+                return 'Guruji has a note about this sitting on his WhatsApp.';
+              })}>Tell guruji</button>}
               {can('send_link') && <button disabled={busy} onClick={() => act('Send link', async () => {
                 await api(`/bookings/${d.id}/send-link`, { method: 'POST' });
                 return 'The time is held again and the pay link is on her WhatsApp.';
@@ -111,7 +121,7 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
             <dt>Phone</dt><dd><a href={`tel:+${d.devotee.phone}`}>+{d.devotee.phone}</a></dd>
             {d.devotee.forWhom && <><dt>For</dt><dd>{d.devotee.forWhom}</dd></>}
             <dt>Asked about</dt><dd>{d.question ?? (d.hasVoiceNote ? 'a voice note, for guruji alone' : <span className="muted">nothing yet</span>)}</dd>
-            <dt>Dakshina</dt><dd>{d.paidWith ? `${formatRupees(d.paidWith.amountPaise)} ${d.paidWith.kind === 'credit_used' ? 'by credit' : 'by UPI'}` : <span className="muted">not paid</span>}</dd>
+            <dt>Dakshina</dt><dd>{d.paidWith ? `${formatRupees(d.paidWith.amountPaise)} ${d.paidWith.kind === 'credit_used' ? 'by credit' : paymentWords(d.paidWith.providerRef).replace('Paid ', '')}` : <span className="muted">not paid</span>}</dd>
             {d.session?.devoteeJoinedAt && <><dt>Opened link</dt><dd>{when(d.session.devoteeJoinedAt)}</dd></>}
             {d.rescheduledFromId && <><dt>Moved</dt><dd>from an earlier time</dd></>}
           </dl>
@@ -124,7 +134,7 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
           <section>
             <h3>Money</h3>
             <table className="plain"><tbody>
-              {d.ledger.map((l) => <tr key={l.id}><td className="muted">{when(l.at)}</td><td>{ledgerWords(l.kind)}</td><td className="num">{formatRupees(l.amountPaise)}</td></tr>)}
+              {d.ledger.map((l) => <tr key={l.id}><td className="muted">{when(l.at)}</td><td>{ledgerWords(l.kind, l.providerRef)}</td><td className="num">{formatRupees(l.amountPaise)}</td></tr>)}
             </tbody></table>
           </section>
         )}
@@ -215,8 +225,16 @@ function when(iso: string) {
 
 export { sourceWords };
 
-function ledgerWords(kind: BookingDetail['ledger'][number]['kind']) {
-  return { payment: 'Paid by UPI', refund: 'Returned', credit_issued: 'Credit issued', credit_used: 'Credit used' }[kind];
+export function ledgerWords(kind: BookingDetail['ledger'][number]['kind'], providerRef: string | null = null) {
+  if (kind === 'payment') return paymentWords(providerRef);
+  return { refund: 'Returned', credit_issued: 'Credit issued', credit_used: 'Credit used' }[kind];
+}
+
+/** Pure. Where a payment came from, from its provider reference. */
+export function paymentWords(providerRef: string | null | undefined) {
+  if (providerRef?.startsWith('offline:cash')) return 'Paid in cash at the ashram';
+  if (providerRef?.startsWith('offline:upi')) return 'Paid by UPI to the ashram';
+  return 'Paid by UPI';
 }
 
 export function messageWords(kind: string, payload: Record<string, unknown>) {

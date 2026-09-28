@@ -78,6 +78,7 @@ modules (`"type": "module"`) so the web app and the api import `@expert-sessions
 
 | File | Creates |
 |---|---|
+| `002_guru_phone.sql` | `gurus.guru_phone text` — his own WhatsApp number for the ten-minute note and the console's "Tell guruji" | |
 | `001_init.sql` | `gurus`, `events`, `devotees`, `bookings`, `ledger_entries`, `sessions`, `messages_log`, `qr_codes`, and the partial unique index `bookings_one_per_slot` |
 
 ### apps/web/src
@@ -285,6 +286,11 @@ when Postgres does not answer.
 - Seed devotees use `91555…` numbers that no network routes; seed payment links (`plink_seed_*`) are skipped by reconciliation.
 - Sign-in says "Enter the code" while the code is the mock 1234; it never claims a message was sent.
 - Razorpay test mode caps an account at 30 payment links for ever; the pilot account hit it on 2026-09-28. The payment step now runs on Razorpay Orders + Checkout on `/pay/:bookingId` (web `site/Pay.tsx`, api `pay-routes.js`): the hold creates an order, her WhatsApp button and the site sheet both open our page, Checkout collects (UPI first), and the booking confirms from the `order.paid` webhook or the signed Checkout result, whichever lands first. Old `plink_…` references are still read by `findPayments`.
+
+### Day-one flows for a team that already takes bookings by hand (2026-09-28)
+
+- **A booking the team took by phone and was paid in cash or by UPI to the ashram.** Book for a caller → "How she pays" → already paid. `conversation.bookPaidOutside` holds and confirms in one go via `bookings.confirmOffline` (same `pay` transition, ledger `payment` row with `provider_ref = offline:<cash|upi>:<bookingId>`), then sends her the usual confirmation and join link. A hold made earlier can be confirmed the same way from the drawer ("Paid in cash" / "Paid by UPI to the ashram", `POST /api/console/bookings/:id/mark-paid`). Money words these rows "Paid in cash at the ashram" / "Paid by UPI to the ashram" and keeps them out of the settlement estimate.
+- **Guruji hears about a sitting on his own WhatsApp.** `gurus.guru_phone` (migration 002; Settings → His website → "His own WhatsApp number"). The ten-minute reminder job also sends him `reminders.copy.guruSoon` once per booking (`messages_log` kind `reminder.guru`); the drawer's "Tell guruji" (`POST /api/console/bookings/:id/tell-guru`, kind `note.guru`) sends `copy.guruNow` now. Both go through `conversation.tellGuru`, which records refusals like every other send. While the Meta app is unpublished his number must be on the allow list.
 
 ## Conventions
 
