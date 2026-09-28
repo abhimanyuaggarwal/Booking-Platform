@@ -4,6 +4,28 @@ For whoever operates the box. Everything below assumes one Linux server that you
 The product itself is described in `../CLAUDE.md` and `../docs/architecture.md`; this file is only
 about keeping it up.
 
+## This deployment (28 September 2026)
+
+| | |
+|---|---|
+| Server | `192.46.215.107`, Ubuntu 24.04, 1 vCPU, 1 GB RAM + 2 GB swap, Docker 29 |
+| Address | https://192-46-215-107.sslip.io (Let's Encrypt certificate; swap for `sessions.slike.in` when DNS exists) |
+| Code | https://github.com/abhimanyuaggarwal/Booking-Platform (`main`) |
+| Checkout on the server | `/opt/expert-sessions` (rsynced by `deploy/deploy.sh`; `deploy/.env` lives only there) |
+| Access | `ssh root@192.46.215.107` with the deploy key in `~/.ssh/id_ed25519_expert_sessions` (see `~/.ssh/config`); disable password login once every operator has a key |
+| Demo guru | `bhagwat` (seeded 28 September); console at `/console`, his site at `/s/bhagwat`, his screen at `/guru?t=<GURU_MAGIC_TOKEN>` |
+
+**Working with the code.** The laptop and the server are both fed from GitHub:
+
+```
+git pull                                   # get the latest
+# ... change, test (pnpm test), commit ...
+git push                                   # to GitHub
+deploy/deploy.sh root@192.46.215.107       # build the web app here, ship it, restart the app container
+```
+
+Anyone with the repository and the deploy key can deploy; the server never builds the web app itself.
+
 ## What runs
 
 | Container | What | Where its data lives |

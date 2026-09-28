@@ -262,7 +262,7 @@ One Linux server, four containers via `deploy/docker-compose.yml`: `caddy` (publ
 certificates for gurus' own domains, asking `/api/tls-ask`), `app` (this api serving the web
 build from `WEB_DIST`; migrations run before it listens; all cron jobs), `db` (Postgres 16), `backup`
 (daily `pg_dump`, fourteen kept). `deploy/Dockerfile` builds the one image from the repo root.
-`deploy/deploy.sh user@host` rsyncs the checkout and runs `docker compose up -d --build`.
+`deploy/deploy.sh user@host` builds the web app locally, rsyncs the checkout (with `apps/web/dist`) and runs `docker compose up -d --build`; the image itself never runs Vite, so a 1 GB server suffices. Code lives at https://github.com/abhimanyuaggarwal/Booking-Platform; the pilot server is `192.46.215.107` (see `deploy/RUNBOOK.md`, This deployment).
 `deploy/RUNBOOK.md` is the operator's document: prerequisites, first deploy, provider dashboard
 changes, monitoring, backups, updating, what still depends on a person.
 
