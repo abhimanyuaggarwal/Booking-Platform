@@ -1,6 +1,6 @@
 // The gurus table: reads for every surface, writes from the console's Settings screen.
 
-import { DAY_KEYS } from '@expert-sessions/shared';
+import { DAY_KEYS, sittingStep } from '@expert-sessions/shared';
 import { query } from './db.js';
 
 // closed_dates comes back as 'YYYY-MM-DD' strings, the form availableSlots() compares against.
@@ -46,6 +46,16 @@ export function availabilityOf(guru) {
   return { ...guru.pattern_json, closedDates: guru.closed_dates };
 }
 
+/**
+ * The same pattern on the sitting grid: one start per sitting plus the gap. The console shows his
+ * day and week this way — where whole sittings fit — even when the doors offer finer starts
+ * (pattern_json.stepMinutes), so a five-minute step never turns the week into 144 rows a day.
+ */
+export function sittingGridOf(guru) {
+  const a = availabilityOf(guru);
+  return { ...a, stepMinutes: sittingStep(a) };
+}
+
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -59,6 +69,7 @@ export function validatePattern(body) {
   const inRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
   if (!inRange(p.slotMinutes, 5, 180)) return 'Slot length must be 5 to 180 minutes';
   if (!inRange(p.gapMinutes, 0, 120)) return 'Gap must be 0 to 120 minutes';
+  if (p.stepMinutes !== undefined && !inRange(p.stepMinutes, 5, 180)) return 'Times offered every 5 to 180 minutes';
   if (!inRange(p.minimumNoticeMinutes, 0, 7 * 24 * 60)) return 'Minimum notice must be 0 minutes to 7 days';
   if (!inRange(p.daysAhead, 1, 60)) return 'Days ahead must be 1 to 60';
   if (!p.weeklyPattern || typeof p.weeklyPattern !== 'object') return 'Send the weekly pattern';
@@ -96,6 +107,8 @@ export async function updatePattern(guruId, { pattern, closedDates, dakshinaPais
   const clean = {
     slotMinutes: pattern.slotMinutes, gapMinutes: pattern.gapMinutes, minimumNoticeMinutes: pattern.minimumNoticeMinutes,
     daysAhead: pattern.daysAhead, weeklyPattern: Object.fromEntries(DAY_KEYS.map((d) => [d, pattern.weeklyPattern[d]])),
+    // How far apart the offered starts are. Left out by an older editor: back to back (slots.js).
+    stepMinutes: pattern.stepMinutes ?? pattern.slotMinutes + pattern.gapMinutes,
   };
   const { rows } = await query(
     `update gurus set pattern_json = $2, closed_dates = $3::date[], dakshina_paise = $4 where id = $1 returning ${COLUMNS}`,

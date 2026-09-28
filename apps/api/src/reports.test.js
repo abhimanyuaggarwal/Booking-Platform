@@ -77,11 +77,28 @@ test('each booking is coloured by state: paid, hold, live, done, did not join', 
   assert.equal(week.filled, 6);
 });
 
-test('a booking outside the current pattern is listed, not lost', () => {
+test('a booking outside the current timings gets its own row in the grid, not lost', () => {
   const rows = [row('slot:2026-09-14T14:00', 'confirmed', 'page')]; // Monday has no afternoon window
   const week = buildWeek(guru, dates, rows, '2026-09-16');
-  assert.equal(week.days[0].extra.length, 1);
+  assert.ok(week.times.includes('14:00'));
+  assert.equal(week.days[0].slots['14:00'].booking.name, rows[0].name);
+  assert.equal(week.days[0].extra.length, 0);
   assert.equal(week.days[0].filled, 1);
+});
+
+test('a booking on a day since closed is listed under the day, never hidden', () => {
+  const closedGuru = { ...guru, closed_dates: ['2026-09-14'] };
+  const week = buildWeek(closedGuru, dates, [row('slot:2026-09-14T10:00', 'confirmed', 'page')], '2026-09-16');
+  assert.equal(week.days[0].closed, 'closed');
+  assert.equal(week.days[0].extra.length, 1);
+});
+
+test('the grid keeps one row per whole sitting even when the doors offer five-minute starts', () => {
+  const fine = { ...guru, pattern_json: { ...guru.pattern_json, stepMinutes: 5 } };
+  const week = buildWeek(fine, dates, [row('slot:2026-09-14T10:05', 'confirmed', 'live')], '2026-09-16');
+  const monday = buildWeek(guru, dates, [], '2026-09-16').days[0].total;
+  assert.equal(week.days[0].total, monday);
+  assert.ok(week.times.includes('10:05'), 'the five-minute booking has its own row');
 });
 
 test('a devotee without a name shows as the last four digits of her phone', () => {

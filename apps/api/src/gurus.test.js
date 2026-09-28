@@ -31,6 +31,12 @@ test('numbers are bounded so a typo cannot make a 0-minute slot or a negative da
   assert.match(validatePattern({ ...good, dakshinaPaise: 500.5 }), /Dakshina/);
 });
 
+test('times may be offered every five minutes, and the step is optional for an older editor', () => {
+  assert.equal(validatePattern({ ...good, pattern: { ...good.pattern, stepMinutes: 5 } }), null);
+  assert.equal(validatePattern({ ...good, pattern: { ...good.pattern, stepMinutes: undefined } }), null);
+  assert.match(validatePattern({ ...good, pattern: { ...good.pattern, stepMinutes: 2 } }), /every 5 to 180/);
+});
+
 test('website content needs a name, a plausible domain, a tagline and well-formed blocks', () => {
   const site = { name: 'Guruji Vishwanath', domain: 'guruji.com', about: '', marketing: { tagline: 'x', blocks: [{ heading: 'a', body: 'b' }] } };
   assert.equal(validateSite(site), null);

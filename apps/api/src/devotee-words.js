@@ -31,6 +31,8 @@ const EN = {
     `${describeSlotEn(slotId)} with ${guruName}.\nDakshina ${dakshina}.\n\nThis time is held for you for ${HOLD_MINUTES} minutes.`,
   confirmed: ({ guruName, slotId }) =>
     `Your time is confirmed.\n${describeSlotEn(slotId)} with ${guruName}.\n\nOpen this link to see your booking, or to change the time. The join link comes here ten minutes before your time.`,
+  confirmedSoon: ({ guruName, slotId }) =>
+    `Your time is confirmed.\n${describeSlotEn(slotId)} with ${guruName}.\n\nIt begins in a few minutes. Open this link when you are ready.`,
   askQuestion: ({ guruName }) =>
     `If you wish, tell ${guruName} what you seek guidance on — type it here, or send a voice note. Only he will hear it.`,
   moved: ({ guruName, slotId }) =>
@@ -85,6 +87,8 @@ const HI = {
     `${describeSlot(slotId, 'hi')} — ${guruName} के साथ।\nदक्षिणा ${dakshina}।\n\nयह समय आपके लिए ${HOLD_MINUTES} मिनट तक रोका गया है।`,
   confirmed: ({ guruName, slotId }) =>
     `आपका समय पक्का हो गया।\n${describeSlot(slotId, 'hi')} — ${guruName} के साथ।\n\nअपनी बुकिंग देखने या समय बदलने के लिए यह लिंक खोलें। जुड़ने का लिंक आपके समय से दस मिनट पहले यहीं आएगा।`,
+  confirmedSoon: ({ guruName, slotId }) =>
+    `आपका समय पक्का हो गया।\n${describeSlot(slotId, 'hi')} — ${guruName} के साथ।\n\nयह कुछ ही मिनट में शुरू होगा। तैयार हों तो यह लिंक खोलें।`,
   askQuestion: ({ guruName }) =>
     `अगर आप चाहें, तो ${guruName} को बताएँ कि आप किस बारे में मार्गदर्शन चाहते हैं — यहीं लिखें, या आवाज़ का संदेश भेजें। इसे सिर्फ़ वही सुनेंगे।`,
   moved: ({ guruName, slotId }) =>

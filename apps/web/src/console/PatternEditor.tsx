@@ -78,6 +78,14 @@ export default function PatternEditor({ settings, onSaved }: { settings: Setting
           <label>Days offered ahead<input type="number" min={1} max={60} value={pattern.daysAhead} onChange={(e) => setNumber('daysAhead', e.target.value)} /></label>
         </div>
         <div className="row" style={{ marginTop: 10 }}>
+          <label>Times offered every, minutes<input type="number" min={5} max={180} step={5} value={pattern.stepMinutes ?? pattern.slotMinutes + pattern.gapMinutes} onChange={(e) => setNumber('stepMinutes', e.target.value)} /></label>
+        </div>
+        <p className="muted" style={{ marginTop: 8 }}>
+          {(pattern.stepMinutes ?? pattern.slotMinutes + pattern.gapMinutes) < pattern.slotMinutes + pattern.gapMinutes
+            ? `People may book any ${pattern.stepMinutes}-minute mark. A time disappears once a sitting is booked too close to it, so sittings never overlap.`
+            : 'Times run back to back: one sitting, the gap, the next. Set 5 to let people book any five-minute mark, for example to sit with someone a few minutes from now.'}
+        </p>
+        <div className="row" style={{ marginTop: 10 }}>
           <label>Dakshina, in rupees<input type="number" min={0} step={1} value={rupees} onChange={(e) => setRupees(e.target.value)} /></label>
         </div>
       </section>

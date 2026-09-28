@@ -22,7 +22,7 @@ modules (`"type": "module"`) so the web app and the api import `@expert-sessions
 
 | File | What it is for | Key exports |
 |---|---|---|
-| `slots.js` | Turns a guru's weekly pattern into bookable slots; IST wall-clock convention; slot id ↔ instant | `availableSlots(availability, takenSlotIds, now?)`, `describeSlot(slotId)`, `slotIdToInstant`, `instantToSlotId`, `parseSlotId`, `toSlotId`, `labelFor`, `startOfDay`, `nowInIst` |
+| `slots.js` | Turns a guru's weekly pattern into bookable slots; IST wall-clock convention; slot id ↔ instant | `availableSlots(availability, takenSlotIds, now?)`, `sittingStep(availability)`, `describeSlot(slotId)`, `slotIdToInstant`, `instantToSlotId`, `parseSlotId`, `toSlotId`, `labelFor`, `startOfDay`, `nowInIst` |
 | `format.js` | Money copy | `formatRupees(paise)` → `₹500`, `₹1,50,000` |
 | `index.js`, `index.d.ts` | Entry point and hand-written types for the web app | |
 | `*.test.js` | Usage examples, `node --test` | |
@@ -134,8 +134,10 @@ Tables follow the domain model in CLAUDE.md exactly, plus three things decided i
 
 Shapes inside JSON columns:
 
-- `gurus.pattern_json`: `{ slotMinutes, gapMinutes, minimumNoticeMinutes, daysAhead, weeklyPattern: { mon: [["10:00","13:00"]], ... } }`.
+- `gurus.pattern_json`: `{ slotMinutes, gapMinutes, minimumNoticeMinutes, daysAhead, stepMinutes?, weeklyPattern: { mon: [["10:00","13:00"]], ... } }`.
   Closed dates are the separate `closed_dates date[]` column; `gurus.availabilityOf()` joins the two for `availableSlots`.
+- **Offer step vs sitting grid.** `stepMinutes` is how far apart the *doors* offer starts (Settings: "Times offered every"); missing means one sitting plus the gap, i.e. back to back. Set to 5 it lets a devotee book any five-minute mark (the demo guru runs this way so a call can be booked minutes ahead). `availableSlots` then hides any start nearer than one sitting plus the gap to a held or confirmed booking, in either direction, so sittings never overlap. The console keeps showing whole sittings: `gurus.sittingGridOf()` is the same pattern with the step forced to sitting plus gap, and Today, the week grid, close-a-day and the waiting-room suggestions all use it; a booking that sits off that grid gets its own row in the week (`buildWeek`), never a footnote.
+- **A time booked minutes before it begins** (`conversation.startsWithin`): the confirmation carries the join link instead of the booking page, is written to `messages_log` as `reminder.soon` so `reminders.sendDue` does not send it again, and guruji hears at once (`reminder.guru`) if his number is set.
 - `gurus.marketing_json`: `{ tagline, blocks: [{ heading, body }], hero?: { image, portrait, credit }, facts?: [{ label, value }], themes?: string[], quote?: string }`. The optional fields feed the picture band, facts strip, themes and pull quote on his home page (`site/HomePage.tsx`); `gurus.updateSite` keeps whatever an editor does not send, so an older console tab cannot wipe them. Static files for the pictures live in `apps/web/public` (`guruji-hero.jpg` is seeded; `guruji.jpg`, his portrait, is his team's to add — the page hides the frame until it exists).
 - `messages_log.payload_json`: inbound — the parsed message from `parseInbound`; outbound — `{ body, buttons? | sections? | buttonLabel?, href? }`.
 

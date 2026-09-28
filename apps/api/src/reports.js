@@ -6,7 +6,7 @@ import {
   describeDate, addDays, dayRange,
 } from '@expert-sessions/shared';
 import { query } from './db.js';
-import { availabilityOf } from './gurus.js';
+import { sittingGridOf } from './gurus.js';
 import * as bookings from './bookings.js';
 import { currentSession, findSessionByBooking } from './sessions.js';
 import { listEvents } from './events.js';
@@ -84,8 +84,9 @@ export async function todayReport(guru, date) {
   ]);
 
   const taken = new Set(rows.map((r) => instantToSlotId(r.slot_start)));
-  // Slots still open on this date from now on — the same maths the doors use, so it never disagrees.
-  const open = availableSlots(availabilityOf(guru), taken, nowInIst()).filter((s) => s.id.startsWith(`slot:${date}`));
+  // Sittings still open on this date from now on — the doors' maths on the sitting grid, so a
+  // start the doors would refuse (too close to a booking) is never shown as open here either.
+  const open = availableSlots(sittingGridOf(guru), taken, nowInIst()).filter((s) => s.id.startsWith(`slot:${date}`));
 
   const timeline = [
     ...rows.map((r) => ({ slotId: instantToSlotId(r.slot_start), kind: 'booking', booking: sessionRow(r) })),
@@ -268,7 +269,7 @@ export async function waitingBoard(guru, presenceFor) {
   });
 
   const today = todayIst();
-  const open = availableSlots(availabilityOf(guru), await bookings.takenSlotIds(guru.id), nowInIst());
+  const open = availableSlots(sittingGridOf(guru), await bookings.takenSlotIds(guru.id), nowInIst());
   const pick = (date) => open.filter((s) => s.id.startsWith(`slot:${date}`)).slice(0, 3).map((s) => ({ slotId: s.id, label: s.label }));
 
   return {
@@ -293,7 +294,7 @@ export async function closeDayPreview(guru, date) {
   const onDay = await bookings.bookingsOn(guru.id, date);
   const confirmed = onDay.filter((b) => b.status === 'confirmed');
   const held = onDay.filter((b) => b.status === 'held');
-  const openLater = availableSlots(availabilityOf(guru), await bookings.takenSlotIds(guru.id), nowInIst())
+  const openLater = availableSlots(sittingGridOf(guru), await bookings.takenSlotIds(guru.id), nowInIst())
     .filter((s) => !s.id.startsWith(`slot:${date}`));
   const plan = suggestMoves(confirmed.map((b) => b.slotId), openLater.map((s) => s.id));
   return {
@@ -383,7 +384,7 @@ export async function weekReport(guru, monday) {
 
 /** Pure: lays booking rows onto the pattern's slots for seven dates. Tested without a database. */
 export function buildWeek(guru, dates, rows, today) {
-  const availability = availabilityOf(guru);
+  const availability = sittingGridOf(guru);
   const dayPattern = { ...availability, minimumNoticeMinutes: 0, daysAhead: 1 };
 
   const byDate = new Map(dates.map((d) => [d, []]));
@@ -406,8 +407,16 @@ export function buildWeek(guru, dates, rows, today) {
       times.add(hhmm);
       slots[hhmm] = { slotId: id, booking: bookings.find((b) => b.slotId === id) ?? null };
     }
-    // Booked before the pattern changed, or on a day since closed: still shown, never hidden.
-    const extra = bookings.filter((b) => !slotIds.includes(b.slotId));
+    // Booked off the grid — a five-minute start from a door, or before the timings changed — gets
+    // its own row on an open day, so the grid still shows everyone in time order.
+    for (const b of bookings) {
+      const hhmm = b.slotId.slice(16);
+      if (closed || slots[hhmm]) continue;
+      times.add(hhmm);
+      slots[hhmm] = { slotId: b.slotId, booking: b };
+    }
+    // Booked on a day since closed: still shown, never hidden.
+    const extra = closed ? bookings : [];
 
     return {
       date, weekday: WEEKDAYS[wall.getUTCDay()], dayOfMonth: wall.getUTCDate(), today: date === today,

@@ -3,7 +3,9 @@
 // all speak through here, so the words are the same wherever a booking comes from.
 // Copy rules (CLAUDE.md): "dakshina", "time", plain sentences, no exclamation marks.
 
-import { describeSlot, formatRupees } from '@expert-sessions/shared';
+import { describeSlot, formatRupees, slotIdToInstant } from '@expert-sessions/shared';
+import { SOON_MINUTES } from './reminders.js';
+import { JOIN_CLOSES_MINUTES } from './guru-day.js';
 import * as bookings from './bookings.js';
 import * as whatsapp from './whatsapp.js';
 import * as razorpay from './razorpay.js';
@@ -121,11 +123,35 @@ export function createConversation(env) {
 
   // Her confirmation points at her booking page (see it, move it, cancel it). The join link comes
   // ten minutes before her time, from reminders.js, so nobody opens a waiting room a day early.
-  async function sendConfirmation({ guru, devotee, booking }) {
+  async function sendConfirmation({ guru, devotee, booking, now = new Date() }) {
     const W = wordsFor(guru.language);
     const say = speak(guru, devotee, booking.id);
+    // Booked minutes before the time (the doors offer starts every few minutes when his team wants
+    // that): the ten-minutes-before reminder would come too late or never, so the confirmation
+    // itself carries the join link, and is recorded as that reminder so it is not sent twice.
+    if (startsWithin(booking, now)) {
+      await say.link(W.confirmedSoon({ guruName: guru.name, slotId: booking.slotId }), W.joinNow, joinLink(booking, guru));
+      await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: booking.id, direction: 'out', kind: 'reminder.soon', payload: { text: W.confirmedSoon({ guruName: guru.name, slotId: booking.slotId }), delivered: true, withConfirmation: true } });
+      await say.text(W.askQuestion({ guruName: guru.name }));
+      await tellGuruSoon({ guru, devotee, booking });
+      return;
+    }
     await say.link(W.confirmed({ guruName: guru.name, slotId: booking.slotId }), W.seeBooking, bookingLink(booking, guru));
     await say.text(W.askQuestion({ guruName: guru.name }));
+  }
+
+  /** Guruji hears of a sitting booked minutes before it, if his team gave his number. A refusal is recorded by tellGuru, not raised. */
+  async function tellGuruSoon({ guru, devotee, booking }) {
+    if (!guru.guru_phone) return;
+    const W = wordsFor(guru.language);
+    try {
+      await tellGuru({
+        guru, devotee, booking, kind: 'reminder.guru',
+        text: W.guruSoon({ devoteeName: devotee.name ?? `…${devotee.phone.slice(-4)}`, time: describeSlot(booking.slotId).split(', ').pop(), question: booking.question_text ?? null }),
+      });
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+    }
   }
 
   /** She paid after the hold ran out. Say so plainly: nothing is booked, and the team will settle it. */
@@ -227,4 +253,10 @@ export function createConversation(env) {
   }
 
   return { speak, startPayment, sendConfirmation, sendPaidTooLateNote, resendPaymentLink, sendHeardAfterSession, sendNewTime, sendCancelledNote, sendRefundNote, sendWaitingMessage, receiveWaitingMessage, joinLink, payLink, bookingLink, bookPaidOutside, tellGuru, copy, wordsFor };
+}
+
+/** Pure. True when the time begins within the ten-minute reminder window, or has begun and can still be joined. */
+export function startsWithin(booking, now = new Date()) {
+  const minutesAway = (slotIdToInstant(booking.slotId) - now) / 60000;
+  return minutesAway <= SOON_MINUTES && minutesAway > -JOIN_CLOSES_MINUTES;
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { formatRupees } from '@expert-sessions/shared';
 import { siteApi, useSite } from './api';
 import BookSheet from './BookSheet';
+import TimeChooser from './TimeChooser';
 import type { PublicSlot, SitePage } from './types';
 
 // One scrolling page: his picture and name, the facts about him, the next open times, who he is in
@@ -83,7 +84,7 @@ export function HomeSections({ page, slots, showAll, onSeeAll, onChoose }: {
             <p className="muted">There are no open times this week. His next satsang is below, and you may write on WhatsApp to be told when times open.</p>
           ) : (
             <>
-              {slots.map((s) => (
+              {showAll ? <TimeChooser slots={slots} onChoose={onChoose} /> : slots.map((s) => (
                 <button key={s.id} className="slot" onClick={() => onChoose(s)}>
                   <b>{s.label}</b><u>Book</u>
                 </button>

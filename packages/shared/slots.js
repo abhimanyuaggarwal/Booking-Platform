@@ -63,6 +63,12 @@ export function isoDate(date) {
 
 /**
  * All bookable slots from now until `daysAhead`, minus the ones already taken.
+ *
+ * Starts are offered every `stepMinutes` (default: one sitting plus the gap, so times run back to
+ * back). A guru who wants people to book "any five-minute mark" sets stepMinutes to 5; the starts
+ * then overlap, so a start is hidden when a held or confirmed sitting begins nearer to it than one
+ * sitting plus the gap, in either direction. With the default step this is the same as "the taken
+ * ids disappear", so nothing changes for a guru who never touches the setting.
  * @param {object} availability  gurus.pattern_json plus closedDates (see gurus.js availabilityOf)
  * @param {Set<string>} takenSlotIds  slot ids that are held or confirmed
  * @param {Date} [now]  injectable for tests; defaults to current IST time
@@ -70,7 +76,10 @@ export function isoDate(date) {
  */
 export function availableSlots(availability, takenSlotIds, now = nowInIst()) {
   const earliestAllowed = new Date(now.getTime() + availability.minimumNoticeMinutes * 60000);
-  const stepMinutes = availability.slotMinutes + availability.gapMinutes;
+  const stepMinutes = availability.stepMinutes ?? sittingStep(availability);
+  const clearance = sittingStep(availability) * 60000;
+  const takenAt = [...takenSlotIds].map((id) => parseSlotId(id).getTime());
+  const tooClose = (t) => takenAt.some((s) => Math.abs(s - t) < clearance);
   const slots = [];
 
   for (let dayOffset = 0; dayOffset < availability.daysAhead; dayOffset++) {
@@ -85,15 +94,19 @@ export function availableSlots(availability, takenSlotIds, now = nowInIst()) {
       const windowEnd = new Date(day.getTime() + (th * 60 + tm) * 60000);
 
       while (cursor.getTime() + availability.slotMinutes * 60000 <= windowEnd.getTime()) {
-        const id = toSlotId(cursor);
-        if (cursor >= earliestAllowed && !takenSlotIds.has(id)) {
-          slots.push({ id, label: labelFor(cursor, now), startsAt: new Date(cursor) });
+        if (cursor >= earliestAllowed && !tooClose(cursor.getTime())) {
+          slots.push({ id: toSlotId(cursor), label: labelFor(cursor, now), startsAt: new Date(cursor) });
         }
         cursor = new Date(cursor.getTime() + stepMinutes * 60000);
       }
     }
   }
   return slots;
+}
+
+/** Minutes from one sitting's start to the next when they run back to back: the sitting plus the gap. */
+export function sittingStep(availability) {
+  return availability.slotMinutes + availability.gapMinutes;
 }
 
 // 'YYYY-MM-DD' plus n days

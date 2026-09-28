@@ -52,6 +52,8 @@ export interface MoneyReport { monday: string; sunday: string; label: string; kp
 export type DayKey = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
 export interface Pattern {
   slotMinutes: number; gapMinutes: number; minimumNoticeMinutes: number; daysAhead: number;
+  /** How far apart the offered starts are. Missing on a pattern saved before the setting existed: back to back. */
+  stepMinutes?: number;
   weeklyPattern: Record<DayKey, [string, string][]>;
 }
 export interface Marketing {

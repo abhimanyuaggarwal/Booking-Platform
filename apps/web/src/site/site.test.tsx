@@ -3,6 +3,7 @@ import { expect, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
 import { HomeSections } from './HomePage';
+import { groupByDay } from './TimeChooser';
 import BookSheet, { BookSheetBody } from './BookSheet';
 import { ConfirmedView } from './Confirmed';
 import { MySessionsView, earlierWords } from './MySessions';
@@ -132,4 +133,19 @@ test('his picture, facts, quote and themes appear when his team has filled them 
   expect(html).toContain('Bring one question.');
   expect(html).toContain('Photo by a friend');
   expect(html).not.toContain('!');
+});
+
+test('every other time is offered a day at a time, as chips, so a five-minute step stays readable', () => {
+  const fine: PublicSlot[] = [
+    { id: 'slot:2026-09-16T16:00', label: 'Today 4:00 pm', when: 'Wednesday, 16 September, 4:00 pm' },
+    { id: 'slot:2026-09-16T16:05', label: 'Today 4:05 pm', when: 'Wednesday, 16 September, 4:05 pm' },
+    { id: 'slot:2026-09-17T10:00', label: 'Tomorrow 10:00 am', when: 'Thursday, 17 September, 10:00 am' },
+    { id: 'slot:2026-09-18T10:00', label: 'Fri 10:00 am', when: 'Friday, 18 September, 10:00 am' },
+  ];
+  expect(groupByDay(fine).map((d) => `${d.word}:${d.slots.length}`)).toEqual(['Today:2', 'Tomorrow:1', 'Fri 18:1']);
+  const html = renderToStaticMarkup(<HomeSections page={page} slots={fine} showAll={true} onSeeAll={() => {}} onChoose={() => {}} />);
+  expect(html).toContain('role="tab"');
+  expect(html).toContain('>4:05 pm<');
+  expect(html).not.toContain('>10:00 am<');   // tomorrow's times wait behind its tab
+  expect(html).not.toContain('See other times');
 });

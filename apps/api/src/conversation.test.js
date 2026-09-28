@@ -1,7 +1,7 @@
 // The words devotees receive, checked against the copy rules in CLAUDE.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { copy } from './conversation.js';
+import { copy, startsWithin } from './conversation.js';
 
 const ctx = { guruName: 'Guruji Vishwanath', slotId: 'slot:2026-09-16T16:00', dakshina: '₹500' };
 
@@ -49,4 +49,15 @@ test('a message just after her session is heard, and does not offer her a calend
   const text = copy.heardAfterSession({ guruName: 'Guruji Vishwanath' });
   assert.match(text, /Guruji Vishwanath's team will read this/);
   assert.ok(!/available|choose a time|these times/i.test(text), 'she is not shown times she did not ask for');
+});
+
+test('a time booked minutes before it begins is confirmed with the join link, and the words say so', () => {
+  const now = new Date('2026-09-16T10:30:00.000Z');                       // 4:00 pm IST
+  assert.ok(startsWithin({ slotId: 'slot:2026-09-16T16:05' }, now), 'five minutes away');
+  assert.ok(startsWithin({ slotId: 'slot:2026-09-16T15:58' }, now), 'began two minutes ago, still joinable');
+  assert.ok(!startsWithin({ slotId: 'slot:2026-09-16T16:30' }, now), 'half an hour away: the reminder will come');
+  assert.ok(!startsWithin({ slotId: 'slot:2026-09-16T14:00' }, now), 'long over');
+  const text = copy.confirmedSoon(ctx);
+  assert.match(text, /begins in a few minutes/);
+  assert.ok(!/ten minutes before/.test(text), 'no promise of a reminder that would never come');
 });

@@ -1,7 +1,7 @@
 // Run with: pnpm test   (node --test picks up every *.test.js)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { availableSlots, describeSlot, describeDate, slotIdToInstant, instantToSlotId } from './slots.js';
+import { availableSlots, sittingStep, describeSlot, describeDate, slotIdToInstant, instantToSlotId } from './slots.js';
 
 const availability = {
   slotMinutes: 30, gapMinutes: 10, minimumNoticeMinutes: 60, daysAhead: 3,
@@ -27,6 +27,29 @@ test('held or confirmed slots disappear from the offer', () => {
   const taken = new Set(['slot:2026-09-14T10:00']);
   const s = availableSlots(availability, taken, mondayMorning);
   assert.ok(!s.some((x) => x.id === 'slot:2026-09-14T10:00'));
+});
+
+test('with a five-minute step, every five-minute mark that fits a whole sitting is offered', () => {
+  const fine = { ...availability, stepMinutes: 5, minimumNoticeMinutes: 0 };
+  const s = availableSlots(fine, new Set(), mondayMorning).filter((x) => x.id.includes('2026-09-14'));
+  assert.equal(s.length, 13);                                              // 10:00, 10:05 ... 11:00 (11:05 would overrun 11:30)
+  assert.deepEqual(s.slice(0, 3).map((x) => x.id), ['slot:2026-09-14T10:00', 'slot:2026-09-14T10:05', 'slot:2026-09-14T10:10']);
+});
+
+test('a five-minute start is hidden while a sitting plus its gap would overlap a taken one, both ways', () => {
+  const fine = { ...availability, stepMinutes: 5, minimumNoticeMinutes: 0 };
+  const taken = new Set(['slot:2026-09-14T10:20']);
+  const ids = availableSlots(fine, taken, mondayMorning).filter((x) => x.id.includes('2026-09-14')).map((x) => x.id);
+  assert.ok(!ids.includes('slot:2026-09-14T10:20'));
+  assert.ok(!ids.includes('slot:2026-09-14T10:00'), 'a 10:00 sitting would still be running at 10:20');
+  assert.ok(!ids.includes('slot:2026-09-14T10:55'), 'guruji is with the 10:20 person until 10:50 and rests ten minutes');
+  assert.ok(ids.includes('slot:2026-09-14T11:00'));
+});
+
+test('the sitting step is the sitting plus the gap, and is the default offer step', () => {
+  assert.equal(sittingStep(availability), 40);
+  const explicit = availableSlots({ ...availability, stepMinutes: 40 }, new Set(), mondayMorning);
+  assert.deepEqual(explicit.map((x) => x.id), availableSlots(availability, new Set(), mondayMorning).map((x) => x.id));
 });
 
 test('a closed date offers nothing', () => {

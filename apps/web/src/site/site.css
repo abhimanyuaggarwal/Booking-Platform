@@ -71,6 +71,19 @@
 .site .slot u { text-decoration: none; font-size: 13px; font-weight: 700; color: var(--accent); }
 .site .slot i { font-style: normal; font-size: 13px; color: var(--warm-muted); }
 
+/* Every open time, a day at a time (TimeChooser) */
+.site .chooser .days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
+.site .chooser .days::-webkit-scrollbar { display: none; }
+.site .chooser .days button { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 72px; background: #fff; border: 1px solid #E4DBC9; border-radius: 12px; padding: 8px 12px; font: inherit; color: inherit; cursor: pointer; }
+.site .chooser .days button b { font-size: 14px; font-weight: 600; }
+.site .chooser .days button span { font-size: 12px; color: var(--warm-muted); }
+.site .chooser .days button.on { border-color: var(--accent); background: #F7EDE3; }
+.site .chooser .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.site .chooser .chip { background: #fff; border: 1px solid #E4DBC9; border-radius: 20px; padding: 8px 13px; font: inherit; font-size: 14px; color: inherit; cursor: pointer; }
+.site .chooser .chip:hover { border-color: var(--accent); }
+.site .chooser .chip.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+.site .picked { font-size: 14px; color: var(--warm-muted); margin: 0 0 12px; min-height: 1.4em; }
+
 .site .event { background: #fff; border: 1px solid #E4DBC9; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
 .site .tag { display: inline-block; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--ok); background: #E4EFE8; border-radius: 8px; padding: 2px 8px; margin-bottom: 6px; }
 .site .tag.live { color: #8A5320; background: #FBF0E2; }
