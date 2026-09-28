@@ -9,7 +9,7 @@ import * as whatsapp from './whatsapp.js';
 import * as razorpay from './razorpay.js';
 import { logMessage } from './messages-log.js';
 import { emitToSession, presenceFor } from './realtime.js';
-import { ProviderError } from './errors.js';
+import { ProviderError, BookingRuleError } from './errors.js';
 
 export const copy = {
   held: ({ guruName, slotId, dakshina }) =>
@@ -36,6 +36,9 @@ export const copy = {
   noTimes: ({ guruName }) =>
     `Namaste 🙏 ${guruName} has no open times this week. Please send Hi again in a few days.`,
   slotTaken: () => 'That time was just taken. Here are the next ones:',
+  paymentUnavailable: () => 'The payment page could not be opened just now, so nothing is booked. Please send Hi again in a few minutes, or write to his team.',
+  refundedAsCredit: ({ guruName, slotId, dakshina }) =>
+    `${guruName} could not sit at ${describeSlot(slotId)}. Your dakshina of ${dakshina} is back in your credit — book any other time with it within thirty days.`,
 };
 
 export function createConversation(env) {
@@ -79,7 +82,8 @@ export function createConversation(env) {
    * If Razorpay refuses, the hold is released at once — nobody should lose a slot to our outage —
    * and the ProviderError says why.
    */
-  async function startPayment({ guru, devotee, slotId, source, notify = true, callbackUrlFor = null }) {
+  async function startPayment({ guru, devotee, slotId, source, notify = true, callbackUrlFor = null, team = false }) {
+    await bookings.assertBookable(guru, slotId, { team }); // BookingRuleError carries the sentence
     const booking = await bookings.holdSlot({ guruId: guru.id, devoteeId: devotee.id, slotId, source });
     if (!booking) return null;
     const dakshina = formatRupees(guru.dakshina_paise);
@@ -135,8 +139,9 @@ export function createConversation(env) {
     await speak(guru, devotee, booking.id).text(copy.cancelled({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
   }
 
-  async function sendRefundNote({ guru, devotee, booking, amountPaise }) {
-    await speak(guru, devotee, booking.id).text(copy.refunded({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
+  async function sendRefundNote({ guru, devotee, booking, amountPaise, viaCredit = false }) {
+    const words = viaCredit ? copy.refundedAsCredit : copy.refunded;
+    await speak(guru, devotee, booking.id).text(words({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
   }
 
   /**

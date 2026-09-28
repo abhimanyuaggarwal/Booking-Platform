@@ -14,7 +14,7 @@ import { ProviderError } from './errors.js';
 
 export const SOON_MINUTES = 12;          // "ten minutes before", with slack for a job that runs each minute
 const NIGHT_BEFORE_FROM = 19;            // IST, the evening before
-const NIGHT_BEFORE_TO = 21;
+const NIGHT_BEFORE_TO = 23;              // wide on purpose: an api down at 8 pm still reminds at 10
 
 export const copy = {
   night: ({ guruName, slotId }) =>

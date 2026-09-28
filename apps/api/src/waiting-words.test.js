@@ -56,8 +56,10 @@ test('afterwards it is complete, and there is nothing to leave', () => {
 });
 
 test('a link for a booking that is not confirmed sends her to his team', () => {
-  assert.match(waitingWords({ ...base, status: 'cancelled' }).sentence, /not confirmed/);
-  assert.match(waitingWords({ ...base, status: 'expired' }).sentence, /not confirmed/);
+  assert.match(waitingWords({ ...base, status: 'cancelled' }).sentence, /cancelled.*credit/);
+  assert.match(waitingWords({ ...base, status: 'expired' }).sentence, /not paid for in time/);
+  assert.match(waitingWords({ ...base, status: 'rescheduled' }).sentence, /moved/);
+  assert.equal(waitingWords({ ...base, status: 'no_show' }).state, 'not_yours');
 });
 
 test('no sentence is ever a countdown', () => {

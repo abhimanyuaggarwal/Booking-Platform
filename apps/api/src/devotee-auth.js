@@ -22,7 +22,8 @@ export function devoteeAuth(env) {
   function requestCode(guruId, phone) {
     pending.set(`${guruId}:${phone}`, { code, expiresAt: Date.now() + CODE_MINUTES * 60000, attempts: 0 });
     console.log(`Sign-in code for ${phone}: ${code} (mock; wire an SMS provider to send it for real)`);
-    return { sentTo: `${'•'.repeat(Math.max(0, phone.length - 4))}${phone.slice(-4)}`, mock: !env.OTP_CODE };
+    // `mock` stays true until a provider actually sends the code; the screen must not claim a message was sent.
+    return { sentTo: `${'•'.repeat(Math.max(0, phone.length - 4))}${phone.slice(-4)}`, mock: true, code: env.OTP_CODE ? undefined : code };
   }
 
   /**

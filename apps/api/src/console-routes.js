@@ -155,7 +155,7 @@ export function consoleRoutes(env, conversation) {
 
     let devotee = await devotees.findOrCreateDevotee(req.guru.id, phone);
     if (name || forWhom) devotee = await devotees.updateDevotee(devotee.id, { name, forWhom });
-    const booking = await conversation.startPayment({ guru: req.guru, devotee, slotId, source });
+    const booking = await conversation.startPayment({ guru: req.guru, devotee, slotId, source, team: true });
     if (!booking) return res.status(409).json({ error: 'That time was just taken. Pick another.' });
     if (typeof question === 'string' && question.trim()) await bookings.setQuestion(booking.id, { text: question.trim() });
     res.status(201).json(bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }));
@@ -164,6 +164,7 @@ export function consoleRoutes(env, conversation) {
   router.post('/bookings/:id/reschedule', handle(async (req, res) => {
     const b = await ownBooking(req, res); if (!b) return;
     if (!SLOT.test(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Pick the new time' });
+    await bookings.assertBookable(req.guru, req.body.slotId, { team: true });
     const moved = await bookings.rescheduleBooking({ bookingId: b.id, slotId: req.body.slotId });
     if (!moved) return res.status(409).json({ error: 'That time was just taken. Pick another.' });
     const devotee = await devotees.findDevoteeById(b.devotee_id);
@@ -206,7 +207,7 @@ export function consoleRoutes(env, conversation) {
     }
     const refunded = await bookings.refundBooking({ bookingId: b.id, providerRef });
     const devotee = await devotees.findDevoteeById(b.devotee_id);
-    const note = await tell(() => conversation.sendRefundNote({ guru: req.guru, devotee, booking: refunded, amountPaise: paid.amount_paise }));
+    const note = await tell(() => conversation.sendRefundNote({ guru: req.guru, devotee, booking: refunded, amountPaise: paid.amount_paise, viaCredit: paid.kind === 'credit_used' }));
     res.json({ booking: bookingRow({ ...refunded, phone: devotee.phone, devotee_name: devotee.name }), amountPaise: paid.amount_paise, viaCredit: paid.kind === 'credit_used', notified: note.ok, notDelivered: note.reason ?? null });
   }));
 
@@ -230,7 +231,7 @@ export function consoleRoutes(env, conversation) {
     const b = await ownBooking(req, res); if (!b) return;
     if (b.status !== 'expired') return res.status(409).json({ error: `A ${b.status} booking does not need a new link` });
     const devotee = await devotees.findDevoteeById(b.devotee_id);
-    const held = await conversation.startPayment({ guru: req.guru, devotee, slotId: b.slotId, source: b.source });
+    const held = await conversation.startPayment({ guru: req.guru, devotee, slotId: b.slotId, source: b.source, team: true });
     if (!held) return res.status(409).json({ error: 'Someone else has that time now. Offer her another from Bookings.' });
     res.status(201).json({ booking: bookingRow({ ...held, phone: devotee.phone, devotee_name: devotee.name }) });
   }));

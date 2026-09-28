@@ -271,6 +271,20 @@ Production-only environment: `PUBLIC_HOST`, `ACME_EMAIL`, `POSTGRES_PASSWORD` (c
 it every minute after `select 1`; the monitor alerts when pings stop). `/api/health` answers 503
 when Postgres does not answer.
 
+### Findings from the live UAT of 2026-09-28, and what changed
+
+- `bookings.assertBookable(guru, slotId, { team })` is the one check before any slot is written: devotees may take only a slot his pattern offers and nobody holds (`availableSlots`); the team may book any time that has not passed. Called by `conversation.startPayment` (all three doors), the site's reschedule and book-with-credit, and the console's reschedule.
+- `whatsapp.isSignedByMeta` + `WHATSAPP_APP_SECRET`: with the secret set, `POST /webhook` refuses unsigned or mis-signed deliveries (403). `demo.js` signs its fake deliveries when the secret is set.
+- A Razorpay refusal on the WhatsApp door now tells her (`copy.paymentUnavailable`); on the site it is logged before the 502. An expired hold with no `payment_link_id` reads "our payment page could not be opened" on Today, not "did not pay".
+- `attachQuestion` attaches to the upcoming time she paid for most recently, not the soonest one.
+- A credit-paid booking the team refunds is told "back in your credit" (`copy.refundedAsCredit`), matching the console.
+- `waiting-words.js` gives an old join link its own sentence per ending (cancelled, moved, returned, passed, not paid); `Join.tsx` heads it "This link is no longer open".
+- `My sessions` no longer lists holds under Earlier; `earlierWords` knows `held`/`expired`.
+- The night-before reminder window is 19:00–23:00 IST so a short outage does not lose it.
+- Seed devotees use `91555…` numbers that no network routes; seed payment links (`plink_seed_*`) are skipped by reconciliation.
+- Sign-in says "Enter the code" while the code is the mock 1234; it never claims a message was sent.
+- Razorpay test mode caps an account at 30 payment links for ever; the pilot account hit it on 2026-09-28. Live keys (merchant-of-record decision) or a payment page on Razorpay Orders are the two ways past it.
+
 ## Conventions
 
 - **Time.** Slot ids (`slot:2026-09-16T16:00`) are IST wall-clock. `bookings.slot_start` and every other

@@ -4,6 +4,23 @@
 import { instantToSlotId, slotIdToInstant, dayRange } from '@expert-sessions/shared';
 import { query, transaction } from './db.js';
 import { BookingRuleError } from './errors.js';
+import { availableSlots } from '@expert-sessions/shared';
+import { availabilityOf } from './gurus.js';
+
+/**
+ * The one check every door makes before a slot is written. A devotee may only take a time his
+ * pattern offers and nobody holds (a stale tab or an old WhatsApp list must not book yesterday, or
+ * a Sunday). His team may book any time that has not passed — a sitting outside the pattern is
+ * their judgement. Throws BookingRuleError with the sentence to show.
+ */
+export async function assertBookable(guru, slotId, { team = false } = {}) {
+  if (team) {
+    if (slotIdToInstant(slotId) < new Date()) throw new BookingRuleError('That time has already passed. Pick a later one.');
+    return;
+  }
+  const open = availableSlots(availabilityOf(guru), await takenSlotIds(guru.id));
+  if (!open.some((s) => s.id === slotId)) throw new BookingRuleError('That time is not open any more. Please choose one of the times shown.');
+}
 
 export const HOLD_MINUTES = 10;
 // She may change her own booking up to four hours before. Nearer than that the slot cannot be
@@ -107,8 +124,8 @@ async function recordPayment(booking, { providerRef, amountPaise }) {
 }
 
 /**
- * After paying, she may send her question as text or a voice note. It goes on her nearest
- * upcoming confirmed booking. Returns null if she has none.
+ * After paying, she may send her question as text or a voice note. It goes on the upcoming time
+ * she paid for most recently — the one she has just been asked about. Returns null if she has none.
  */
 export async function attachQuestion({ guruId, devoteeId, text = null, mediaId = null }) {
   const { rows } = await query(
@@ -116,7 +133,7 @@ export async function attachQuestion({ guruId, devoteeId, text = null, mediaId =
        set question_text = coalesce($3, question_text), question_media_id = coalesce($4, question_media_id)
      where id = (select id from bookings
                  where guru_id = $1 and devotee_id = $2 and status = 'confirmed' and slot_start > now()
-                 order by slot_start asc limit 1)
+                 order by paid_at desc nulls last, created_at desc limit 1)
      returning *`,
     [guruId, devoteeId, text, mediaId]);
   return rows[0] ? withSlotId(rows[0]) : null;
@@ -315,7 +332,7 @@ export async function unreconciledPaymentLinks() {
   const { rows } = await query(
     `select b.id, b.payment_link_id, b.status
        from bookings b
-      where b.payment_link_id is not null and b.status in ('held', 'expired')
+      where b.payment_link_id is not null and b.payment_link_id not like 'plink_seed_%' and b.status in ('held', 'expired')
         and b.created_at between now() - interval '3 days' and now() - interval '15 minutes'
         and not exists (select 1 from ledger_entries l where l.booking_id = b.id and l.kind = 'payment')
       order by b.created_at`);

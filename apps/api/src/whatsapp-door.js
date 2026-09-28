@@ -14,6 +14,7 @@ import * as devotees from './devotees.js';
 import * as gurus from './gurus.js';
 import * as whatsapp from './whatsapp.js';
 import * as razorpay from './razorpay.js';
+import { ProviderError, BookingRuleError } from './errors.js';
 import { logMessage } from './messages-log.js';
 import { copy } from './conversation.js';
 import { settlePaidLink } from './paid-link.js';
@@ -37,6 +38,13 @@ export function whatsappDoor(env, conversation) {
   // 2. Every WhatsApp message lands here.
   // ---------------------------------------------------------------------------
   router.post('/webhook', async (req, res) => {
+    // Meta signs every delivery with the app secret. With WHATSAPP_APP_SECRET set, an unsigned or
+    // mis-signed post is refused; without it (the first days of a pilot) anyone who knows the URL
+    // could hold slots or send messages as any devotee, so set it.
+    if (env.WHATSAPP_APP_SECRET && !whatsapp.isSignedByMeta(req.rawBody, req.header('X-Hub-Signature-256'), env.WHATSAPP_APP_SECRET)) {
+      console.error('Refused a /webhook post whose X-Hub-Signature-256 did not match WHATSAPP_APP_SECRET (Meta app → App settings → Basic → App secret).');
+      return res.sendStatus(403);
+    }
     res.sendStatus(200); // acknowledge first; Meta retries if we are slow
 
     const msg = whatsapp.parseInbound(req.body);
@@ -90,7 +98,14 @@ export function whatsappDoor(env, conversation) {
 
   async function holdAndAskForPayment(guru, devotee, say, slotId) {
     const source = pendingSource.get(devotee.phone) || 'direct';
-    const booking = await conversation.startPayment({ guru, devotee, slotId, source });
+    let booking;
+    try {
+      booking = await conversation.startPayment({ guru, devotee, slotId, source });
+    } catch (err) {
+      if (err instanceof ProviderError) { console.error(err.message); return say.text(copy.paymentUnavailable()); }
+      if (err instanceof BookingRuleError) { await say.text(err.message); return sendNearestSlots(guru, devotee, say, source); }
+      throw err;
+    }
     if (!booking) {
       await say.text(copy.slotTaken());
       return sendNearestSlots(guru, devotee, say, source);

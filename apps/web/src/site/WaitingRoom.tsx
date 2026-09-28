@@ -57,7 +57,7 @@ export function WaitingRoomView({ view, onChoose, onSay, children, ready = true 
         <div className="choices">
           <button className="primary" disabled={busy} onClick={() => choose('another_time')}>Choose another time</button>
           <button className="ghost" disabled={busy} onClick={() => choose('dakshina_back')}>Ask for the dakshina back</button>
-          <p className="muted caption">His team can see you were waiting. Either choice is settled at once.</p>
+          <p className="muted caption">His team can see you were waiting, and will settle it with you.</p>
         </div>
       )}
       {said && <p className="ok">{said}</p>}

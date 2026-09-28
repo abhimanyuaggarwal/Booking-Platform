@@ -62,7 +62,7 @@ export function ConfirmedView({ booking, base, stillWaiting }: { booking: Bookin
 
       {done ? (
         <>
-          <p>The join link has gone to your WhatsApp, and a reminder will come before your time.</p>
+          <p>The join link has gone to your WhatsApp. Open it at your time.</p>
           <p className="muted">If you wish, tell him there what you seek guidance on. Only he will hear it.</p>
           {booking.joinUrl && <a className="primary" href={booking.joinUrl}>Open the waiting room</a>}
           <Link className="ghost" to={`${base}/sessions`}>See my sessions</Link>

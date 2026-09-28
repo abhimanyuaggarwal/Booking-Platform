@@ -19,6 +19,8 @@ const notes = [];
 const say = (text) => console.log(`  ${text}`);
 const heading = (text) => console.log(`\n${String(++step).padStart(2, ' ')}. ${text}`);
 const stood_in = (what) => { notes.push(what); say(`      (stood in for ${what} — not wired on this machine)`); };
+const problems = [];
+const failed = (what) => { problems.push(what); say(`      PROBLEM: ${what}`); };
 
 async function main() {
   const guru = await one('select * from gurus order by created_at limit 1');
@@ -64,8 +66,9 @@ async function main() {
     return b.status === 'confirmed' ? b : null;
   }) ?? await one('select * from bookings where id = $1', [booking.id]);
   say(`Her time is ${booking.status}`);
-  const ledger = await one(`select kind, amount_paise from ledger_entries where booking_id = $1`, [booking.id]);
-  say(ledger ? `The ledger records ${ledger.kind} of ${ledger.amount_paise / 100} rupees` : 'Nothing reached the ledger');
+  // The ledger row is written a moment after the status flips; wait for it rather than misjudge it.
+  const ledger = await waitFor(() => one(`select kind, amount_paise from ledger_entries where booking_id = $1`, [booking.id]));
+  if (ledger) say(`The ledger records ${ledger.kind} of ${ledger.amount_paise / 100} rupees`); else failed('Nothing reached the ledger');
 
   heading('She sends what she wants to ask');
   await inbound(guru, { type: 'text', text: { body: 'My son is 26 and will not settle. How do I stop worrying?' } });
@@ -144,6 +147,11 @@ async function main() {
   heading('What still needs a real account');
   if (notes.length === 0) say('Nothing — every service answered for itself.');
   for (const note of notes) say(`· ${note}`);
+  if (problems.length) {
+    heading('What went wrong');
+    for (const p of problems) say(`· ${p}`);
+    process.exitCode = 1;
+  }
   console.log('\nThe demo finished. Everything above that is not marked "stood in for" ran for real.\n');
 }
 
@@ -159,7 +167,11 @@ function inbound(guru, message) {
 }
 
 function postWebhook(url, body) {
-  return post(url, body);
+  const secret = process.env.WHATSAPP_APP_SECRET;
+  if (!secret) return post(url, body);
+  const raw = JSON.stringify(body);
+  const signature = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
+  return fetch(url, { method: 'POST', body: raw, headers: { 'content-type': 'application/json', 'X-Hub-Signature-256': signature } }).then(readBody);
 }
 
 async function razorpayPaid(paymentLinkId) {

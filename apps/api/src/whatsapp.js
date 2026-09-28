@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 // Everything that talks to Meta's WhatsApp Cloud API lives here.
 // Docs: https://developers.facebook.com/docs/whatsapp/cloud-api/messages
 
@@ -90,4 +91,11 @@ export function parseInbound(body) {
     return { ...who, kind: 'list', id: msg.interactive.list_reply.id };
   }
   return null;
+}
+
+/** Meta signs each webhook delivery: `sha256=` + HMAC-SHA256 of the raw body with the app secret. */
+export function isSignedByMeta(rawBody, header, appSecret) {
+  if (!rawBody || !header || !appSecret) return false;
+  const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+  return expected.length === header.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(header));
 }

@@ -4,6 +4,15 @@
 import { describeSlot, instantToSlotId } from '@expert-sessions/shared';
 
 const ESCAPE_AFTER_MINUTES = 10;
+// The link in her WhatsApp outlives the booking. Each ending gets its own sentence.
+const NOT_YOURS = {
+  cancelled: 'This time was cancelled. Your dakshina is kept as a credit for thirty days; book any other time with it.',
+  rescheduled: 'This time was moved. Open the newer link on your WhatsApp for the new time.',
+  refunded: 'Guruji could not sit at this time. Your dakshina is on its way back to you.',
+  no_show: 'This time has passed. If you wish to book another, write Hi to his team on WhatsApp.',
+  held: 'This time is not paid for yet. The payment link is on your WhatsApp.',
+  expired: 'This time was not paid for in time and is no longer held. Write Hi on WhatsApp to choose again.',
+};
 // Opened this far ahead, "at your time" is not an answer; the sentence names the time instead.
 const NAME_THE_TIME_BEYOND_MINUTES = 60;
 
@@ -21,7 +30,7 @@ const NAME_THE_TIME_BEYOND_MINUTES = 60;
  */
 export function waitingWords({ status, slotStart, slotMinutes, session, running, ahead = 0, now = new Date() }) {
   if (status !== 'confirmed' && status !== 'completed') {
-    return { state: 'not_yours', sentence: 'This time is not confirmed. Please write to his team on WhatsApp.', canLeave: false };
+    return { state: 'not_yours', sentence: NOT_YOURS[status] ?? 'This time is not confirmed. Please write to his team on WhatsApp.', canLeave: false };
   }
   if (session?.endedAt) {
     return { state: 'ended', sentence: 'Your session is complete.', canLeave: false };

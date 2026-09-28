@@ -44,7 +44,7 @@ export default function BookSheet({ slot, guru, call, base, onClose }: {
         </div>
         {problem && <p className="problem">{problem}</p>}
         <button className="primary" disabled={busy}>{busy ? 'Opening the payment page' : `Pay ${formatRupees(guru.dakshinaPaise)} and confirm`}</button>
-        <p className="held">This time is held for you for ten minutes.</p>
+        <p className="held">The payment page holds this time for ten minutes. Once you pay, it is yours.</p>
         <button type="button" className="ghost" onClick={onClose}>Choose another time</button>
       </form>
     </div>

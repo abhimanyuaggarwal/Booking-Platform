@@ -21,7 +21,8 @@ test('half an hour before is too early, and after her time has begun it is too l
 test('the evening before, once, between seven and nine', () => {
   assert.equal(due('slot:2026-09-16T11:00', 'slot:2026-09-15T19:30'), 'night');
   assert.equal(due('slot:2026-09-16T11:00', 'slot:2026-09-15T18:30'), null);
-  assert.equal(due('slot:2026-09-16T11:00', 'slot:2026-09-15T21:30'), null);
+  assert.equal(due('slot:2026-09-16T11:00', 'slot:2026-09-15T22:30'), 'night'); // still the evening before
+  assert.equal(due('slot:2026-09-16T11:00', 'slot:2026-09-15T23:30'), null);
 });
 
 test('two evenings before is not the evening before', () => {

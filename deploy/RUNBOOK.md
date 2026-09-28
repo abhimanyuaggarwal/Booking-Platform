@@ -171,7 +171,7 @@ one limits what a month of pitching can show:
   Publishing needs a Privacy Policy URL on the app and business verification of the Slike
   portfolio. Until then a stranger scanning the QR gets nothing and the console shows the send as
   NOT DELIVERED.
-- **Razorpay is in test mode** on Abhimanyu's personal account. Payment links open a test page and
+- **Razorpay is in test mode** on Abhimanyu's personal account, and test mode allows 30 payment links per account for ever. That cap was reached on 28 September, so no booking can be paid until live keys exist or the payment step is rebuilt on Razorpay Orders. Payment links open a test page and
   no money moves. Going live needs the merchant-of-record decision (whose account receives the
   dakshina) and that account's KYC.
 - **Her sign-in code is the fixed mock `1234`** until an SMS provider is wired (`OTP_CODE`).

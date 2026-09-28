@@ -134,6 +134,6 @@ export function MySessionsView({ sessions: s, base, onAct, onSignOut }: { sessio
 export function earlierWords(status: string) {
   return ({
     completed: 'completed', cancelled: 'cancelled, dakshina kept as credit', refunded: 'he could not sit, dakshina returned',
-    no_show: 'not joined', rescheduled: 'moved to another time', confirmed: 'past',
+    no_show: 'not joined', rescheduled: 'moved to another time', confirmed: 'past', held: 'not paid', expired: 'not paid in time',
   } as Record<string, string>)[status] ?? status;
 }

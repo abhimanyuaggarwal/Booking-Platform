@@ -87,7 +87,8 @@ test('afterwards: what happened, the next satsang, and a quiet way to book again
   expect(html).toContain('32 minutes with Guruji Vishwanath');
   expect(html).toContain('next satsang is Friday, 18 September, 5:00 pm');
   expect(html).toContain('Book another time');
-  expect(html).toContain('A note has gone to your WhatsApp');
+  expect(html).toContain('You can close this screen');
+  expect(html).not.toContain('note has gone');   // nothing is sent on End, so the screen must not say so
   expect(html).not.toMatch(/rate|rating|survey|how did/i);
 });
 

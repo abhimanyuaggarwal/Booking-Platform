@@ -54,7 +54,7 @@ export default function SignIn({ call, onSignedIn }: { call: ReturnType<typeof s
         </form>
       ) : (
         <form onSubmit={check}>
-          <p className="muted">We sent a code to {sentTo}.</p>
+          {mock ? <p className="muted">Enter the code for {sentTo}.</p> : <p className="muted">We sent a code to {sentTo}.</p>}
           <div className="field">
             <label htmlFor="code">Code</label>
             <input id="code" value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} autoFocus required />

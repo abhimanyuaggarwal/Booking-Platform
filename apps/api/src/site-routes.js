@@ -111,6 +111,7 @@ export function siteRoutes(env, conversation) {
     const problem = bookings.whyCannotReschedule(b);
     if (problem) return res.status(409).json({ error: problem });
     if (!SLOT.test(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Choose the new time' });
+    await bookings.assertBookable(req.guru, req.body.slotId);
     const moved = await bookings.rescheduleBooking({ bookingId: b.id, slotId: req.body.slotId });
     if (!moved) return res.status(409).json({ error: 'That time was just taken. Please choose another.' });
     const note = await tell(() => conversation.sendNewTime({ guru: req.guru, devotee: req.devotee, booking: moved }));
@@ -122,6 +123,7 @@ export function siteRoutes(env, conversation) {
     if (!SLOT.test(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Choose a time' });
     const credit = await creditFor(req.guru.id, req.devotee.id);
     if (credit.balancePaise < req.guru.dakshina_paise) return res.status(409).json({ error: 'Your credit does not cover this dakshina. Please book and pay as usual.' });
+    await bookings.assertBookable(req.guru, req.body.slotId);
     const booked = await bookings.confirmWithCredit({
       guruId: req.guru.id, devoteeId: req.devotee.id, slotId: req.body.slotId, source: 'page', amountPaise: req.guru.dakshina_paise,
     });
@@ -132,7 +134,10 @@ export function siteRoutes(env, conversation) {
 
   router.use((err, _req, res, next) => {
     if (err instanceof BookingRuleError) return res.status(409).json({ error: err.message });
-    if (err instanceof ProviderError) return res.status(502).json({ error: 'The payment page could not be opened just now. Please try again, or book on WhatsApp.' });
+    if (err instanceof ProviderError) {
+      console.error(`Payment page could not be opened for ${req.method} ${req.path}: ${err.message}`);
+      return res.status(502).json({ error: 'The payment page could not be opened just now. Please try again, or book on WhatsApp.' });
+    }
     next(err);
   });
 
@@ -174,7 +179,8 @@ export function siteRoutes(env, conversation) {
       devotee: { name: req.devotee.name, phoneTail: req.devotee.phone.slice(-4) },
       guru: publicGuru(req.guru),
       upcoming: mine.filter((b) => new Date(slotIdToInstant(b.slotId)) > now && b.status === 'confirmed'),
-      earlier: mine.filter((b) => new Date(slotIdToInstant(b.slotId)) <= now || b.status !== 'confirmed'),
+      // A hold that is still paying, or one that lapsed, is not a session she had: it stays off this page.
+      earlier: mine.filter((b) => (new Date(slotIdToInstant(b.slotId)) <= now || b.status !== 'confirmed') && b.status !== 'held' && b.status !== 'expired'),
       credit: { balancePaise: credit.balancePaise, expiresAt: credit.vouchers[0]?.expiresAt ?? null },
       slots: open.map(publicSlot),
     };

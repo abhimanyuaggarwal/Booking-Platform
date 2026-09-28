@@ -55,28 +55,29 @@ const GURU = {
   whatsappNumber: process.env.WHATSAPP_DISPLAY_NUMBER || '15550001234',
 };
 
-// name, phone (digits with country code, as Meta sends them), for whom
+// name, phone, for whom. The numbers start 91555: no Indian network routes them, so a published
+// WhatsApp app can never reach a stranger with a seeded reminder.
 const DEVOTEES = [
-  ['Ramesh K', '919829012345', null],
-  ['Kavita J', '919811022334', null],
-  ['Neha S', '919867033445', null],
-  ['Suresh B', '919845044556', null],
-  ['Anita Rao', '919900055667', 'for my mother'],
-  ['Vikram Mehta', '919820066778', null],
-  ['Priya Nair', '919447077889', null],
-  ['Deepak Sharma', '919871088990', null],
-  ['Meera Iyer', '919444099001', 'for my son'],
-  ['Arjun Singh', '919876010112', null],
-  ['Lakshmi Pillai', '919495021223', null],
-  ['Rohit Verma', '919818032334', null],
-  ['Sunita Desai', '919822043445', null],
-  ['Manoj Gupta', '919935054556', null],
-  ['Pooja Bhatt', '919824065667', 'for my husband'],
-  ['Harish Reddy', '919848076778', null],
-  ['Geeta Kulkarni', '919890087889', null],
-  ['Sanjay Joshi', '919826098990', null],
-  ['Rekha Menon', '919446109001', null],
-  ['Amit Chandra', '919810110112', null],
+  ['Ramesh K', '915550012345', null],
+  ['Kavita J', '915550022334', null],
+  ['Neha S', '915550033445', null],
+  ['Suresh B', '915550044556', null],
+  ['Anita Rao', '915550055667', 'for my mother'],
+  ['Vikram Mehta', '915550066778', null],
+  ['Priya Nair', '915550077889', null],
+  ['Deepak Sharma', '915550088990', null],
+  ['Meera Iyer', '915550099001', 'for my son'],
+  ['Arjun Singh', '915550010112', null],
+  ['Lakshmi Pillai', '915550021223', null],
+  ['Rohit Verma', '915550032334', null],
+  ['Sunita Desai', '915550043445', null],
+  ['Manoj Gupta', '915550054556', null],
+  ['Pooja Bhatt', '915550065667', 'for my husband'],
+  ['Harish Reddy', '915550076778', null],
+  ['Geeta Kulkarni', '915550087889', null],
+  ['Sanjay Joshi', '915550098990', null],
+  ['Rekha Menon', '915550109001', null],
+  ['Amit Chandra', '915550110112', null],
 ];
 
 const QUESTIONS = [

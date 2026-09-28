@@ -130,7 +130,7 @@ export async function attentionQueue(guru) {
   const slotMinutes = guru.pattern_json.slotMinutes ?? 30;
   const [expired, paidTooLate, missed, refunds, alone, waited, taken] = await Promise.all([
     query(
-      `select b.id, b.slot_start, b.created_at, b.source, d.name, d.phone
+      `select b.id, b.slot_start, b.created_at, b.source, b.payment_link_id, d.name, d.phone
          from bookings b join devotees d on d.id = b.devotee_id
         where b.guru_id = $1 and b.status = 'expired' and b.created_at > now() - interval '2 days' and b.slot_start > now()
           and not exists (select 1 from ledger_entries l where l.booking_id = b.id and l.kind = 'payment')
@@ -195,7 +195,8 @@ export async function attentionQueue(guru) {
       return {
         kind: 'hold_expired', bookingId: r.id, name: displayName(r), phone: r.phone, slotId, when: whenLabel(r.slot_start),
         expiredAt: timeOf(new Date(r.created_at.getTime() + bookings.HOLD_MINUTES * 60000)),
-        why: slotFree ? 'Chose the time, did not finish paying — the slot is open again' : 'Chose the time, did not finish paying — someone else has the slot now',
+        why: !r.payment_link_id ? 'Chose the time, but our payment page could not be opened — send her the link again'
+          : slotFree ? 'Chose the time, did not finish paying — the slot is open again' : 'Chose the time, did not finish paying — someone else has the slot now',
         action: slotFree ? 'send_link' : 'none',
       };
     }),

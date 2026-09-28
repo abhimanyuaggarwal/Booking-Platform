@@ -82,7 +82,7 @@ export default function Join() {
   return (
     <div className="site">
       {view.state === 'ended' ? <Ended view={view} />
-        : view.state === 'not_yours' ? <main className="wrap session"><h1>This time is not confirmed</h1><p className="muted">{view.sentence}</p></main>
+        : view.state === 'not_yours' ? <main className="wrap session"><h1>This link is no longer open</h1><p className="muted">{view.sentence}</p></main>
         : view.state === 'running' && pass ? <VideoRoom view={view} token={pass.token} onLeave={() => { setPass(null); setLeft(true); reload(); }} />
         : view.state === 'running'
           ? (
@@ -107,7 +107,7 @@ export function Ended({ view }: { view: SessionView }) {
       {view.minutesTogether && <p>{view.minutesTogether} {view.minutesTogether === 1 ? 'minute' : 'minutes'} with {view.guru.name}.</p>}
       {view.nextEvent && <p className="muted">The next {view.nextEvent.kind === 'meetup' ? 'meetup' : 'satsang'} is {view.nextEvent.when}, open to all.</p>}
       <Link className="primary" to={`/s/${view.bookAgainPath}`}>Book another time</Link>
-      <p className="held">A note has gone to your WhatsApp.</p>
+      <p className="held">You can close this screen.</p>
     </main>
   );
 }
