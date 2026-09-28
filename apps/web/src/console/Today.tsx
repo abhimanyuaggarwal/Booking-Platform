@@ -130,7 +130,6 @@ export function TodayView({ report: r, attention, onSendLink, onTellGuru, onCann
 // Each card is one decision with its button on it. She never has to go somewhere else to act.
 export function NeedsYou({ rows, onSendLink, onDecide }: { rows: AttentionRow[]; onSendLink: (r: AttentionRow) => void; onDecide: (bookingId: string) => void }) {
   const W = useWords();
-  const english = W.product === 'Samvad';
   return (
     <section className="needs" aria-label={W.today.needsOne}>
       <h2>{rows.length === 1 ? W.today.needsOne : W.today.needsMany(rows.length)}</h2>
@@ -139,7 +138,7 @@ export function NeedsYou({ rows, onSendLink, onDecide }: { rows: AttentionRow[];
           <Initials name={r.name} size="m" />
           <div className="what">
             <b>{r.name}</b><span className="muted"> · {r.when}</span>
-            <p><span className={`state ${ATTENTION_TONE[r.kind]}`}><i />{W.attention[r.kind]}</span>{english && <span className="muted why"> — {r.why}</span>}</p>
+            <p title={r.why}><span className={`state ${ATTENTION_TONE[r.kind]}`}><i />{W.attention[r.kind]}</span></p>
           </div>
           <div className="do">
             {r.action === 'send_link' && <button onClick={() => onSendLink(r)}>{W.today.sendLinkAgain}</button>}
