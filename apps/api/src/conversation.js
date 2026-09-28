@@ -118,8 +118,14 @@ export function createConversation(env) {
     const held = await bookings.holdSlot({ guruId: guru.id, devoteeId: devotee.id, slotId, source });
     if (!held) return null;
     const booking = await bookings.confirmOffline({ bookingId: held.id, method, amountPaise: guru.dakshina_paise });
-    await sendConfirmation({ guru, devotee, booking });
-    return booking;
+    // The team's booking stands whether or not WhatsApp reaches her; the refusal is recorded and returned.
+    try {
+      await sendConfirmation({ guru, devotee, booking });
+      return { ...booking, notDelivered: null };
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+      return { ...booking, notDelivered: err.message };
+    }
   }
 
   /**

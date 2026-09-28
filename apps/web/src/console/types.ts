@@ -100,6 +100,8 @@ export interface AttentionRow {
 export interface BookingRow {
   id: string; slotId: string; time: string; date: string; status: BookingStatus; source: Source;
   name: string; phone: string; paid: boolean; question: string | null; hasVoiceNote: boolean;
+  /** Set when the team booked and WhatsApp refused the confirmation: the booking stands, call her. */
+  notDelivered?: string | null;
 }
 export type BookingAction = 'message' | 'reschedule' | 'cancel' | 'refund' | 'no_show' | 'send_link' | 'mark_paid' | 'tell_guru';
 export interface BookingDetail {

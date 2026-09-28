@@ -59,6 +59,7 @@ export const WORDS = {
       submitLink: 'Hold the time and send the pay link', submitPaid: 'Book it as paid', busy: 'One moment', close: 'Close', cancel: 'Cancel',
       doneLink: (name: string, time: string) => `${name} has the pay link on WhatsApp. ${time} is held for ten minutes.`,
       donePaid: (name: string, time: string) => `${name} is booked for ${time} and has the join link on WhatsApp.`,
+      doneNotDelivered: (name: string, time: string) => `${name} is booked for ${time}, but WhatsApp could not reach her. Call her with the time.`,
     },
     drawer: {
       close: 'Close', opening: 'Opening the booking', booking: 'Booking', note: 'A note to her, in the room or on WhatsApp', send: 'Send', pickTime: 'Pick a time', move: 'Move her',
@@ -122,6 +123,7 @@ export const WORDS = {
       submitLink: 'समय रोकें और भुगतान लिंक भेजें', submitPaid: 'भुगतान हो चुका, बुक करें', busy: 'एक क्षण', close: 'बंद करें', cancel: 'रद्द',
       doneLink: (name: string, time: string) => `${name} को व्हाट्सऐप पर भुगतान लिंक मिल गया। ${time} दस मिनट के लिए रोका है।`,
       donePaid: (name: string, time: string) => `${name} की ${time} की बुकिंग पक्की; जुड़ने का लिंक व्हाट्सऐप पर भेज दिया।`,
+      doneNotDelivered: (name: string, time: string) => `${name} की ${time} की बुकिंग पक्की, पर व्हाट्सऐप उन तक नहीं पहुँचा। उन्हें कॉल करके समय बताएँ।`,
     },
     drawer: {
       close: 'बंद करें', opening: 'बुकिंग खुल रही है', booking: 'बुकिंग', note: 'उनके लिए संदेश, कक्ष में या व्हाट्सऐप पर', send: 'भेजें', pickTime: 'समय चुनें', move: 'समय बदलें',

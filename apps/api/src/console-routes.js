@@ -163,7 +163,7 @@ export function consoleRoutes(env, conversation) {
       : await conversation.startPayment({ guru: req.guru, devotee, slotId, source, team: true });
     if (!booking) return res.status(409).json({ error: 'That time was just taken. Pick another.' });
     if (typeof question === 'string' && question.trim()) await bookings.setQuestion(booking.id, { text: question.trim() });
-    res.status(201).json(bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }));
+    res.status(201).json({ ...bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }), notDelivered: booking.notDelivered ?? null });
   }));
 
   router.post('/bookings/:id/reschedule', handle(async (req, res) => {
