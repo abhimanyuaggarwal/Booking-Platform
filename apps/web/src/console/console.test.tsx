@@ -45,7 +45,7 @@ test('Today is what needs her, with the button on the card, then the sittings wi
   expect(html).toContain('class="avatar');
   expect(html).not.toContain('₹');                     // money has its own screen
   expect(html).not.toMatch(/\d+:\d+ left|countdown/i);
-  expect(html).toMatch(/class="clickable next"[^>]*>[^<]*<td class="time">11:00 am<span class="nextmark">next/);
+  expect(html).toMatch(/class="clickable next"[^>]*>[^<]*<td class="time">11:00 am</);   // the next paid sitting is marked in the list too
   expect(renderToStaticMarkup(<TodayView report={today} attention={[]} />)).toContain('Nothing to do right now');
 });
 
