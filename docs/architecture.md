@@ -36,6 +36,7 @@ modules (`"type": "module"`) so the web app and the api import `@expert-sessions
 | `conversation.js` | **Every word we send a devotee**, and the steps it drives: hold and make the pay link (releasing the hold if Razorpay refuses); confirm and send the join link; new time; cancelled-to-credit note; refund note; a note while she waits (room or WhatsApp). Used by all three doors | `createConversation(env)` → `speak`, `startPayment`, `sendConfirmation`, `sendNewTime`, `sendCancelledNote`, `sendRefundNote`, `sendWaitingMessage`, `joinLink`; `copy` (pure text builders) |
 | `sessions.js` | A booking's video room: when it was made, who arrived, when it started and ended. Guruji's tap starts it and tells the room in the same breath | `startSession({guru, bookingId, video})`, `endSession`, `devoteeToken`, `noteDevoteeOpened`, `findSessionByBooking`, `currentSession`, `isWaiting` |
 | `session-routes.js` | Her side of a session: the waiting room and the way out | `GET /api/session/:bookingId`, `POST …/token`, `POST …/escape` |
+| `devotee-words.js` | Every sentence a devotee (and guruji) receives on WhatsApp, in English and Hindi: `wordsFor(guru.language)`, `describeSlot(slotId, lang)`, `slotLabel(label, lang)`. `conversation.copy` and `reminders.copy` are the English set from this table. Pure; tested in `devotee-words.test.js` | `wordsFor`, `describeSlot`, `slotLabel`, `LANGUAGES` |
 | `pay-routes.js` | Her payment page's api: `GET /api/pay/:id` (what to collect, the order id, the key id) and `POST /api/pay/:id/confirm` (Checkout's signed result, verified with the key secret and then with Razorpay itself before `settlePaidLink`) | `payRoutes(env, conversation)` |
 | `guru-routes.js` | **Guruji's own screens**, behind his magic link: his day, her voice note, and the two taps. No money is selected in any query here | `guruRoutes(env)` → `/api/guru/me`, `/day`, `/media/:mediaId`, `/sessions/:id` and `/sessions/:id/start` and `/end` |
 | `guru-day.js` | Pure. His sittings and events on one timeline, rest where the day is empty, when Join appears, and the one line about who is coming | `guruDay(entries, now)`, `contextLine({...})` |
@@ -78,6 +79,7 @@ modules (`"type": "module"`) so the web app and the api import `@expert-sessions
 
 | File | Creates |
 |---|---|
+| `003_language.sql` | `gurus.language` ('en' or 'hi', default 'en') — the language of every WhatsApp sentence to this guru's devotees and of the notes to him; Settings → His website | |
 | `002_guru_phone.sql` | `gurus.guru_phone text` — his own WhatsApp number for the ten-minute note and the console's "Tell guruji" | |
 | `001_init.sql` | `gurus`, `events`, `devotees`, `bookings`, `ledger_entries`, `sessions`, `messages_log`, `qr_codes`, and the partial unique index `bookings_one_per_slot` |
 
@@ -291,6 +293,12 @@ when Postgres does not answer.
 
 - **A booking the team took by phone and was paid in cash or by UPI to the ashram.** Book for a caller → "How she pays" → already paid. `conversation.bookPaidOutside` holds and confirms in one go via `bookings.confirmOffline` (same `pay` transition, ledger `payment` row with `provider_ref = offline:<cash|upi>:<bookingId>`), then sends her the usual confirmation and join link. A hold made earlier can be confirmed the same way from the drawer ("Paid in cash" / "Paid by UPI to the ashram", `POST /api/console/bookings/:id/mark-paid`). Money words these rows "Paid in cash at the ashram" / "Paid by UPI to the ashram" and keeps them out of the settlement estimate.
 - **Guruji hears about a sitting on his own WhatsApp.** `gurus.guru_phone` (migration 002; Settings → His website → "His own WhatsApp number"). The ten-minute reminder job also sends him `reminders.copy.guruSoon` once per booking (`messages_log` kind `reminder.guru`); the drawer's "Tell guruji" (`POST /api/console/bookings/:id/tell-guru`, kind `note.guru`) sends `copy.guruNow` now. Both go through `conversation.tellGuru`, which records refusals like every other send. While the Meta app is unpublished his number must be on the allow list.
+
+### Her messages, since 2026-09-28 evening
+
+- **Language.** `gurus.language` decides the words of every WhatsApp sentence, button label and one-tap note (`devotee-words.js`). Dates read as "बुधवार, 30 सितंबर, 4:10 pm" in Hindi; slot buttons as "आज 4:10 pm".
+- **The confirmation points at her booking, not the room.** `sendConfirmation` and `sendNewTime` send `bookingLink` (`/booked/:id` on his domain, `/s/:slug/booked/:id` on the platform host) with "See my booking", so she can see, move or cancel. The join link comes from `reminders.sendDue` ten minutes before ("Join now"); the evening reminder carries the booking page. The confirmed page on the site offers "Open the waiting room" only from an hour before to an hour after her time (`joinIsNear`, pure).
+- **Guruji and a devotee are told apart by number.** A message to guruji goes to `gurus.guru_phone`; a devotee is a `devotees.phone` row. In the pilot both were set to the same phone for testing, which is why one handset received both kinds of note.
 
 ## Conventions
 

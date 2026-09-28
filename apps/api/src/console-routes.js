@@ -21,7 +21,7 @@ const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLOT = /^slot:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const SOURCES = ['live', 'ashram', 'poster', 'page', 'direct'];
-const ONE_TAP = ['Joining in 5 minutes', 'Joining in 10 minutes', 'Would another time suit you?'];
+// The one-tap notes follow the guru's language (devotee-words.js).
 
 export function consoleRoutes(env, conversation) {
   const auth = consoleAuth(env);
@@ -105,7 +105,7 @@ export function consoleRoutes(env, conversation) {
 
   router.get('/attention', handle(async (req, res) => res.json(await attentionQueue(req.guru))));
 
-  router.get('/waiting', handle(async (req, res) => res.json({ ...(await waitingBoard(req.guru, presenceFor)), oneTap: ONE_TAP })));
+  router.get('/waiting', handle(async (req, res) => res.json({ ...(await waitingBoard(req.guru, presenceFor)), oneTap: conversation.wordsFor(req.guru.language).oneTap })));
 
   router.get('/days/:date/close', handle(async (req, res) => {
     if (!YMD.test(req.params.date)) return res.status(400).json({ error: 'Pick a date like 2026-09-17' });
@@ -234,7 +234,7 @@ export function consoleRoutes(env, conversation) {
   router.post('/bookings/:id/tell-guru', handle(async (req, res) => {
     const b = await ownBooking(req, res); if (!b) return;
     const devotee = await devotees.findDevoteeById(b.devotee_id);
-    const text = conversation.copy.guruNow({ devoteeName: devotee.name ?? `…${devotee.phone.slice(-4)}`, time: describeSlot(b.slotId), question: b.question_text });
+    const text = conversation.wordsFor(req.guru.language).guruNow({ devoteeName: devotee.name ?? `…${devotee.phone.slice(-4)}`, time: describeSlot(b.slotId), question: b.question_text });
     await conversation.tellGuru({ guru: req.guru, devotee, booking: b, text, kind: 'note.guru' });
     res.json({ told: true });
   }));
@@ -321,6 +321,6 @@ function eventFields(b) {
 export function settingsView(g) {
   return {
     id: g.id, slug: g.slug, name: g.name, domain: g.domain, about: g.about, marketing: g.marketing_json,
-    dakshinaPaise: g.dakshina_paise, whatsappNumber: g.whatsapp_number, guruPhone: g.guru_phone, pattern: g.pattern_json, closedDates: g.closed_dates,
+    dakshinaPaise: g.dakshina_paise, whatsappNumber: g.whatsapp_number, guruPhone: g.guru_phone, language: g.language ?? 'en', pattern: g.pattern_json, closedDates: g.closed_dates,
   };
 }

@@ -8,6 +8,7 @@ export default function SiteContent({ settings, onSaved }: { settings: Settings;
   const [name, setName] = useState(settings.name);
   const [domain, setDomain] = useState(settings.domain ?? '');
   const [guruPhone, setGuruPhone] = useState(settings.guruPhone ?? '');
+  const [language, setLanguage] = useState<'en' | 'hi'>(settings.language ?? 'en');
   const [about, setAbout] = useState(settings.about);
   const [marketing, setMarketing] = useState<Marketing>(structuredClone(settings.marketing ?? { tagline: '', blocks: [] }));
   const hero = marketing.hero ?? { image: '', portrait: '', credit: '' };
@@ -26,7 +27,7 @@ export default function SiteContent({ settings, onSaved }: { settings: Settings;
     setBusy(true);
     setStatus({});
     try {
-      await api('/settings/site', { method: 'PUT', json: { name, domain, about, marketing, guruPhone } });
+      await api('/settings/site', { method: 'PUT', json: { name, domain, about, marketing, guruPhone, language } });
       setStatus({ ok: 'Saved. His website shows the new words on its next load.' });
       onSaved();
     } catch (err) {
@@ -44,6 +45,14 @@ export default function SiteContent({ settings, onSaved }: { settings: Settings;
           <label>His name, as shown everywhere<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
           <label>His domain<input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="guruji.com" /></label>
           <label>His own WhatsApp number, for a note ten minutes before each sitting<input value={guruPhone} onChange={(e) => setGuruPhone(e.target.value)} placeholder="919876543210" inputMode="tel" /></label>
+        </div>
+        <div className="row">
+          <label>Language of every WhatsApp message to his devotees, and of the notes to him
+            <select value={language} onChange={(e) => setLanguage(e.target.value as 'en' | 'hi')}>
+              <option value="en">English</option>
+              <option value="hi">हिंदी</option>
+            </select>
+          </label>
         </div>
         <label style={{ marginTop: 10 }}>About, one or two sentences<textarea value={about} onChange={(e) => setAbout(e.target.value)} /></label>
         <label style={{ marginTop: 10 }}>Tagline under his name<input value={marketing.tagline} onChange={(e) => setMarketing({ ...marketing, tagline: e.target.value })} /></label>

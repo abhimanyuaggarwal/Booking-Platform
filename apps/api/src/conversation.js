@@ -10,40 +10,11 @@ import * as razorpay from './razorpay.js';
 import { logMessage } from './messages-log.js';
 import { emitToSession, presenceFor } from './realtime.js';
 import { ProviderError, BookingRuleError } from './errors.js';
+import { wordsFor } from './devotee-words.js';
 
-export const copy = {
-  held: ({ guruName, slotId, dakshina }) =>
-    `${describeSlot(slotId)} with ${guruName}.\nDakshina ${dakshina}.\n\nThis time is held for you for ${bookings.HOLD_MINUTES} minutes.`,
-  confirmed: ({ guruName, slotId }) =>
-    `Your time is confirmed.\n${describeSlot(slotId)} with ${guruName}.\n\nOpen this link at your time to join.`,
-  askQuestion: ({ guruName }) =>
-    `If you wish, tell ${guruName} what you seek guidance on — type it here, or send a voice note. Only he will hear it.`,
-  moved: ({ guruName, slotId }) =>
-    `Your time with ${guruName} has moved to ${describeSlot(slotId)}. Your dakshina moves with it.\n\nOpen this link at your new time to join.`,
-  refunded: ({ guruName, slotId, dakshina }) =>
-    `${guruName} could not sit at ${describeSlot(slotId)}. Your dakshina of ${dakshina} is on its way back to you and reaches you within a week.`,
-  cancelled: ({ guruName, slotId, dakshina }) =>
-    `Your time with ${guruName} on ${describeSlot(slotId)} is cancelled. Your dakshina of ${dakshina} is kept as a credit for thirty days — book any other time with it.`,
-  paidTooLate: ({ guruName, slotId, dakshina }) =>
-    `Your dakshina of ${dakshina} reached us, but the time you chose — ${describeSlot(slotId)} — was released before it arrived, so nothing is booked.\n\n${guruName}'s team will return your dakshina within a week, or find you another time. They will message you.`,
-  // She wrote in while a time is still held and unpaid. She is stuck on paying, not shopping for
-  // times — giving her the calendar here invites her to hold a second slot she also will not pay for.
-  stillToPay: ({ slotId, dakshina }) =>
-    `Your time is still held — ${describeSlot(slotId)}.\n\nThe dakshina is ${dakshina}. Open this to pay, and the time is yours.`,
-  // She wrote in just after sitting with him. Whatever she said, a booking calendar is the wrong answer.
-  heardAfterSession: ({ guruName }) =>
-    `Thank you. ${guruName}'s team will read this.\n\nIf you would like another time, send Hi and they will be offered.`,
-  noTimes: ({ guruName }) =>
-    `Namaste 🙏 ${guruName} has no open times this week. Please send Hi again in a few days.`,
-  slotTaken: () => 'That time was just taken. Here are the next ones:',
-  guruNow: ({ devoteeName, time, question }) =>
-    `${devoteeName} is booked for ${time}.${question ? `\n\nShe wishes to speak about: ${question}` : ''}\n\nYour team sent this note.`,
-  paymentUnavailable: () => 'The payment page could not be opened just now, so nothing is booked. Please send Hi again in a few minutes, or write to his team.',
-  refundedByHand: ({ guruName, slotId, dakshina }) =>
-    `${guruName} could not sit at ${describeSlot(slotId)}. His team will return your dakshina of ${dakshina} to you directly.`,
-  refundedAsCredit: ({ guruName, slotId, dakshina }) =>
-    `${guruName} could not sit at ${describeSlot(slotId)}. Your dakshina of ${dakshina} is back in your credit — book any other time with it within thirty days.`,
-};
+// The words themselves live in devotee-words.js, in both languages. `copy` is the English set,
+// kept here for the tests and for anything that has no guru at hand.
+export const copy = wordsFor('en');
 
 export function createConversation(env) {
   const wa = whatsapp.client(env);
@@ -104,7 +75,8 @@ export function createConversation(env) {
     }
     await bookings.attachPaymentLink(booking.id, order.id); // the column holds the order id now
     const payUrl = payLink(booking, guru);
-    if (notify) await speak(guru, devotee, booking.id).link(copy.held({ guruName: guru.name, slotId, dakshina }), `Pay ${dakshina}`, payUrl);
+    const W = wordsFor(guru.language);
+    if (notify) await speak(guru, devotee, booking.id).link(W.held({ guruName: guru.name, slotId, dakshina }), W.pay({ dakshina }), payUrl);
     return { ...booking, payUrl };
   }
 
@@ -147,15 +119,18 @@ export function createConversation(env) {
     await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: booking.id, direction: 'out', kind, payload: { ...payload, delivered: true } });
   }
 
+  // Her confirmation points at her booking page (see it, move it, cancel it). The join link comes
+  // ten minutes before her time, from reminders.js, so nobody opens a waiting room a day early.
   async function sendConfirmation({ guru, devotee, booking }) {
+    const W = wordsFor(guru.language);
     const say = speak(guru, devotee, booking.id);
-    await say.link(copy.confirmed({ guruName: guru.name, slotId: booking.slotId }), 'Join session', joinLink(booking, guru));
-    await say.text(copy.askQuestion({ guruName: guru.name }));
+    await say.link(W.confirmed({ guruName: guru.name, slotId: booking.slotId }), W.seeBooking, bookingLink(booking, guru));
+    await say.text(W.askQuestion({ guruName: guru.name }));
   }
 
   /** She paid after the hold ran out. Say so plainly: nothing is booked, and the team will settle it. */
   async function sendPaidTooLateNote({ guru, devotee, booking, amountPaise }) {
-    await speak(guru, devotee, booking.id).text(copy.paidTooLate({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
+    await speak(guru, devotee, booking.id).text(wordsFor(guru.language).paidTooLate({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
   }
 
   /**
@@ -163,25 +138,28 @@ export function createConversation(env) {
    * calendar, which would let her hold a second slot while the first is still waiting on her.
    */
   async function resendPaymentLink({ guru, devotee, booking }) {
+    const W = wordsFor(guru.language);
     const say = speak(guru, devotee, booking.id);
-    await say.link(copy.stillToPay({ slotId: booking.slotId, dakshina: formatRupees(guru.dakshina_paise) }), 'Pay the dakshina', payLink(booking, guru));
+    await say.link(W.stillToPay({ slotId: booking.slotId, dakshina: formatRupees(guru.dakshina_paise) }), W.payTheDakshina, payLink(booking, guru));
   }
 
   /** She wrote in just after her session. Say we heard her, and leave it for the team to answer. */
   async function sendHeardAfterSession({ guru, devotee, booking }) {
-    await speak(guru, devotee, booking.id).text(copy.heardAfterSession({ guruName: guru.name }));
+    await speak(guru, devotee, booking.id).text(wordsFor(guru.language).heardAfterSession({ guruName: guru.name }));
   }
 
   async function sendNewTime({ guru, devotee, booking }) {
-    await speak(guru, devotee, booking.id).link(copy.moved({ guruName: guru.name, slotId: booking.slotId }), 'Join session', joinLink(booking, guru));
+    const W = wordsFor(guru.language);
+    await speak(guru, devotee, booking.id).link(W.moved({ guruName: guru.name, slotId: booking.slotId }), W.seeBooking, bookingLink(booking, guru));
   }
 
   async function sendCancelledNote({ guru, devotee, booking, amountPaise }) {
-    await speak(guru, devotee, booking.id).text(copy.cancelled({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
+    await speak(guru, devotee, booking.id).text(wordsFor(guru.language).cancelled({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
   }
 
   async function sendRefundNote({ guru, devotee, booking, amountPaise, viaCredit = false, byHand = false }) {
-    const words = viaCredit ? copy.refundedAsCredit : byHand ? copy.refundedByHand : copy.refunded;
+    const W = wordsFor(guru.language);
+    const words = viaCredit ? W.refundedAsCredit : byHand ? W.refundedByHand : W.refunded;
     await speak(guru, devotee, booking.id).text(words({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
   }
 
@@ -238,9 +216,15 @@ export function createConversation(env) {
     return `${linkBase(guru)}/pay/${booking.id}`;
   }
 
+  /** Her booking on his website: the details, and the moves she may make. */
+  function bookingLink(booking, guru) {
+    const ownDomain = !env.JOIN_LINK_BASE && guru?.domain;
+    return ownDomain ? `https://${guru.domain}/booked/${booking.id}` : `${linkBase(guru)}/s/${guru.slug}/booked/${booking.id}`;
+  }
+
   function linkBase(guru) {
     return env.JOIN_LINK_BASE || (guru?.domain ? `https://${guru.domain}` : env.APP_BASE_URL);
   }
 
-  return { speak, startPayment, sendConfirmation, sendPaidTooLateNote, resendPaymentLink, sendHeardAfterSession, sendNewTime, sendCancelledNote, sendRefundNote, sendWaitingMessage, receiveWaitingMessage, joinLink, payLink, bookPaidOutside, tellGuru, copy };
+  return { speak, startPayment, sendConfirmation, sendPaidTooLateNote, resendPaymentLink, sendHeardAfterSession, sendNewTime, sendCancelledNote, sendRefundNote, sendWaitingMessage, receiveWaitingMessage, joinLink, payLink, bookingLink, bookPaidOutside, tellGuru, copy, wordsFor };
 }

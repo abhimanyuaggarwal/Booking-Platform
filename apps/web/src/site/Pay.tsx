@@ -85,7 +85,7 @@ export default function Pay() {
         <div className="tick">✓</div>
         <h1>Your time is confirmed</h1>
         <p>{view.when} with {view.guru.name}. {view.dakshina} paid.</p>
-        <p className="muted">The join link has gone to your WhatsApp. Open it at your time.</p>
+        <p className="muted">Your booking is on your WhatsApp. The join link comes there ten minutes before your time.</p>
         <Link className="primary" to={`${base}/booked/${bookingId}`}>See the details</Link>
       </Shell>
     );

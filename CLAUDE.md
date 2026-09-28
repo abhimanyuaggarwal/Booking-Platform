@@ -1,6 +1,7 @@
 # Expert Sessions — CLAUDE.md
 
-**Product name: Samvad** (chosen 2026-09-28; "Expert Sessions" stays the repo's internal name). The
+**Product name: Samvad** (chosen 2026-09-28; "Expert Sessions" stays the repo's internal name). Devotee
+WhatsApp copy lives in `apps/api/src/devotee-words.js` in English and Hindi, chosen per guru (`gurus.language`). The
 team console reads in English or Hindi (`apps/web/src/console/lang.tsx`); Money and Settings sit at
 level two under More.
 

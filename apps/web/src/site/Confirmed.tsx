@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { formatRupees } from '@expert-sessions/shared';
+import { formatRupees, slotIdToInstant } from '@expert-sessions/shared';
 import { siteApi } from './api';
 import type { BookingStatus } from './types';
 
@@ -62,9 +62,9 @@ export function ConfirmedView({ booking, base, stillWaiting }: { booking: Bookin
 
       {done ? (
         <>
-          <p>The join link has gone to your WhatsApp. Open it at your time.</p>
-          <p className="muted">If you wish, tell him there what you seek guidance on. Only he will hear it.</p>
-          {booking.joinUrl && <a className="primary" href={booking.joinUrl}>Open the waiting room</a>}
+          <p>Your booking is on your WhatsApp. The join link comes there ten minutes before your time.</p>
+          <p className="muted">If you wish, tell him on WhatsApp what you seek guidance on. Only he will hear it.</p>
+          {booking.joinUrl && joinIsNear(booking.slotId) && <a className="primary" href={booking.joinUrl}>Open the waiting room</a>}
           <Link className="ghost" to={`${base}/sessions`}>See my sessions</Link>
         </>
       ) : stillWaiting ? (
@@ -77,4 +77,10 @@ export function ConfirmedView({ booking, base, stillWaiting }: { booking: Bookin
       )}
     </main>
   );
+}
+
+/** Pure. The waiting room is offered from an hour before her time until an hour after. */
+export function joinIsNear(slotId: string, now: Date = new Date()): boolean {
+  const start = slotIdToInstant(slotId).getTime();
+  return now.getTime() >= start - 60 * 60000 && now.getTime() <= start + 60 * 60000;
 }

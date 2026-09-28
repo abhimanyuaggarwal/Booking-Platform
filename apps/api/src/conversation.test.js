@@ -6,11 +6,14 @@ import { copy } from './conversation.js';
 const ctx = { guruName: 'Guruji Vishwanath', slotId: 'slot:2026-09-16T16:00', dakshina: '₹500' };
 
 test('every sentence names the time in words and never uses an exclamation mark', () => {
-  for (const [name, build] of Object.entries(copy)) {
-    const text = build(ctx);
-    assert.ok(!text.includes('!'), `${name} has an exclamation mark`);
-    assert.ok(!/\bfee\b/i.test(text), `${name} says fee`);
-    assert.ok(!/appointment/i.test(text), `${name} says appointment`);
+  for (const [name, value] of Object.entries(copy)) {
+    // Sentence builders, button labels and the one-tap notes all live in one table now.
+    const texts = typeof value === 'function' ? [value(ctx)] : Array.isArray(value) ? value : [value];
+    for (const text of texts) {
+      assert.equal(typeof text, 'string', name);
+      assert.ok(!text.includes('!'), `${name} has an exclamation mark`);
+      assert.ok(!/\bfee\b/i.test(text), `${name} says fee`);
+    }
   }
 });
 

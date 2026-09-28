@@ -65,7 +65,7 @@ export interface Marketing {
 }
 export interface Settings {
   id: string; slug: string; name: string; domain: string | null; about: string; marketing: Marketing;
-  dakshinaPaise: number; whatsappNumber: string | null; guruPhone?: string | null; pattern: Pattern; closedDates: string[];
+  dakshinaPaise: number; whatsappNumber: string | null; guruPhone?: string | null; language?: 'en' | 'hi'; pattern: Pattern; closedDates: string[];
 }
 
 export type EventKind = 'satsang' | 'live' | 'meetup';

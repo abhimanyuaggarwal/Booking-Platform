@@ -11,19 +11,14 @@ import { describeSlot, instantToSlotId, parseSlotId } from '@expert-sessions/sha
 import { query } from './db.js';
 import { logMessage } from './messages-log.js';
 import { ProviderError } from './errors.js';
+import { wordsFor } from './devotee-words.js';
 
 export const SOON_MINUTES = 12;          // "ten minutes before", with slack for a job that runs each minute
 const NIGHT_BEFORE_FROM = 19;            // IST, the evening before
 const NIGHT_BEFORE_TO = 23;              // wide on purpose: an api down at 8 pm still reminds at 10
 
-export const copy = {
-  guruSoon: ({ devoteeName, time, question }) =>
-    `In ten minutes: ${devoteeName} at ${time}.${question ? `\n\nShe wishes to speak about: ${question}` : ''}\n\nOpen your day to join.`,
-  night: ({ guruName, slotId }) =>
-    `A reminder: your time with ${guruName} is tomorrow, ${describeSlot(slotId).split(', ').slice(1).join(', ')}.\n\nOpen the link we sent you at your time to join.`,
-  soon: ({ guruName }) =>
-    `Your time with ${guruName} begins in about ten minutes. Open the link we sent you when you are ready.`,
-};
+// The reminder sentences live in devotee-words.js with everything else she receives.
+export const copy = wordsFor('en');
 
 /**
  * Pure. Which reminder, if any, this booking wants right now.
@@ -49,7 +44,7 @@ export function reminderDue({ slotStart, now }) {
 export async function sendDue({ conversation, now = new Date() }) {
   const { rows } = await query(
     `select b.id, b.guru_id, b.devotee_id, b.slot_start, b.question_text,
-            g.name as guru_name, g.slug, g.guru_phone,
+            g.name as guru_name, g.slug, g.domain, g.guru_phone, g.language,
             d.phone, d.name as devotee_name,
             exists (select 1 from messages_log m where m.booking_id = b.id and m.kind = 'reminder.guru') as had_guru,
             exists (select 1 from messages_log m where m.booking_id = b.id and m.kind = 'reminder.night') as had_night,
@@ -66,10 +61,15 @@ export async function sendDue({ conversation, now = new Date() }) {
     if (due === 'soon' && row.had_soon) continue;
 
     const slotId = instantToSlotId(row.slot_start);
-    const text = copy[due]({ guruName: row.guru_name, slotId });
-    const say = conversation.speak({ id: row.guru_id, name: row.guru_name }, { id: row.devotee_id, phone: row.phone }, row.id);
+    const guru = { id: row.guru_id, name: row.guru_name, slug: row.slug, domain: row.domain, language: row.language, guru_phone: row.guru_phone };
+    const booking = { id: row.id, slotId };
+    const W = wordsFor(row.language);
+    const text = W[due]({ guruName: row.guru_name, slotId });
+    const say = conversation.speak(guru, { id: row.devotee_id, phone: row.phone }, row.id);
     try {
-      await say.text(text);
+      // Ten minutes before, the join link itself; the evening before, her booking page.
+      if (due === 'soon') await say.link(text, W.joinNow, conversation.joinLink(booking, guru));
+      else await say.link(text, W.seeBooking, conversation.bookingLink(booking, guru));
       sent += 1;
       await record(row, due, { text, delivered: true });
     } catch (err) {
@@ -82,9 +82,8 @@ export async function sendDue({ conversation, now = new Date() }) {
     if (due === 'soon' && row.guru_phone && !row.had_guru) {
       try {
         await conversation.tellGuru({
-          guru: { id: row.guru_id, name: row.guru_name, guru_phone: row.guru_phone },
-          devotee: { id: row.devotee_id }, booking: { id: row.id }, kind: 'reminder.guru',
-          text: copy.guruSoon({ devoteeName: row.devotee_name ?? `…${row.phone.slice(-4)}`, time: describeSlot(slotId).split(', ').pop(), question: row.question_text }),
+          guru, devotee: { id: row.devotee_id }, booking, kind: 'reminder.guru',
+          text: W.guruSoon({ devoteeName: row.devotee_name ?? `…${row.phone.slice(-4)}`, time: describeSlot(slotId).split(', ').pop(), question: row.question_text }),
         });
         sent += 1;
       } catch (err) {

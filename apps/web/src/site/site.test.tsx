@@ -64,7 +64,8 @@ test('the confirmed page says the join link went to WhatsApp, with no countdown'
   </StaticRouter>);
   expect(html).toContain('Your time is confirmed');
   expect(html).toContain('₹500 paid');
-  expect(html).toContain('join link has gone to your WhatsApp');
+  expect(html).toContain('booking is on your WhatsApp');
+  expect(html).toContain('ten minutes before your time');
   expect(html).not.toMatch(/\d+ seconds|countdown|\d+:\d\d left/i);
 });
 

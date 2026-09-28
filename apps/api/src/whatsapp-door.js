@@ -15,6 +15,7 @@ import * as gurus from './gurus.js';
 import * as whatsapp from './whatsapp.js';
 import * as razorpay from './razorpay.js';
 import { ProviderError, BookingRuleError } from './errors.js';
+import { wordsFor, slotLabel } from './devotee-words.js';
 import { logMessage } from './messages-log.js';
 import { copy } from './conversation.js';
 import { settlePaidLink } from './paid-link.js';
@@ -75,12 +76,13 @@ export function whatsappDoor(env, conversation) {
 
   async function sendNearestSlots(guru, devotee, say, source) {
     const open = availableSlots(gurus.availabilityOf(guru), await bookings.takenSlotIds(guru.id));
-    if (open.length === 0) return say.text(copy.noTimes({ guruName: guru.name }));
+    const W = wordsFor(guru.language);
+    if (open.length === 0) return say.text(W.noTimes({ guruName: guru.name }));
     pendingSource.set(devotee.phone, source);
-    const buttons = open.slice(0, 2).map((s) => ({ id: s.id, title: s.label }));
-    buttons.push({ id: 'more', title: 'Other times' });
+    const buttons = open.slice(0, 2).map((s) => ({ id: s.id, title: slotLabel(s.label, guru.language) }));
+    buttons.push({ id: 'more', title: W.otherTimes });
     await say.buttons(
-      `Namaste 🙏\nBook time with ${guru.name} — ${guru.pattern_json.slotMinutes} minutes, dakshina ${formatRupees(guru.dakshina_paise)}.\nNext available:`,
+      W.greeting({ guruName: guru.name, minutes: guru.pattern_json.slotMinutes, dakshina: formatRupees(guru.dakshina_paise) }),
       buttons);
   }
 
@@ -92,8 +94,12 @@ export function whatsappDoor(env, conversation) {
       if (!byDay.has(day)) byDay.set(day, []);
       byDay.get(day).push({ id: s.id, title: s.label.replace(`${day} `, '') });
     }
+    const W = wordsFor(guru.language);
+    for (const [day, rows] of [...byDay]) {
+      byDay.delete(day); byDay.set(slotLabel(day, guru.language), rows);
+    }
     const sections = [...byDay].map(([title, rows]) => ({ title, rows }));
-    await say.list('Choose a time that suits you.', 'See times', sections);
+    await say.list(W.chooseTime, W.seeTimes, sections);
   }
 
   async function holdAndAskForPayment(guru, devotee, say, slotId) {
@@ -102,12 +108,12 @@ export function whatsappDoor(env, conversation) {
     try {
       booking = await conversation.startPayment({ guru, devotee, slotId, source });
     } catch (err) {
-      if (err instanceof ProviderError) { console.error(err.message); return say.text(copy.paymentUnavailable()); }
+      if (err instanceof ProviderError) { console.error(err.message); return say.text(wordsFor(guru.language).paymentUnavailable()); }
       if (err instanceof BookingRuleError) { await say.text(err.message); return sendNearestSlots(guru, devotee, say, source); }
       throw err;
     }
     if (!booking) {
-      await say.text(copy.slotTaken());
+      await say.text(wordsFor(guru.language).slotTaken());
       return sendNearestSlots(guru, devotee, say, source);
     }
   }
@@ -145,12 +151,12 @@ export function whatsappDoor(env, conversation) {
   async function attachVoiceNote(guru, devotee, say, mediaId) {
     const booking = await bookings.attachQuestion({ guruId: guru.id, devoteeId: devotee.id, mediaId });
     if (!booking) return sendNearestSlots(guru, devotee, say, 'direct');
-    await say.text(`Received. ${guru.name} will hear this before your session.`);
+    await say.text(wordsFor(guru.language).received({ guruName: guru.name }));
   }
 
   async function attachTextQuestion(guru, devotee, say, text) {
     await bookings.attachQuestion({ guruId: guru.id, devoteeId: devotee.id, text });
-    await say.text(`Noted. ${guru.name} will read this before your session.`);
+    await say.text(wordsFor(guru.language).noted({ guruName: guru.name }));
   }
 
   /**

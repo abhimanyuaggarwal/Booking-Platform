@@ -36,7 +36,7 @@ test('a time later the same evening gets the ten-minute reminder, not the night 
 test('the words say when and what to open, and never shout', () => {
   const night = copy.night({ guruName: 'Guruji Vishwanath', slotId: 'slot:2026-09-16T16:00' });
   assert.match(night, /tomorrow, 16 September, 4:00 pm/);
-  assert.match(night, /Open the link we sent you/);
+  assert.match(night, /booking is at this link/);
   const soon = copy.soon({ guruName: 'Guruji Vishwanath' });
   assert.match(soon, /begins in about ten minutes/);
   for (const text of [night, soon]) {

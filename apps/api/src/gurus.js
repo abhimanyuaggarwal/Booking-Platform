@@ -4,7 +4,7 @@ import { DAY_KEYS } from '@expert-sessions/shared';
 import { query } from './db.js';
 
 // closed_dates comes back as 'YYYY-MM-DD' strings, the form availableSlots() compares against.
-const COLUMNS = `id, slug, domain, name, about, marketing_json, dakshina_paise, whatsapp_number, guru_phone,
+const COLUMNS = `id, slug, domain, name, about, marketing_json, dakshina_paise, whatsapp_number, guru_phone, language,
   pattern_json, closed_dates::text[] as closed_dates, created_at`;
 
 export async function findGuruBySlug(slug) {
@@ -81,6 +81,7 @@ export function validateSite(body) {
   if (body.domain != null && body.domain !== '' && !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(body.domain)) return 'Domain should look like guruji.com';
   if (typeof body.about !== 'string') return 'About must be text';
   if (body.guruPhone != null && body.guruPhone !== '' && !/^\d{10,15}$/.test(body.guruPhone)) return 'His own WhatsApp number should be digits with the country code, like 919876543210';
+  if (body.language != null && !['en', 'hi'].includes(body.language)) return 'Language must be en or hi';
   const m = body.marketing;
   if (!m || typeof m.tagline !== 'string' || !Array.isArray(m.blocks)) return 'Send the tagline and text blocks';
   if (m.blocks.some((b) => typeof b?.heading !== 'string' || typeof b?.body !== 'string')) return 'Each text block needs a heading and a body';
@@ -104,8 +105,9 @@ export async function updatePattern(guruId, { pattern, closedDates, dakshinaPais
 
 // The picture, facts, themes and quote are optional; an editor that does not know them (an older
 // console tab) leaves what is already there instead of wiping it.
-export async function updateSite(guruId, { name, domain, about, marketing, guruPhone }) {
-  const row = (await query('select marketing_json, guru_phone from gurus where id = $1', [guruId])).rows[0] ?? {};
+export async function updateSite(guruId, { name, domain, about, marketing, guruPhone, language }) {
+  const row = (await query('select marketing_json, guru_phone, language from gurus where id = $1', [guruId])).rows[0] ?? {};
+  const lang = language === undefined ? (row.language ?? 'en') : language;
   const current = row.marketing_json ?? {};
   // An editor that does not know the field leaves his number alone; an empty field clears it.
   const phone = guruPhone === undefined ? row.guru_phone : (String(guruPhone).replace(/\D/g, '') || null);
@@ -118,8 +120,8 @@ export async function updateSite(guruId, { name, domain, about, marketing, guruP
     quote: marketing.quote === undefined ? current.quote : marketing.quote.trim(),
   };
   const { rows } = await query(
-    `update gurus set name = $2, domain = $3, about = $4, marketing_json = $5, guru_phone = $6 where id = $1 returning ${COLUMNS}`,
-    [guruId, name.trim(), domain || null, about, JSON.stringify(clean), phone]);
+    `update gurus set name = $2, domain = $3, about = $4, marketing_json = $5, guru_phone = $6, language = $7 where id = $1 returning ${COLUMNS}`,
+    [guruId, name.trim(), domain || null, about, JSON.stringify(clean), phone, lang]);
   return rows[0];
 }
 
