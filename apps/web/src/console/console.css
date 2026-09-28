@@ -279,5 +279,5 @@
 
 /* Day, then time (SlotPicker) */
 .console .slotpicker { display: flex; gap: 6px; }
-.console .slotpicker select:first-child { flex: 0 0 auto; }
-.console .slotpicker select:last-child { flex: 1; }
+.console .slotpicker select:first-child { flex: 0 0 auto; width: auto; }   /* the form gives every select width: 100%; two must share the line */
+.console .slotpicker select:last-child { flex: 1; width: auto; }
