@@ -1,5 +1,9 @@
 # Expert Sessions — CLAUDE.md
 
+**Product name: Samvad** (chosen 2026-09-28; "Expert Sessions" stays the repo's internal name). The
+team console reads in English or Hindi (`apps/web/src/console/lang.tsx`); Money and Settings sit at
+level two under More.
+
 You are building **Expert Sessions on Slike**: a booking-and-consultation system for one guru's
 practice. Devotees book paid 30-minute 1:1 time with him from his YouTube lives, a QR, or his own website;
 the session happens in a browser video room; his team runs everything from a console.

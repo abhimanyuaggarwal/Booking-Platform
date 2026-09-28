@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { describeSlot } from '@expert-sessions/shared';
 import { api } from './api';
 import { useOnChange } from './changed';
 import { useOpenBooking } from './open-booking';
-import { groupAttention, stateWord } from './words';
+import { useLang, useWords } from './lang';
+import { groupAttention, Initials, stateWord } from './words';
 import type { AttentionRow, BookingRow } from './types';
 
-// Four places: what is happening now, his week, the money, and what is set once. Side rail on a
-// laptop, bottom tabs on a phone (console.css). Anything that needs her shows as a count on Today.
+// Three places for every day: Today, Week, and More (Money and Settings, set once). Side rail on a
+// laptop, bottom tabs on a phone. Anything that needs the team shows as a count on Today.
 export default function Nav() {
+  const W = useWords();
+  const { pathname } = useLocation();
   const [needs, setNeeds] = useState<number>(0);
   const load = () => api<AttentionRow[]>('/attention').then((rows) => setNeeds(groupAttention(rows).toDecide.length)).catch(() => {});
   useEffect(() => {
@@ -18,35 +21,39 @@ export default function Nav() {
     return () => clearInterval(t);
   }, []);
   useOnChange(load);
+  const onMore = /^\/console\/(more|money|settings)/.test(pathname);
   return (
     <nav className="console-nav" aria-label="Console">
-      <NavLink to="/console" end>Today{needs ? <span className="badge">{needs}</span> : null}</NavLink>
-      <NavLink to="/console/week">Week</NavLink>
-      <NavLink to="/console/money">Money</NavLink>
-      <NavLink to="/console/settings">Settings</NavLink>
+      <NavLink to="/console" end>{W.nav.today}{needs ? <span className="badge">{needs}</span> : null}</NavLink>
+      <NavLink to="/console/week">{W.nav.week}</NavLink>
+      <NavLink to="/console/more" className={onMore ? 'active' : undefined}>{W.nav.more}</NavLink>
     </nav>
   );
 }
 
-// Who the console is for, the search that works from anywhere, and the one action she takes with a
-// phone to her ear. Sign out lives here too, because a shared laptop changes hands.
+// Who the console is for, the search that works from anywhere, the one action she takes with a
+// phone to her ear, and the language. Sign out lives here too, because a shared laptop changes hands.
 export function TopBar({ guruName, onBookForCaller }: { guruName: string; onBookForCaller: () => void }) {
+  const W = useWords();
+  const { lang, setLang } = useLang();
   async function signOut() {
     await api('/logout', { method: 'POST' });
     window.location.assign('/console');
   }
   return (
     <header className="topbar">
-      <b className="brand">{guruName}<span className="muted"> · console</span></b>
+      <b className="brand">{guruName}<span className="muted"> · {W.product}</span></b>
       <GlobalSearch />
-      <button className="primary" onClick={onBookForCaller}><span className="long">Book for a caller</span><span className="short">Book</span></button>
-      <button className="quiet" onClick={signOut}>Sign out</button>
+      <button className="primary" onClick={onBookForCaller}><span className="long">{W.nav.newBooking}</span><span className="short">{W.nav.newBookingShort}</span></button>
+      <button className="quiet lang" onClick={() => setLang(lang === 'en' ? 'hi' : 'en')} aria-label="Language">{W.nav.language}</button>
+      <button className="quiet long" onClick={signOut}>{W.nav.signOut}</button>
     </header>
   );
 }
 
 // Name or number, from any screen. Results open the booking drawer over the current screen.
 export function GlobalSearch() {
+  const W = useWords();
   const open = useOpenBooking();
   const [typed, setTyped] = useState('');
   const [rows, setRows] = useState<BookingRow[] | null>(null);
@@ -87,16 +94,16 @@ export function GlobalSearch() {
           if (e.key === 'Enter') { e.preventDefault(); pick(rows[active]); }
           if (e.key === 'Escape') { setRows(null); setTyped(''); }
         }}
-        placeholder="Find anyone by name or number"
-        aria-label="Find a booking"
+        placeholder={W.nav.search}
+        aria-label={W.nav.search}
       />
       {rows && (
         <ul className="results" role="listbox">
-          {rows.length === 0 && <li className="muted">Nobody by that name or number.</li>}
+          {rows.length === 0 && <li className="muted">—</li>}
           {rows.map((b, i) => (
             <li key={b.id} role="option" aria-selected={i === active} className={i === active ? 'active' : undefined} onMouseDown={() => pick(b)}>
-              <b>{b.name}</b><span className="muted"> +{b.phone}</span>
-              <small>{describeSlot(b.slotId)} · {stateWord(b.status).toLowerCase()}</small>
+              <Initials name={b.name} size="s" />
+              <span><b>{b.name}</b><span className="muted"> +{b.phone}</span><small>{describeSlot(b.slotId)} · {stateWord(b.status, W).toLowerCase()}</small></span>
             </li>
           ))}
         </ul>

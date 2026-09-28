@@ -15,7 +15,7 @@ function render(path: string) {
 test('/console renders the team console shell, which checks the login before showing anything', () => {
   const html = render('/console');
   expect(html).toContain('class="console"');
-  expect(html).toContain('Opening the console.');
+  expect(html).toContain('One moment.');
 });
 
 test("/guru renders guruji's calendar, which asks the api for his day first", () => {

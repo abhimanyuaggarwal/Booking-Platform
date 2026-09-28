@@ -29,22 +29,24 @@ const needs: AttentionRow[] = [
 
 test('Today is what needs her, with the button on the card, then the sittings with the next one marked — and no money', () => {
   const html = renderToStaticMarkup(<TodayView report={today} attention={needs} now="slot:2026-09-16T10:30" />);
-  expect(html).toContain('2 things need you');
+  expect(html).toContain('2 things to do');
   expect(html).toContain('Chose a time, did not pay');
   expect(html).toContain('>Send the link again<');
   expect(html).toContain('Waited, guruji did not sit');
   expect(html).toContain('>Decide<');
   expect(html).not.toContain('Dakshina returned');     // for the record only, never on Today
-  expect(html).toContain('Ramesh K · 2nd visit');
-  expect(html).toContain('voice note');
+  expect(html).toContain('2nd visit');
   expect(html).not.toContain('🎙');
   expect(html).toContain('>Done<');
   expect(html).toContain('>Paid<');
-  expect(html).toContain('book for a caller');
+  expect(html).toContain('open · book');
+  expect(html).toContain('Next sitting · 11:00 am');   // the next paid sitting, large, with her question
+  expect(html).toContain('Wishes to speak about: “property dispute”');
+  expect(html).toContain('class="avatar');
   expect(html).not.toContain('₹');                     // money has its own screen
   expect(html).not.toMatch(/\d+:\d+ left|countdown/i);
   expect(html).toMatch(/class="clickable next"[^>]*>[^<]*<td class="time">11:00 am<span class="nextmark">next/);
-  expect(renderToStaticMarkup(<TodayView report={today} attention={[]} />)).toContain('Nothing needs you right now');
+  expect(renderToStaticMarkup(<TodayView report={today} attention={[]} />)).toContain('Nothing to do right now');
 });
 
 test('the next sitting is the first paid time at or after now', () => {
@@ -57,8 +59,8 @@ test('what needs her splits what she must decide from what only informs, and eve
   const { toDecide, forTheRecord } = groupAttention(needs);
   expect(toDecide.map((r) => r.name)).toEqual(['Neha S', 'Prakash V']);
   expect(forTheRecord.map((r) => r.name)).toEqual(['Suresh B']);
-  expect(renderToStaticMarkup(<NeedsYou rows={[needs[0]]} onSendLink={() => {}} onDecide={() => {}} />)).toContain('One thing needs you');
-  expect(['confirmed', 'held', 'completed', 'no_show', 'rescheduled', 'cancelled', 'refunded', 'expired'].map(stateWord))
+  expect(renderToStaticMarkup(<NeedsYou rows={[needs[0]]} onSendLink={() => {}} onDecide={() => {}} />)).toContain('One thing to do');
+  expect(['confirmed', 'held', 'completed', 'no_show', 'rescheduled', 'cancelled', 'refunded', 'expired'].map((s) => stateWord(s)))
     .toEqual(['Paid', 'Paying', 'Done', 'Did not join', 'Moved', 'Cancelled', 'Returned', 'Hold expired']);
 });
 
@@ -103,7 +105,7 @@ test('the week grid colours each slot by state only, shows his events on their d
   const list = renderToStaticMarkup(<WeekList week={week} onOpen={() => {}} onBook={() => {}} />);
   expect(list).toContain('Satsang · Weekly satsang · 5:00 pm');
   expect(list).toContain('Priya D');
-  expect(list).toContain('open · book for a caller');
+  expect(list).toContain('open · book');
 });
 
 const money: MoneyReport = {
@@ -220,7 +222,7 @@ const closePreview: CloseDayPreview = {
 
 test('closing a day lists each person with a suggested new time and says what happens', () => {
   const html = renderToStaticMarkup(<CloseDayPreviewView preview={closePreview} choices={{ a: 'slot:2026-09-16T10:00', b: 'slot:2026-09-16T11:30' }} onChoose={() => {}} />);
-  expect(html).toContain('2 sessions are booked');
+  expect(html).toContain('2 sittings are booked');
   expect(html).toContain('1 unpaid hold goes back on the shelf');
   expect(html).toContain('Meena D');
   expect(html).toMatch(/<option[^>]*selected[^>]*value="slot:2026-09-16T10:00"|<option[^>]*value="slot:2026-09-16T10:00"[^>]*selected/);

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 export default function FrontDoor() {
   return (
     <main className="surface-warm shell">
-      <h1>Expert Sessions</h1>
+      <h1>Samvad</h1>
       <ul>
         <li><Link to="/s/guruji">His website (preview)</Link></li>
         <li><Link to="/guru">Guruji's calendar</Link></li>

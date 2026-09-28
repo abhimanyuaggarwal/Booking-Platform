@@ -3,13 +3,16 @@ import { formatRupees } from '@expert-sessions/shared';
 import { api, useApi } from './api';
 import { useOnChange } from './changed';
 import { useOpenBooking } from './open-booking';
+import { useWords } from './lang';
+import { Initials } from './words';
 import type { MessageResult, WaitingBoard, WaitingPerson } from './types';
 
-// She can write back now, so this is a conversation someone is waiting on, not a status board.
+// She can write back, so this is a conversation someone is waiting on, not a status board.
 const REFRESH_MS = 5000;
 
 // Who is around a session right now, and the one-tap ways to speak to her. The team never enters the session.
 export default function WaitingPanel({ dakshinaPaise }: { dakshinaPaise?: number }) {
+  const W = useWords();
   const { data, error, reload } = useApi<WaitingBoard>('/waiting');
   useEffect(() => {
     const t = setInterval(reload, REFRESH_MS);
@@ -17,8 +20,8 @@ export default function WaitingPanel({ dakshinaPaise }: { dakshinaPaise?: number
   }, [reload]);
   useOnChange(reload);
   useNewWordsAlert(data);
-  if (error) return <section className="panel"><h2>Waiting now</h2><p className="banner problem">{error}</p></section>;
-  if (!data) return <section className="panel"><h2>Waiting now</h2><p className="muted">Looking.</p></section>;
+  if (error) return <section className="panel"><h2>{W.waiting.title}</h2><p className="banner problem">{error}</p></section>;
+  if (!data) return null;
   return <WaitingPanelView board={data} onChanged={reload} dakshinaPaise={dakshinaPaise} />;
 }
 
@@ -59,26 +62,25 @@ function chime() {
 }
 
 export function WaitingPanelView({ board, onChanged, dakshinaPaise }: { board: WaitingBoard; onChanged: () => void; dakshinaPaise?: number }) {
+  const W = useWords();
   const count = board.people.length;
-  if (count === 0 && !board.running) {
-    return <p className="quiet-line">Nobody is waiting. When someone opens her link she appears here, and you can speak to her before she wonders.</p>;
-  }
+  if (count === 0 && !board.running) return <p className="quiet-line">{W.waiting.nobody}</p>;
   return (
-    <section className="panel">
-      <h2>Waiting now <i>{count === 0 ? 'nobody yet' : `${count} ${count === 1 ? 'person' : 'people'}`}</i></h2>
+    <section className="panel waiting">
+      <h2>{W.waiting.title} <i>{count === 0 ? '' : W.waiting.people(count)}</i></h2>
       {board.running && (
         <p className="banner warn">
-          {board.running.minutesLate > 0 ? `Running ${board.running.minutesLate} minutes late. ` : ''}Guruji is with {board.running.name} ({board.running.slotTime}).
+          {board.running.minutesLate > 0 ? W.waiting.late(board.running.minutesLate) : ''}{W.waiting.running(board.running.name, board.running.slotTime)}
         </p>
       )}
-      {count === 0 && <p className="muted">Nobody is waiting for him yet.</p>}
       {board.people.map((p) => <PersonRow key={p.id} person={p} board={board} onChanged={onChanged} dakshinaPaise={dakshinaPaise} />)}
-      {count > 0 && <p className="muted foot">You can speak to the waiting room or call. You never enter the session.</p>}
+      {count > 0 && <p className="muted foot">{W.waiting.foot}</p>}
     </section>
   );
 }
 
 function PersonRow({ person: p, board, onChanged, dakshinaPaise }: { person: WaitingPerson; board: WaitingBoard; onChanged: () => void; dakshinaPaise?: number }) {
+  const W = useWords();
   const open = useOpenBooking();
   const [custom, setCustom] = useState('');
   const [busy, setBusy] = useState(false);
@@ -101,7 +103,7 @@ function PersonRow({ person: p, board, onChanged, dakshinaPaise }: { person: Wai
   }
 
   async function move(slotId: string, label: string) {
-    if (!window.confirm(`Move ${p.name} to ${label}? She is told on WhatsApp at once.`)) return;
+    if (!window.confirm(W.waiting.moveConfirm(p.name, label))) return;
     setBusy(true);
     try {
       const r = await api<{ notified: boolean; notDelivered: string | null }>(`/bookings/${p.id}/reschedule`, { method: 'POST', json: { slotId } });
@@ -115,7 +117,7 @@ function PersonRow({ person: p, board, onChanged, dakshinaPaise }: { person: Wai
   }
 
   async function refund() {
-    if (!window.confirm(`Return ${p.name}'s dakshina? Razorpay sends it back; she is told on WhatsApp.`)) return;
+    if (!window.confirm(W.waiting.refundConfirm(p.name))) return;
     setBusy(true);
     try {
       const r = await api<{ amountPaise: number; notified: boolean }>(`/bookings/${p.id}/refund`, { method: 'POST' });
@@ -129,37 +131,41 @@ function PersonRow({ person: p, board, onChanged, dakshinaPaise }: { person: Wai
   }
 
   const inRoom = Boolean(p.inRoomSince);
+  const recent = p.messages.slice(-3);
   return (
     <div className={`person ${inRoom ? 'here' : ''}`}>
       <div className="row between">
-        <div>
-          <button className="linklike" onClick={() => open(p.id)}><b>{p.name}</b></button> <span className="muted">· {p.time}</span>
-          <div className="muted small">{presenceSentence(p, board.now)}</div>
+        <div className="person-cell">
+          <Initials name={p.name} size="m" />
+          <div>
+            <button className="linklike" onClick={() => open(p.id)}><b>{p.name}</b></button> <span className="muted">· {p.time}</span>
+            <div className="muted small">{presenceSentence(p, board.now, W)}</div>
+          </div>
         </div>
-        <a className="btn" href={`tel:+${p.phone}`}>Call</a>
+        <a className="btn" href={`tel:+${p.phone}`}>{W.waiting.call}</a>
       </div>
       <div className="row">
         {board.oneTap.map((t) => <button key={t} className="small" disabled={busy} onClick={() => send(t)}>{t}</button>)}
       </div>
       <div className="row">
-        <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Write a message" onKeyDown={(e) => { if (e.key === 'Enter' && custom.trim()) send(custom.trim()); }} />
-        <button disabled={busy || !custom.trim()} onClick={() => send(custom.trim())}>Send</button>
+        <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder={W.waiting.write} onKeyDown={(e) => { if (e.key === 'Enter' && custom.trim()) send(custom.trim()); }} />
+        <button disabled={busy || !custom.trim()} onClick={() => send(custom.trim())}>{W.waiting.send}</button>
       </div>
-      {p.messages.length > 0 && (
+      {recent.length > 0 && (
         <ul className="said-list">
-          {p.messages.map((m, i) => (
+          {recent.map((m, i) => (
             <li key={i} className={m.from === 'devotee' ? 'fromher' : undefined}>{saidSentence(p.name, m)}</li>
           ))}
         </ul>
       )}
       {note && <p className={`banner ${note.includes('did not') || note.includes('failed') || note.includes('could not') ? 'problem' : 'ok'}`}>{note}</p>}
-      <button className="quiet small" onClick={() => setShowWaysOut(!showWaysOut)}>{showWaysOut ? 'Hide the ways out' : `If he cannot get to ${p.name.split(' ')[0]}`}</button>
+      <button className="quiet small" onClick={() => setShowWaysOut(!showWaysOut)}>{showWaysOut ? W.waiting.hideWays : W.waiting.waysOut(p.name.split(' ')[0])}</button>
       {showWaysOut && (
         <table className="plain">
           <tbody>
-            <tr><td>Later today</td><td>{board.suggestions.laterToday.length === 0 ? <span className="muted">nothing free today</span> : board.suggestions.laterToday.map((s) => <button key={s.slotId} className="small" disabled={busy} onClick={() => move(s.slotId, s.label)}>{s.label.replace('Today ', '')}</button>)}</td></tr>
-            <tr><td>Tomorrow</td><td>{board.suggestions.tomorrow.length === 0 ? <span className="muted">nothing free tomorrow</span> : board.suggestions.tomorrow.map((s) => <button key={s.slotId} className="small" disabled={busy} onClick={() => move(s.slotId, s.label)}>{s.label.replace('Tomorrow ', '')}</button>)}</td></tr>
-            <tr><td>Return the dakshina</td><td><button className="small danger" disabled={busy} onClick={refund}>{dakshinaPaise ? formatRupees(dakshinaPaise) : 'Return it'}</button></td></tr>
+            <tr><td>{W.waiting.laterToday}</td><td>{board.suggestions.laterToday.length === 0 ? <span className="muted">{W.waiting.nothingToday}</span> : board.suggestions.laterToday.map((s) => <button key={s.slotId} className="small" disabled={busy} onClick={() => move(s.slotId, s.label)}>{s.label.replace('Today ', '')}</button>)}</td></tr>
+            <tr><td>{W.waiting.tomorrow}</td><td>{board.suggestions.tomorrow.length === 0 ? <span className="muted">{W.waiting.nothingTomorrow}</span> : board.suggestions.tomorrow.map((s) => <button key={s.slotId} className="small" disabled={busy} onClick={() => move(s.slotId, s.label)}>{s.label.replace('Tomorrow ', '')}</button>)}</td></tr>
+            <tr><td>{W.waiting.returnDakshina}</td><td><button className="small danger" disabled={busy} onClick={refund}>{dakshinaPaise ? formatRupees(dakshinaPaise) : W.waiting.returnDakshina}</button></td></tr>
           </tbody>
         </table>
       )}
@@ -167,10 +173,13 @@ function PersonRow({ person: p, board, onChanged, dakshinaPaise }: { person: Wai
   );
 }
 
-export function presenceSentence(p: WaitingPerson, now: string): string {
-  if (p.inRoomSince) return `In the waiting room · ${minutesBetween(p.inRoomSince, now)} min`;
-  if (p.openedLinkAt) return 'Opened her link earlier, not in the room now — a message goes to WhatsApp';
-  return 'Link not opened yet — a message goes to WhatsApp';
+type WaitingWords = { waiting: { inRoom: (m: number) => string; openedEarlier: string; notOpened: string } };
+const EN: WaitingWords = { waiting: { inRoom: (m) => `In the waiting room · ${m} min`, openedEarlier: 'Opened her link earlier, not in the room now — a message goes to WhatsApp', notOpened: 'Link not opened yet — a message goes to WhatsApp' } };
+
+export function presenceSentence(p: WaitingPerson, now: string, W: WaitingWords = EN): string {
+  if (p.inRoomSince) return W.waiting.inRoom(minutesBetween(p.inRoomSince, now));
+  if (p.openedLinkAt) return W.waiting.openedEarlier;
+  return W.waiting.notOpened;
 }
 
 /** One line of the waiting-room conversation, from whichever side wrote it. */

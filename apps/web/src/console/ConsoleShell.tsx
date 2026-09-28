@@ -8,17 +8,24 @@ import Today from './Today';
 import Week from './Week';
 import Money from './Money';
 import Settings from './Settings';
+import More from './More';
 import BookingDrawer from './BookingDrawer';
 import BookForCaller from './BookForCaller';
 import { BookForCallerContext, OpenBookingContext } from './open-booking';
 import { announceChange } from './changed';
+import { LangProvider, useWords } from './lang';
 import './console.css';
 
-// The team's working tool. One shared login; the api says who the guru is. Four screens: Today
-// (what is happening and what needs her), Week (his time), Money, Settings. The two things she does
-// while someone is on the phone — find a person, hold a time — live in the top bar and work from
-// every screen; the one booking drawer opens over whatever she was looking at.
+// The team's working tool. One shared login; the api says who the guru is. Two screens for every
+// day (Today, Week) and More for what is weekly or set once (Money, Settings), in English or Hindi.
+// The two things she does while someone is on the phone — find a person, book a time — live in the
+// top bar and work from every screen; the one booking drawer opens over whatever she was looking at.
 export default function ConsoleShell() {
+  return <LangProvider><Shell /></LangProvider>;
+}
+
+function Shell() {
+  const W = useWords();
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [params, setParams] = useSearchParams();
   const [bookFor, setBookFor] = useState<{ open: boolean; slotId?: string }>({ open: false });
@@ -39,7 +46,7 @@ export default function ConsoleShell() {
   const startBookFor = useCallback((slotId?: string) => setBookFor({ open: true, slotId }), []);
   const openId = params.get('booking');
 
-  if (me === undefined) return <div className="console"><main className="console-main"><p className="muted">Opening the console.</p></main></div>;
+  if (me === undefined) return <div className="console"><main className="console-main"><p className="muted">{W.common.loading}</p></main></div>;
   if (me === null) return <Login onSignedIn={setMe} />;
 
   return (
@@ -54,6 +61,7 @@ export default function ConsoleShell() {
               <Routes>
                 <Route index element={<Today />} />
                 <Route path="week" element={<Week />} />
+                <Route path="more" element={<More />} />
                 <Route path="money" element={<Money />} />
                 <Route path="settings/*" element={<Settings />} />
                 {/* The old addresses still work: bookmarks and links in chats survive the rebuild. */}
@@ -72,7 +80,7 @@ export default function ConsoleShell() {
               onCancel={() => setBookFor({ open: false })}
               onDone={(b) => {
                 setBookFor({ open: false });
-                setNotice(b.paid ? `${b.name} is booked for ${b.time} and has the join link on WhatsApp.` : `${b.name} has the pay link on WhatsApp. ${b.time} is held for ten minutes.`);
+                setNotice(b.paid ? W.booking.donePaid(b.name, b.time) : W.booking.doneLink(b.name, b.time));
                 announceChange();
                 openBooking(b.id);
               }}

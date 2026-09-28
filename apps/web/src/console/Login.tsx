@@ -1,8 +1,11 @@
 import { FormEvent, useState } from 'react';
 import { api } from './api';
+import { useLang, useWords } from './lang';
 import type { Me } from './types';
 
 export default function Login({ onSignedIn }: { onSignedIn: (me: Me) => void }) {
+  const W = useWords();
+  const { lang, setLang } = useLang();
   const [username, setUsername] = useState('team');
   const [password, setPassword] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -23,15 +26,16 @@ export default function Login({ onSignedIn }: { onSignedIn: (me: Me) => void }) 
   }
 
   return (
-    <div className="console">
-      <main className="console-main" style={{ maxWidth: 420, margin: '10vh auto' }}>
-        <h1>Team console</h1>
-        <p className="muted">One login for the whole team. It is in the api's .env file.</p>
+    <div className="console login">
+      <main className="login-card">
+        <p className="eyebrow">{W.product}</p>
+        <h1>{W.login.title}</h1>
+        <p className="muted">{W.login.hint}</p>
         <form className="settings" onSubmit={submit}>
-          <label>Username<input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" /></label>
-          <label>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" autoFocus /></label>
+          <label>{W.login.username}<input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" /></label>
+          <label>{W.login.password}<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" autoFocus /></label>
           {problem && <p className="problem">{problem}</p>}
-          <div><button className="primary" disabled={busy}>Sign in</button></div>
+          <div className="row"><button className="primary" disabled={busy}>{W.login.signIn}</button><button type="button" className="quiet" onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}>{W.nav.language}</button></div>
         </form>
       </main>
     </div>
