@@ -1,0 +1,28 @@
+/* Two palettes, deliberately (CLAUDE.md, Design language). Change tokens here only, and ask first. */
+:root {
+  /* Product screens the devotee and guruji see: warm and quiet */
+  --warm-bg: #F4F1EA;
+  --warm-ink: #231F19;
+  --warm-muted: #7C756A;
+  --accent: #9C5A2C;
+  --ok: #3E7D5F;
+  /* The console: a cool working tool */
+  --console-paper: #EFEDE7;
+  --console-nav: #221E18;
+
+  --serif: "Iowan Old Style", Palatino, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+html, body, #root { margin: 0; min-height: 100vh; }
+
+.shell { min-height: 100vh; padding: 2.5rem 1.5rem; box-sizing: border-box; }
+
+.surface-warm { background: var(--warm-bg); color: var(--warm-ink); font-family: var(--sans); }
+.surface-warm h1, .surface-warm h2 { font-family: var(--serif); font-weight: 500; letter-spacing: 0.01em; }
+.surface-warm .muted { color: var(--warm-muted); }
+.surface-warm a { color: var(--accent); }
+
+.surface-console { background: var(--console-paper); color: var(--console-nav); font-family: var(--sans); }
+.surface-console h1 { font-weight: 600; font-size: 1.25rem; }
+.surface-console .muted { color: var(--warm-muted); }

@@ -1,0 +1,16 @@
+{
+  "name": "expert-sessions",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "test": "pnpm -r test",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "migrate": "pnpm --filter api migrate",
+    "seed": "pnpm --filter api seed",
+    "demo": "pnpm --filter api demo"
+  }
+}

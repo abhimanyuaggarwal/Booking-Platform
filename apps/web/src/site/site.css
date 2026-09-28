@@ -1,0 +1,169 @@
+/* His own website, and every screen she sees. Warm and quiet: generous space, few words,
+   status in sentences rather than timers (CLAUDE.md, Design language). */
+.site { background: var(--warm-bg); color: var(--warm-ink); font-family: var(--sans); min-height: 100vh; line-height: 1.55; }
+.site .wrap { max-width: 640px; margin: 0 auto; padding: 0 22px 72px; }
+.site h1, .site h2, .site h3 { font-family: var(--serif); font-weight: 500; letter-spacing: .01em; }
+.site h1 { font-size: 30px; margin: 0 0 6px; }
+.site h2 { font-size: 21px; margin: 0 0 14px; }
+.site h3 { font-size: 16px; margin: 0 0 4px; }
+.site p { margin: 0 0 14px; }
+.site .muted { color: var(--warm-muted); }
+.site a { color: var(--accent); }
+
+.site .top { background: #EDE8DD; border-bottom: 1px solid #E2DBCB; }
+.site .top .wrap { display: flex; align-items: center; gap: 12px; padding-top: 16px; padding-bottom: 16px; }
+.site .top b { font-family: var(--serif); font-weight: 500; font-size: 17px; flex: 1; }
+.site .top a { text-decoration: none; font-size: 14px; }
+
+/* The top of his page: a wide picture, his portrait over its lower edge, then his name. The words
+   sit on the warm paper below the picture, never on top of it, so they read on any phone. */
+.site .hero { padding: 44px 0 8px; }
+.site .hero .band { height: clamp(220px, 38vw, 420px); overflow: hidden; position: relative; background: #2B241B; }
+.site .hero .band img { width: 100%; height: 100%; object-fit: cover; object-position: center 62%; display: block; }
+.site .hero .band::after { content: ''; position: absolute; inset: auto 0 0 0; height: 46%; background: linear-gradient(to bottom, rgba(244,241,234,0), var(--warm-bg)); }
+.site .hero.pictured { padding-top: 0; }
+.site .hero.pictured .wrap { padding-top: 22px; padding-bottom: 0; }
+.site .hero .portrait { width: 112px; height: 112px; border-radius: 60px; overflow: hidden; margin: -78px 0 18px; background: #E6E0D3; border: 4px solid var(--warm-bg); box-shadow: 0 2px 10px rgba(35,31,25,.12); }
+.site .hero .portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.site .hero h1 { font-size: 34px; line-height: 1.15; }
+.site .lineage { color: var(--warm-muted); font-size: 14px; margin: 0 0 18px; }
+.site .hero .about { font-size: 17px; line-height: 1.55; max-width: 34em; }
+.site .terms { font-size: 15px; color: var(--warm-ink); margin: 0 0 4px; }
+.site .hero .calls { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 10px; }
+.site .hero .calls a { flex: 1 1 200px; margin: 0; }
+
+.site .facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 22px; margin: 22px 0 6px; padding: 18px 0 20px; border-top: 1px solid #E5DFD2; border-bottom: 1px solid #E5DFD2; }
+.site .facts dt { font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--warm-muted); margin-bottom: 3px; }
+.site .facts dd { margin: 0; font-family: var(--serif); font-size: 17px; line-height: 1.3; }
+@media (min-width: 560px) { .site .facts { grid-template-columns: repeat(4, 1fr); } }
+
+.site .about-him .block { margin-bottom: 18px; }
+.site .about-him .block p { margin: 0; }
+.site .quote { margin: 6px 0 26px; padding: 0 0 0 18px; border-left: 2px solid var(--accent); font-family: var(--serif); font-size: 21px; line-height: 1.4; color: var(--warm-ink); }
+.site .quote cite { display: block; font-family: var(--sans); font-style: normal; font-size: 13px; color: var(--warm-muted); margin-top: 10px; }
+
+.site .themes { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.site .themes li { background: #fff; border: 1px solid #E4DBC9; border-radius: 20px; padding: 8px 14px; font-size: 14.5px; }
+
+.site .steps { list-style: none; margin: 0; padding: 0; }
+.site .steps li { display: flex; gap: 16px; padding: 12px 0; }
+.site .steps li + li { border-top: 1px solid #EDE7DA; }
+.site .steps .n { flex: none; width: 30px; height: 30px; border-radius: 16px; background: #F7EDE3; color: var(--accent); font-family: var(--serif); font-size: 15px; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+.site .steps p { margin: 0; }
+
+.site .know { list-style: none; margin: 0; padding: 0; }
+.site .know li { padding: 9px 0 9px 22px; position: relative; color: var(--warm-ink); font-size: 15px; }
+.site .know li::before { content: ''; position: absolute; left: 4px; top: 17px; width: 6px; height: 6px; border-radius: 3px; background: var(--accent); }
+
+.site .closing { text-align: center; padding-top: 34px; }
+.site .closing h2 { font-size: 24px; line-height: 1.25; margin-bottom: 20px; }
+.site .closing .primary { max-width: 320px; margin: 0 auto; }
+.site .credit { font-size: 12px; color: #A89F8E; margin: 34px 0 0; }
+
+.site section { padding: 26px 0; border-top: 1px solid #E5DFD2; }
+.site section:first-of-type { border-top: 0; }
+.site .facts + section { border-top: 0; }
+.site .eyebrow { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--warm-muted); margin: 0 0 12px; }
+
+.site .slot { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: #fff; border: 1px solid #E4DBC9; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; font: inherit; color: inherit; cursor: pointer; }
+.site .slot:hover { border-color: var(--accent); }
+.site .slot b { font-weight: 600; font-size: 15px; flex: 1; }
+.site .slot u { text-decoration: none; font-size: 13px; font-weight: 700; color: var(--accent); }
+.site .slot i { font-style: normal; font-size: 13px; color: var(--warm-muted); }
+
+.site .event { background: #fff; border: 1px solid #E4DBC9; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+.site .tag { display: inline-block; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--ok); background: #E4EFE8; border-radius: 8px; padding: 2px 8px; margin-bottom: 6px; }
+.site .tag.live { color: #8A5320; background: #FBF0E2; }
+.site .tag.meetup { color: var(--accent); background: #F7EDE3; }
+
+.site button.primary, .site a.primary { display: block; width: 100%; box-sizing: border-box; text-align: center; text-decoration: none; background: var(--accent); color: #fff; border: 0; border-radius: 26px; padding: 15px 0; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.site button.primary:disabled { opacity: .45; cursor: default; }
+.site button.ghost, .site a.ghost { display: block; width: 100%; box-sizing: border-box; text-align: center; text-decoration: none; background: #fff; color: #6B6459; border: 1px solid #DDD5C6; border-radius: 26px; padding: 13px 0; font: inherit; font-size: 14.5px; margin-top: 10px; cursor: pointer; }
+.site button.plain { background: none; border: 0; color: var(--accent); font: inherit; font-size: 14px; padding: 0; cursor: pointer; text-decoration: underline; }
+.site .whatsapp { border-color: #CFE4DC; color: #0B6B57; font-weight: 600; }
+.site .orline { text-align: center; font-size: 12px; letter-spacing: .08em; color: #B0A794; margin: 18px 0 12px; }
+
+.site label { display: block; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--warm-muted); margin-bottom: 6px; }
+.site input { width: 100%; box-sizing: border-box; font: inherit; font-size: 17px; padding: 12px 14px; border: 1px solid #DDD5C6; border-radius: 10px; background: #fff; color: var(--warm-ink); }
+.site .field { margin-bottom: 16px; }
+.site .problem { color: #8E3120; }
+.site .ok { color: var(--ok); }
+
+/* The booking sheet: a short sheet, not a new page */
+.site .scrim { position: fixed; inset: 0; background: rgba(35,31,25,.34); display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
+.site .sheet { background: var(--warm-bg); width: 100%; max-width: 520px; border-radius: 18px 18px 0 0; padding: 20px 22px 28px; max-height: 92vh; overflow-y: auto; }
+.site .grab { width: 34px; height: 4px; border-radius: 3px; background: #E2DBCE; margin: 0 auto 18px; }
+.site .sheet h2 { margin-bottom: 2px; }
+.site .held { font-size: 13px; color: var(--warm-muted); text-align: center; margin: 12px 0 0; }
+
+/* Confirmed */
+.site .tick { width: 54px; height: 54px; border-radius: 30px; background: #E4EFE8; color: var(--ok); display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 0 18px; }
+.site .card { background: #fff; border: 1px solid #E4DBC9; border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+.site .card dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; font-size: 15px; }
+.site .card dt { color: var(--warm-muted); }
+.site .card dd { margin: 0; }
+.site .credit { background: #F7EDE3; border: 1px solid #E8D7C3; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
+
+/* The session: warm, quiet, almost empty. Never a countdown. */
+.site .session { max-width: 440px; padding-top: 56px; }
+.site .session h1 { font-size: 26px; line-height: 1.25; margin-bottom: 10px; }
+.site .session .eyebrow { margin-bottom: 18px; }
+.site .session .caption { font-size: 13px; margin: 8px 0 0; }
+.site .session .foot { font-size: 13px; margin-top: 40px; }
+.site .session .held { margin-top: 14px; }
+
+.site .preview { margin: 26px 0 22px; }
+.site .selfview { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #E6E0D3; border-radius: 14px; transform: scaleX(-1); }
+
+.site .checks { list-style: none; margin: 0 0 26px; padding: 0; }
+.site .checks li { padding: 7px 0 7px 28px; position: relative; font-size: 15px; color: var(--warm-ink); }
+.site .checks li::before { position: absolute; left: 0; top: 7px; }
+.site .checks li.good::before { content: '✓'; color: var(--ok); }
+.site .checks li.checking::before { content: '·'; color: var(--warm-muted); }
+.site .checks li.bad::before { content: '!'; color: #8E3120; }
+.site .checks li.checking, .site .checks li.bad { color: var(--warm-muted); }
+
+/* The waiting room is a place she has entered, not a notice she is reading. Built for her phone
+   first: her own face large at the top, then the one honest sentence, then the way to his team.
+   Nothing sits beside anything else, so there is no narrow column to break. No countdown anywhere. */
+.site .waiting { max-width: 440px; padding-top: 34px; }
+.site .waiting .seat { margin: 0 0 20px; }
+.site .waiting .seat .selfview { aspect-ratio: 4 / 3; border-radius: 16px; }
+.site .waiting .seat .caption { text-align: center; margin-top: 10px; }
+/* Camera refused or still starting: a warm panel that says what is true, never an empty box. */
+.site .waiting .selfview.off {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  background: #EAE4D7; border: 1px solid #DED5C3; transform: none; padding: 0 26px; box-sizing: border-box;
+}
+.site .waiting .selfview.off p { margin: 0; color: var(--warm-muted); font-size: 15px; line-height: 1.5; }
+.site .waiting h1 { font-size: 23px; line-height: 1.3; margin: 0 0 8px; }
+.site .waiting .word { margin-bottom: 24px; }
+.site .waiting .word p { margin: 0; color: var(--warm-muted); }
+
+.site .channel { background: #fff; border: 1px solid #E4DBC9; border-radius: 12px; padding: 16px 18px; }
+.site .channel .eyebrow { margin-bottom: 8px; }
+.site .channel > p.muted { margin: 0; font-size: 14.5px; }
+.site .said { list-style: none; margin: 0; padding: 0; max-height: 210px; overflow-y: auto; }
+.site .said li { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-top: 1px solid #F0E9DB; }
+.site .said li:first-child { border-top: 0; padding-top: 0; }
+.site .said .who { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--warm-muted); }
+.site .said li.mine .who { color: var(--accent); }
+.site .said .text { font-size: 15.5px; overflow-wrap: anywhere; }
+.site .channel .say { display: flex; gap: 8px; margin-top: 14px; align-items: stretch; }
+/* .ghost is a full-width stacked button everywhere else on the site; beside an input it has to
+   stop being one, or it takes the whole row and leaves her nothing to type in. */
+.site .channel .say input { flex: 1 1 auto; min-width: 0; width: auto; font-size: 16px; padding: 10px 12px; }
+.site .channel .say button.ghost { flex: 0 0 auto; display: inline-block; width: auto; margin: 0; padding: 0 20px; border-radius: 10px; }
+.site .channel .problem { margin: 10px 0 0; font-size: 14px; }
+.site .choices { margin-top: 30px; }
+
+/* The room fills the screen; the SDK draws everything inside it. */
+.site .room { position: fixed; inset: 0; background: #1A1712; display: flex; flex-direction: column; }
+.site .room > *:first-child { flex: 1; min-height: 0; }
+.site .roomnote { flex: none; margin: 0; padding: 9px 0; text-align: center; font-size: 12.5px; color: #C9C0AF; background: #231F19; }
+
+/* When her browser cannot reach the camera at all (an in-app browser on iOS), the link itself is
+   the fix — so it is shown, selectable, and copyable rather than described. */
+.site .linkbox { background: #fff; border: 1px solid #E4DBC9; border-radius: 12px; padding: 14px 16px; margin: 22px 0 0; }
+.site .linkbox code { display: block; font-size: 13px; line-height: 1.5; color: var(--warm-muted); overflow-wrap: anywhere; margin-bottom: 12px; }
+.site .linkbox button { margin-top: 0; }

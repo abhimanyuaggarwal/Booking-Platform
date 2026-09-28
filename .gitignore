@@ -1,0 +1,7 @@
+node_modules/
+.env
+data/
+dist/
+.DS_Store
+deploy/.env
+deploy/backups/

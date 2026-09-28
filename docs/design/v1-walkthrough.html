@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expert Sessions — v1 walkthrough</title>
+<style>
+  :root{
+    --paper:#E9EDEF; --panel:#FFFFFF; --ink:#16242C; --muted:#5A6B74;
+    --line:#C9D3D8; --signal:#0F6E6A; --signal-soft:#DCEAE8;
+    --warm:#B3622F; --warm-soft:#FBEFE5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:28px 22px 40px; line-height:1.5;
+  }
+  .wrap{max-width:1120px;margin:0 auto}
+
+  header{border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:18px}
+  h1{font-family:"Iowan Old Style",Palatino,Georgia,serif;font-size:27px;font-weight:600;letter-spacing:-.01em}
+  header p{color:var(--muted);font-size:14px;margin-top:5px}
+
+  nav{margin-bottom:22px;font-size:0}
+  nav button{
+    font:inherit;font-size:13.5px;cursor:pointer;margin:0 6px 6px 0;
+    background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:8px 14px;border-radius:2px;
+  }
+  nav button:hover{border-color:var(--signal);color:var(--signal)}
+  nav button[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+  nav button:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  .stage{font-size:0}
+  .stage>.col-a{display:inline-block;vertical-align:top;width:372px;font-size:14px}
+  .stage>.col-b{display:inline-block;vertical-align:top;width:calc(100% - 412px);margin-left:36px;font-size:14px}
+
+  .device{background:var(--panel);border:1px solid var(--line);padding:12px;border-radius:3px}
+  .stage.wide>.col-a{width:58%}
+  .stage.wide>.col-b{width:39%;margin-left:3%}
+  .stage.wide .scope>div{width:100%;border-right:0}
+  .stage.wide .scope>div:first-child{border-bottom:1px solid var(--line)}
+  .screen{width:100%;height:604px;overflow:hidden;border-radius:12px;position:relative}
+  .device.wide .screen{height:auto;border-radius:4px}
+  .devlabel{font-size:12px;color:var(--muted);margin-bottom:9px;letter-spacing:.02em}
+
+  .surface-title{font-family:"Iowan Old Style",Palatino,Georgia,serif;font-size:21px;font-weight:600;margin-bottom:6px}
+  .surface-sub{color:var(--muted);font-size:14px;margin-bottom:22px;max-width:60ch}
+
+  ol.rail{list-style:none;border-left:2px solid var(--line);margin-left:9px}
+  ol.rail li{position:relative;padding:0 0 13px 22px;cursor:pointer}
+  ol.rail li .num{
+    position:absolute;left:-11px;top:1px;width:20px;height:20px;border-radius:11px;
+    background:var(--paper);border:2px solid var(--line);color:var(--muted);
+    font-size:11px;line-height:17px;text-align:center;font-variant-numeric:tabular-nums;
+  }
+  ol.rail li .step{display:block;font-size:14.5px;color:var(--muted)}
+  ol.rail li .why{display:block;font-size:13.5px;color:var(--muted);max-width:66ch;opacity:0;height:0;overflow:hidden;transition:opacity .18s}
+  ol.rail li[aria-current="true"] .num{background:var(--signal);border-color:var(--signal);color:#fff}
+  ol.rail li[aria-current="true"] .step{color:var(--ink);font-weight:600}
+  ol.rail li[aria-current="true"] .why{opacity:1;height:auto;margin-top:5px;padding-left:1px;border-left:0}
+  ol.rail li:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+
+  .controls{margin-top:20px}
+  .controls button{
+    font:inherit;font-size:13.5px;cursor:pointer;background:var(--panel);margin-right:8px;
+    border:1px solid var(--line);color:var(--ink);padding:8px 15px;border-radius:2px;
+  }
+  .controls button:hover:not(:disabled){border-color:var(--signal);color:var(--signal)}
+  .controls button:disabled{opacity:.4;cursor:default}
+  .controls span{font-size:12.5px;color:var(--muted);margin-left:4px}
+
+  .scope{margin-top:26px;border:1px solid var(--line);font-size:0}
+  .scope>div{display:inline-block;vertical-align:top;width:50%;font-size:13px}
+  .scope div{padding:14px 16px}
+  .scope div:first-child{background:var(--signal-soft);border-right:1px solid var(--line)}
+  .scope h4{font-size:12.5px;font-weight:700;margin-bottom:8px;color:var(--ink)}
+  .scope ul{list-style:none;font-size:13px;color:var(--muted)}
+  .scope li{padding:3px 0 3px 13px;position:relative}
+  .scope li::before{content:"–";position:absolute;left:0}
+
+  @media (max-width:820px){ .stage>.col-a,.stage>.col-b{width:100%;margin-left:0} .stage>.col-b{margin-top:24px} .scope>div{width:100%} .scope>div:first-child{border-right:0;border-bottom:1px solid var(--line)} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+
+  
+  /* ---------- product screens ---------- */
+  .s{width:100%;height:100%;font-size:12px}
+
+  /* WhatsApp */
+  .wa{background:#ECE5DD;height:100%}
+  .wa-h{background:#075E54;padding:11px 13px;color:#fff}
+  .wa-h b{font-size:13px} .wa-h i{display:block;font-style:normal;font-size:10px;color:#a8d5cd;margin-top:2px}
+  .wa-b{padding:11px}
+  .inb,.outb{border-radius:9px;padding:9px 11px;font-size:12px;margin-bottom:8px;line-height:1.45}
+  .inb{background:#fff;max-width:255px}
+  .outb{background:#DCF8C6;max-width:150px;margin-left:105px}
+  .btnr{background:#fff;border-radius:9px;max-width:255px;margin-bottom:8px;overflow:hidden}
+  .btnr span{display:block;text-align:center;color:#0a7cff;font-weight:700;padding:8px 0;border-top:1px solid #eee}
+  .btnr span:first-child{border-top:0}
+  .payc{background:#fff;border-radius:9px;padding:11px;max-width:255px;margin-bottom:8px}
+  .payc em{font-style:normal;font-size:10.5px;color:#8a8378}
+  .payc b{display:block;font-size:19px;margin:3px 0 8px}
+  .payc u{display:block;text-decoration:none;text-align:center;background:#128C7E;color:#fff;font-weight:700;border-radius:7px;padding:8px 0}
+  .qr{background:#fff;height:100%;padding:26px 22px;text-align:center}
+  .qr h5{font-size:15px;margin-top:20px}
+  .qr p{font-size:12px;color:#7d7668;margin-top:7px}
+  /* YouTube mobile */
+  .yt{background:#fff;height:100%;color:#0f0f0f;font-size:11px}
+  .yt .player{position:relative;width:100%;background:#000;overflow:hidden}
+  .yt .player img.frame{display:block;width:100%}
+  .yt .livebadge{position:absolute;top:8px;left:8px;background:#cc0000;color:#fff;font-size:8px;font-weight:700;padding:2px 5px;border-radius:2px;letter-spacing:.06em}
+  .yt .pbar{position:absolute;left:0;right:0;bottom:0;height:2.5px;background:rgba(255,255,255,.28)}
+  .yt .pbar i{position:absolute;left:0;top:0;bottom:0;width:88%;background:#ff0000;font-style:normal}
+  .yt .pbar em{position:absolute;left:88%;top:-2.5px;width:8px;height:8px;border-radius:5px;background:#ff0000;font-style:normal}
+  /* burned-in L band */
+  .yt .lband{position:absolute;right:0;top:0;bottom:0;width:62px;background:rgba(16,12,9,.80);padding:7px 4px 0;text-align:center}
+  .yt .lband img{width:46px;height:46px;background:#fff;padding:3px;display:block;margin:0 auto}
+  .yt .lband em{font-style:normal;display:block;font-size:6px;color:#ffe6c2;margin-top:5px;line-height:1.4;letter-spacing:.03em;font-weight:700}
+  .yt .lband span{display:block;font-size:5.5px;color:#c9bda9;margin-top:4px;line-height:1.35}
+  .yt .bband{position:absolute;left:0;right:62px;bottom:2.5px;background:rgba(16,12,9,.80);color:#fff;font-size:8px;padding:5px 8px;line-height:1.35}
+  .yt .bband b{color:#ffc477;font-size:8.5px}
+  /* meta */
+  .yt .title{padding:11px 12px 0;font-size:13px;font-weight:600;line-height:1.35}
+  .yt .sub{padding:5px 12px 10px;font-size:10px;color:#606060}
+  .yt .chan{position:relative;padding:0 12px 11px;border-bottom:1px solid #eee;font-size:0}
+  .yt .chan img{width:32px;height:32px;border-radius:18px;display:inline-block;vertical-align:middle}
+  .yt .chan .who{display:inline-block;vertical-align:middle;margin-left:9px;font-size:11px}
+  .yt .chan .who b{display:block;font-size:11.5px;font-weight:600}
+  .yt .chan .who i{font-style:normal;display:block;font-size:9.5px;color:#606060;margin-top:2px}
+  .yt .chan .sb{position:absolute;right:12px;top:4px;background:#0f0f0f;color:#fff;font-size:9.5px;font-weight:600;border-radius:16px;padding:6px 12px}
+  .yt .chips{padding:10px 12px;border-bottom:1px solid #eee;font-size:0;white-space:nowrap;overflow:hidden}
+  .yt .chips span{display:inline-block;background:#f2f2f2;border-radius:15px;font-size:9.5px;padding:6px 11px;margin-right:6px;color:#0f0f0f}
+  .yt .desc{margin:10px 12px;background:#f2f2f2;border-radius:10px;padding:10px 11px;font-size:10px;color:#0f0f0f;line-height:1.55}
+  .yt .desc a{color:#065fd4;text-decoration:none;font-weight:600}
+  .yt .desc s{text-decoration:none;color:#606060}
+  .yt .chat{margin:0 12px 10px;border:1px solid #eee;border-radius:10px;padding:9px 11px;font-size:10px;color:#0f0f0f}
+  .yt .chat i{font-style:normal;float:right;color:#606060}
+  .yt .cmt{margin:0 12px;font-size:0}
+  .yt .cmt img{width:22px;height:22px;border-radius:12px;display:inline-block;vertical-align:top}
+  .yt .cmt .c{display:inline-block;vertical-align:top;width:calc(100% - 30px);margin-left:8px;font-size:9.5px;line-height:1.5}
+  .yt .cmt .c em{font-style:normal;color:#606060;display:block;margin-bottom:2px}
+  .yt .cmt .c em b{color:#0f0f0f}
+  /* guru page */
+  .gp{background:#faf7f0;height:100%}
+  .gp-h{background:#2a2620;padding:16px 15px;color:#fff}
+  .gp-h .av{width:40px;height:40px;border-radius:24px;background:#b3622f;display:inline-block;vertical-align:middle}
+  .gp-h .tx{display:inline-block;vertical-align:middle;margin-left:10px}
+  .gp-h b{font-size:14px} .gp-h i{font-style:normal;display:block;font-size:10.5px;color:#a39a89;margin-top:3px}
+  .gp-b{padding:15px}
+  .gp-b .about{font-size:12px;color:#6d6659;line-height:1.55}
+  .gp-b .dak{font-size:13px;margin-top:12px}
+  .cta{display:block;text-align:center;background:#128C7E;color:#fff;font-weight:700;border-radius:20px;padding:11px 0;margin-top:14px;font-size:13px}
+  .lnk{display:block;text-align:center;color:#5f5949;border:1px solid #ddd6c8;border-radius:20px;padding:10px 0;margin-top:9px;font-size:12.5px}
+  .otp{margin-top:16px}
+  .otp .fld{background:#fff;border:1px solid #ddd6c8;border-radius:8px;padding:11px;font-size:13px;color:#2a2620}
+  .otp .digits{margin-top:10px}
+  .otp .digits i{display:inline-block;width:38px;height:44px;border:1px solid #ddd6c8;border-radius:8px;background:#fff;margin-right:7px;text-align:center;line-height:44px;font-style:normal;font-size:17px;font-weight:700}
+  .sec{font-size:10.5px;color:#a39a89;letter-spacing:.08em;font-weight:700;margin:6px 0 9px}
+  .bk{background:#fff;border:1px solid #e8e0cf;border-radius:12px;padding:12px}
+  .bk b{font-size:13.5px;display:block} .bk i{font-style:normal;font-size:11.5px;color:#7d7668;display:block;margin-top:4px}
+  .bk .row{margin-top:11px}
+  .bk .row u{text-decoration:none;display:inline-block;background:#b3622f;color:#fff;font-weight:700;font-size:11.5px;border-radius:16px;padding:7px 15px}
+  .bk .row s{text-decoration:none;display:inline-block;border:1px solid #ddd6c8;color:#5f5949;font-size:11.5px;border-radius:16px;padding:7px 13px;margin-left:6px}
+  .past{background:#f4f1ea;border:1px solid #ebe5d8;border-radius:11px;padding:10px 12px;margin-top:8px}
+  .past b{font-size:12px;color:#5f5949;display:block} .past i{font-style:normal;font-size:10.5px;color:#8a8378}
+
+  /* on-site booking */
+  .gp .avail{margin-top:16px}
+  .gp .avail p.h{font-size:10.5px;color:#A39A89;letter-spacing:.07em;font-weight:700;margin-bottom:9px}
+  .gp .slot{display:block;background:#fff;border:1px solid #E4DBC9;border-radius:12px;padding:11px 13px;margin-bottom:8px;font-size:0}
+  .gp .slot b{display:inline-block;font-size:13px;font-weight:600;color:#231F19}
+  .gp .slot i{font-style:normal;display:inline-block;font-size:11px;color:#8A8378;margin-left:7px}
+  .gp .slot u{text-decoration:none;float:right;font-size:11px;font-weight:700;color:#9C5A2C}
+  .gp .more{display:block;text-align:center;font-size:11.5px;color:#8A8378;padding:9px 0}
+  .gp .orline{text-align:center;font-size:10px;color:#B0A794;margin:13px 0 11px;letter-spacing:.08em}
+  .gp .wapp{display:block;text-align:center;background:#fff;border:1px solid #CFE4DC;color:#0B6B57;font-size:12.5px;font-weight:600;border-radius:22px;padding:11px 0}
+  .sheetwrap{position:relative;height:100%;background:#EFEAE0;overflow:hidden}
+  .sheetwrap .behind{position:absolute;left:0;right:0;top:0;bottom:0}
+  .sheetwrap .behind .s{height:100%}
+  .sheetwrap .dim{position:absolute;left:0;right:0;top:0;bottom:0;background:rgba(35,31,25,.42)}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:18px 17px 20px}
+  .sheet .grab{width:34px;height:4px;border-radius:3px;background:#E2DBCE;margin:0 auto 14px}
+  .sheet h6{font-size:15px;font-weight:600;color:#231F19}
+  .sheet .when{font-size:12px;color:#7C756A;margin-top:5px}
+  .sheet .fld{margin-top:15px;border:1px solid #DDD5C6;border-radius:10px;padding:11px 12px;font-size:13px;color:#231F19}
+  .sheet .fld em{font-style:normal;display:block;font-size:9.5px;color:#A39A89;margin-bottom:4px;letter-spacing:.05em}
+  .sheet .note{font-size:10.5px;color:#8A8378;margin-top:9px;line-height:1.5}
+  .sheet .pay{display:block;text-align:center;background:#9C5A2C;color:#fff;font-size:13.5px;font-weight:700;border-radius:24px;padding:13px 0;margin-top:14px}
+  .sheet .held{text-align:center;font-size:10px;color:#A39A89;margin-top:10px}
+  .upi{background:#fff;height:100%;padding:0}
+  .upi .top{background:#231F19;color:#fff;padding:15px 16px}
+  .upi .top b{font-size:12.5px;display:block}
+  .upi .top i{font-style:normal;font-size:10.5px;color:#A9A192;display:block;margin-top:4px}
+  .upi .amt{text-align:center;padding:22px 0 6px;font-size:28px;font-weight:600;color:#231F19}
+  .upi .to{text-align:center;font-size:11px;color:#7C756A;padding-bottom:18px;border-bottom:1px solid #F0EBE0}
+  .upi .apps{padding:14px 16px}
+  .upi .apps p{font-size:10px;color:#A39A89;letter-spacing:.06em;font-weight:700;margin-bottom:10px}
+  .upi .app{border:1px solid #E7E0D2;border-radius:11px;padding:11px 12px;margin-bottom:8px;font-size:12.5px;color:#231F19}
+  .upi .app span{display:inline-block;width:24px;height:24px;border-radius:14px;vertical-align:-7px;margin-right:10px}
+  .upi .app i{font-style:normal;float:right;font-size:10.5px;color:#A39A89;margin-top:2px}
+  .done{background:#F4F1EA;height:100%;padding:40px 24px 24px;text-align:center}
+  .done .tick{width:54px;height:54px;border-radius:30px;background:#E4EFE8;color:#2C6B4D;font-size:26px;line-height:54px;margin:0 auto}
+  .done h5{font-family:"Iowan Old Style",Palatino,Georgia,serif;font-size:20px;font-weight:600;margin-top:16px;color:#231F19}
+  .done .det{background:#fff;border:1px solid #E7E0D2;border-radius:12px;padding:13px;margin-top:18px;text-align:left}
+  .done .det div{font-size:11.5px;color:#7C756A;padding:4px 0}
+  .done .det div b{color:#231F19;float:right;font-weight:600}
+  .done .msg{font-size:11.5px;color:#7C756A;margin-top:16px;line-height:1.6}
+  .done .ghost2{display:block;text-decoration:none;color:#6B6459;border:1px solid #DDD5C6;border-radius:22px;padding:11px 0;margin-top:18px;font-size:12.5px}
+  /* guruji calendar */
+  .cal{background:#faf7f0;height:100%;padding:24px 18px}
+  .cal .d{font-size:10.5px;color:#a39a89;letter-spacing:.12em}
+  .cal h5{font-size:21px;margin-top:7px}
+  .cal .n{font-size:12px;color:#8a8378;margin-top:5px;margin-bottom:22px}
+  .tl{border-left:2px solid #e8e0cf;margin-left:52px;padding-left:16px;position:relative;padding-bottom:26px}
+  .tl .t{position:absolute;left:-108px;width:84px;text-align:right;font-size:11.5px;color:#a39a89}
+  .tl .dot{position:absolute;left:-6px;top:4px;width:10px;height:10px;border-radius:6px}
+  .tl .k{font-size:10px;font-weight:700;letter-spacing:.09em;color:#a39a89}
+  .tl b{display:block;font-size:15.5px;margin-top:6px}
+  .tl i{font-style:normal;display:block;font-size:12px;color:#7d7668;margin-top:4px;line-height:1.5}
+  .tl u{text-decoration:none;display:block;width:170px;text-align:center;background:#b3622f;color:#fff;font-weight:700;font-size:12.5px;border-radius:20px;padding:9px 0;margin-top:11px}
+  .tl .vn{background:#fff;border:1px solid #e8e0cf;border-radius:20px;padding:7px 12px;font-size:11.5px;color:#5f5949;display:inline-block;margin-top:9px}
+  .cal .rest{font-size:11px;color:#c4bba8;margin-left:52px;padding-left:16px;border-left:2px solid #e8e0cf;padding-bottom:26px}
+
+  /* ---- devotee session: quiet, warm, spacious ---- */
+  .q{background:#F4F1EA;height:100%;padding:40px 26px 26px;text-align:center;color:#231F19}
+  .q .eyebrow{font-size:11px;color:#9A9285;letter-spacing:.14em}
+  .q h5{font-family:"Iowan Old Style",Palatino,Georgia,serif;font-size:22px;font-weight:600;margin-top:12px;line-height:1.3}
+  .q .lede{font-size:12.5px;color:#7C756A;margin-top:10px;line-height:1.6}
+  .q .selfie{width:96px;height:96px;border-radius:56px;background:#E4DDD0;margin:34px auto 0;position:relative}
+  .q .selfie:after{content:"";position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:20px;background:#CFC5B4}
+  .q .selfnote{font-size:11px;color:#9A9285;margin-top:12px}
+  .q .checks{margin-top:30px;text-align:left;display:inline-block}
+  .q .checks div{font-size:12px;color:#7C756A;padding:6px 0}
+  .q .checks em{font-style:normal;color:#3E7D5F;margin-right:9px;font-weight:700}
+  .q .statusline{font-size:13.5px;color:#231F19;margin-top:34px;line-height:1.55}
+  .q .statusline b{font-weight:600}
+  .q .hair{height:1px;background:#E2DBCE;margin:30px 44px}
+  .q .privacy{font-size:11.5px;color:#9A9285;line-height:1.65}
+  .q .primary{display:block;text-decoration:none;background:#9C5A2C;color:#fff;font-size:13.5px;font-weight:600;border-radius:26px;padding:13px 0;margin-top:26px}
+  .q .ghost{display:block;text-decoration:none;color:#6B6459;font-size:13px;border:1px solid #DDD5C6;border-radius:26px;padding:12px 0;margin-top:10px}
+  .q .fromteam{background:#fff;border:1px solid #E7E0D2;border-radius:12px;padding:12px 14px;margin-top:26px;text-align:left}
+  .q .fromteam em{font-style:normal;font-size:10.5px;color:#9A9285;letter-spacing:.06em;display:block}
+  .q .fromteam span{font-size:12.5px;color:#231F19;display:block;margin-top:5px;line-height:1.5}
+
+  /* the room */
+  .rm{background:#17150F;height:100%;position:relative;color:#F2ECE0}
+  .rm .stage{height:100%;background:#241F18}
+  .rm .face{width:112px;height:112px;border-radius:64px;background:#3C352B;position:absolute;left:50%;top:44%;margin:-56px 0 0 -56px}
+  .rm .name{position:absolute;left:18px;top:18px;font-size:12.5px;color:#EBE3D5;letter-spacing:.02em}
+  .rm .self{position:absolute;right:16px;top:16px;width:72px;height:96px;border-radius:10px;background:#332C23;border:1px solid #453D31}
+  .rm .quiet{position:absolute;left:0;right:0;bottom:96px;text-align:center;font-size:11px;color:#8B8272}
+  .rm .ctrl{position:absolute;left:0;right:0;bottom:26px;text-align:center}
+  .rm .ctrl s,.rm .ctrl u{text-decoration:none;display:inline-block;width:46px;height:46px;border-radius:26px;margin:0 6px;background:#332C23;border:1px solid #453D31}
+  .rm .ctrl u{background:#8E3120;border-color:#8E3120}
+
+  /* ---- console ---- */
+  .cs{background:#EFEDE7;font-size:0;min-height:430px}
+  .cs .nav{display:inline-block;vertical-align:top;width:142px;background:#221E18;padding:14px 9px;color:#A9A192;font-size:11px;min-height:430px}
+  .cs .nav b{color:#fff;font-size:11.5px;display:block;padding:3px 8px 15px}
+  .cs .nav div{padding:7px 8px;border-radius:6px;font-size:11px;margin-bottom:1px}
+  .cs .nav div.on{background:#3A322A;color:#fff;font-weight:700}
+  .cs .nav div span{float:right;background:#8E3120;color:#fff;border-radius:8px;font-size:9px;padding:0 5px;font-weight:700}
+  .cs .main{display:inline-block;vertical-align:top;width:calc(100% - 146px);padding:14px 16px;font-size:11px}
+  .cs .bar{margin-bottom:12px}
+  .cs .bar b{font-size:14.5px} .cs .bar i{font-style:normal;font-size:10.5px;color:#8A8378;margin-left:8px}
+  .cs .bar u{text-decoration:none;float:right;background:#9C5A2C;color:#fff;font-weight:700;font-size:10.5px;border-radius:6px;padding:6px 11px}
+  .cs .alert{background:#FBF0E2;border:1px solid #EBD9C0;border-radius:8px;padding:8px 11px;font-size:10.5px;color:#8A5320;margin-bottom:11px}
+  .cs .alert s{text-decoration:none;float:right;font-weight:700;color:#8A5320}
+  .cs .kpis{margin-bottom:12px;font-size:0}
+  .cs .kpi{display:inline-block;vertical-align:top;width:23.5%;margin-right:2%;background:#fff;border:1px solid #E4DFD4;border-radius:9px;padding:9px 11px;font-size:11px}
+  .cs .kpi:last-child{margin-right:0}
+  .cs .kpi em{font-style:normal;font-size:9px;color:#8A8378;letter-spacing:.05em;display:block}
+  .cs .kpi b{font-size:16px;display:block;margin-top:3px}
+  .cs .cols{font-size:0}
+  .cs .p{display:inline-block;vertical-align:top;background:#fff;border:1px solid #E4DFD4;border-radius:9px;padding:11px 13px;font-size:11px;width:100%;margin-bottom:10px}
+  .cs .cols.split .p{width:57%;margin-right:3%}
+  .cs .cols.split .p+.p{width:40%;margin-right:0}
+  .cs .p h6{font-size:11.5px;margin-bottom:9px}
+  .cs .p h6 i{font-style:normal;float:right;font-size:10px;color:#8A8378;font-weight:400}
+  .cs table{width:100%;border-collapse:collapse}
+  .cs th{text-align:left;font-size:9px;color:#8A8378;padding:4px;border-bottom:1px solid #EFE9DC;letter-spacing:.05em}
+  .cs td{font-size:10.5px;padding:7px 4px;border-bottom:1px solid #F5F1E7}
+  .cs .tag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:7px;white-space:nowrap}
+  .cs .g{background:#E4EFE8;color:#2C6B4D} .cs .o{background:#FBEEDE;color:#9C5A2C}
+  .cs .n{background:#EDEBE6;color:#6D6659} .cs .r{background:#F8E4E0;color:#8E3120}
+  /* waiting panel */
+  .wt .row{border-bottom:1px solid #F5F1E7;padding:9px 0}
+  .wt .row b{font-size:11.5px;display:block}
+  .wt .row i{font-style:normal;font-size:10px;color:#8A8378;display:block;margin-top:3px}
+  .wt .row .mins{float:right;font-size:10px;font-weight:700;color:#9C5A2C}
+  .wt .row .up{float:right;font-size:10px;color:#8A8378}
+  .chips{margin-top:10px}
+  .chips u{text-decoration:none;display:inline-block;background:#9C5A2C;color:#fff;font-size:10px;font-weight:700;border-radius:14px;padding:6px 11px;margin:0 5px 5px 0}
+  .chips s{text-decoration:none;display:inline-block;border:1px solid #DDD5C6;color:#5F5949;font-size:10px;border-radius:14px;padding:6px 10px;margin:0 5px 5px 0}
+  .sent{font-size:9.5px;color:#2C6B4D;margin-top:6px}
+  .sent em{font-style:normal;color:#8A8378;display:block;margin-top:3px}
+  .hint{font-size:9.5px;color:#8A8378;margin-top:9px;line-height:1.5}
+  /* week grid */
+  .wk{font-size:0;margin-bottom:4px}
+  .wk div{display:inline-block;vertical-align:top;width:13.4%;margin-right:1%;background:#fff;border:1px solid #E4DFD4;border-radius:8px;padding:8px 7px;font-size:10px;text-align:center}
+  .wk div:last-child{margin-right:0}
+  .wk div em{font-style:normal;display:block;color:#8A8378;font-size:9px}
+  .wk div b{display:block;font-size:13px;margin-top:4px}
+  .wk div i{font-style:normal;display:block;font-size:9px;color:#8A8378;margin-top:2px}
+  .wk div.closed{background:#F3F1EC;color:#A39A89}
+  .wk div.full b{color:#2C6B4D}
+
+  /* calendar grid */
+  .gcal{background:#fff;border:1px solid #E4DFD4;border-radius:9px;padding:11px 12px}
+  .gcal table{width:100%;border-collapse:collapse;table-layout:fixed}
+  .gcal th{font-size:8.5px;color:#8A8378;padding:4px 3px 7px;border-bottom:1px solid #EFE9DC;text-align:center;letter-spacing:.04em}
+  .gcal th b{display:block;font-size:11.5px;color:#231F19;font-weight:600;margin-top:2px}
+  .gcal th i{font-style:normal;display:block;font-size:8px;color:#A39A89;margin-top:2px}
+  .gcal th.cl b,.gcal th.cl i{color:#B7AF9F}
+  .gcal td{border-bottom:1px solid #F5F1E7;border-right:1px solid #F5F1E7;height:25px;padding:1px 2px;vertical-align:top}
+  .gcal td.tcol{border-right:1px solid #EFE9DC;font-size:8px;color:#A39A89;text-align:right;padding:3px 6px 0 0;width:42px}
+  .gcal td.shut{background:#F6F4EF}
+  .gcal td.none{background:#FBFAF7}
+  .gcal .ev{border-radius:3px;padding:2px 4px;font-size:8px;line-height:1.3;overflow:hidden}
+  .gcal .ev b{display:block;font-weight:700;font-size:8.5px}
+  .gcal .ev.paid{background:#F7EDE3;border-left:3px solid #9C5A2C;color:#5A3A22}
+  .gcal .ev.done{background:#EEECE7;border-left:3px solid #A9A192;color:#6D6659}
+  .gcal .ev.hold{background:#FBF0E2;border-left:3px solid #D9A05B;color:#8A5320}
+  .gcal .ev.live{background:#E7F0EA;border-left:3px solid #2C6B4D;color:#215540}
+  .gcal .open{border:1px dashed #DFD7C8;color:#B0A794;border-radius:3px;padding:2px 4px;font-size:8px;text-align:center}
+  .gcal tr.divider td{height:16px;border-right:0;border-bottom:1px solid #EFE9DC;background:#FBFAF7;font-size:8px;color:#B0A794;text-align:center;letter-spacing:.06em}
+  .legend{margin-top:10px;font-size:8.5px;color:#8A8378}
+  .legend i{font-style:normal;display:inline-block;width:8px;height:8px;border-radius:2px;margin:0 4px 0 14px;vertical-align:-1px}
+  .legend i:first-child{margin-left:0}
+  .modal{background:#fff;border:1px solid #DDD5C6;border-radius:10px;padding:14px;box-shadow:0 10px 26px rgba(0,0,0,.08)}
+  .modal b{font-size:12.5px;display:block;margin-bottom:8px}
+  .modal p{font-size:10.5px;color:#6D6659;line-height:1.55}
+  .modal .ppl{margin-top:10px}
+  .modal .ppl div{font-size:10.5px;padding:6px 0;border-bottom:1px solid #F5F1E7}
+  .modal .act{margin-top:11px}
+  .modal .act u{text-decoration:none;display:inline-block;background:#9C5A2C;color:#fff;font-weight:700;font-size:10px;border-radius:6px;padding:6px 11px}
+  .modal .act s{text-decoration:none;display:inline-block;border:1px solid #DDD5C6;color:#5F5949;font-size:10px;border-radius:6px;padding:6px 11px;margin-left:6px}
+</style></head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Expert Sessions — how v1 works</h1>
+    <p>Five surfaces, walked through one step at a time. Use the arrow keys or the buttons.</p>
+  </header>
+
+  <nav id="tabs" role="tablist" aria-label="Surfaces"></nav>
+
+  <div class="stage" id="stage">
+    <div class="col-a">
+      <p class="devlabel" id="devlabel"></p>
+      <div class="device" id="device"><div class="screen" id="screen"></div></div>
+    </div>
+    <div class="col-b">
+      <h2 class="surface-title" id="stitle"></h2>
+      <p class="surface-sub" id="ssub"></p>
+      <ol class="rail" id="rail"></ol>
+      <div class="controls">
+        <button id="prev">Previous</button>
+        <button id="next">Next step</button>
+        <span id="count"></span>
+      </div>
+      <div class="scope">
+        <div><h4>Built in v1</h4><ul id="inv1"></ul></div>
+        <div><h4>Left for later</h4><ul id="notv1"></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- screen builders (ES5, string concat) ---------- */
+var waHead = '<div class="wa-h"><b>Guruji \u00b7 Bookings</b><i>online</i></div>';
+
+
+var IMG_FRAME = 'data:image/jpeg;base64,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NUINOBpWAsB6eHquGpQ1TYdyyHpd9Vw1G+lYdyxvpC9Qb6QtTsK5KXqMtTS1NLUWAUmmE0E0wmqEBNNoJopgFNpSaShCJEnkjxtcgDt2qwmoyrgMFaqdFDSZanJbM011JCPmRgfbmpVvYGx8+CfUVj0VPIjVYiaN5ZUc4V1J9jTq5+nLI6Z2swz6Gl7MtYnujeorFW6mU5EjfjzTxfTg/eB/ClyMpYmPVGvRWX/aUv8AdSnLqTDO5AfocUuRle3gaVFZ/wDaf/TL9aVdTGeYyB7GjlY/bQ7l+iqf9oxej/lR/aMXo/5UuVle1h3LlFU/7Ri9H/Kj+0YvR/yo5WHtYdy5RVP+0YvR/wAqP7Ri9H/KjlYe1h3LlFUW1NQflQke5xTf7T/6ZfrT5WT7aHc0KKzm1NiPljAPuc0z+0pf7qUcjF7eBqUVkNfzE5DAewFMa7mfGZDx6cU+RkvExNqmtIifeYDPqaxGldxhnYj3NMp+zJeJ7I2WvIVJBkGfbmoW1KMD5VYn3rMop8iIeIm9i6+pSHO1VA/Oq73Msn3nPpgcVFRVKKRk6knuwp1NpQaGQLTgabQDQMlBp4NQg08GkBMGqQPVcNTg1KwyyHpd9Vg1LvpWC5Y30heoN9BalYdyUvTC9RlqQtTsIUtTCaQmmk1VhATTSaCaSmAUhpScU2gQUUUUxhRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQA6im0uaQhwNKDTaKBkgNLuqPNGaLAS7qN1R596M+9ICTdSbqZn3ozQA4mkJpuaTNOwDiabmiigApCaCaSgQUUUUxhRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAoNLTaUGkIXNOBptFAx4NKDUeaXNFgJN1LuqPNGfelYCTdRuqPPvRn3oAfupCaZmjNOwCk0hNJRQAUUhNJQIKKKKYwooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigBc0ZpKKLCHUU2jNIB1FJmjNAC0UmaM0ALRTaKLALmkoopgFFFFAwooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigApc0lFAh1FNopWAdRSZozQAtFJmjNAC0U3NFAC5ozSUUwCiiigYUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQB//2Q==';
+var IMG_QR = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQQAAAEECAIAAABBat1dAAAFFElEQVR4nO3dwW7jNhRA0aSYdRcF+v8fWKCL/oC7uZhVFIDB41DKnLP2yJrYFwRIk3p/vV5vwNvbH6dvAO5CDBAxQMQAEQNEDBAxQMQAEQNEDBAxQMQAEQNEDBAxQH6s/oO///pzx33M+uff/379m67+ZVZv8ur6S9eZuslv+TUwMkDEABEDRAwQMUDEABEDZHmd4cojpvZHZtlH5vu/cDOr11m6n6mP7xFfgytGBogYIGKAiAEiBogYIGKAjK0zXBmZAz41Cz5y87u3ECy9furiq271NbhiZICIASIGiBggYoCIAbJ9avX72T3BNzXLufT7c96MDPCTGCBigIgBIgaIGCBigPxe6wxbf6g88hPrqZvhC4wMEDFAxAARA0QMEDFAxADZvs5wq1nzrVsCHr2esPtmbvWfvWJkgIgBIgaIGCBigIgBIgbI2DrDIw7kudWp7kdev3sx5BFfgytGBogYIGKAiAEiBogYIGKAvL9er9P3cN7S7PjuqffVpYCl6zxic8UpRgaIGCBigIgBIgaIGCBigCyvM9zqV/VHZs0f/dP/U+sJI3+03R+3kQEiBogYIGKAiAEiBogYIGP7GR7xiOURuxdJpt536SJXpm5y9fpH1h+MDBAxQMQAEQNEDBAxQMQA2X5u0tJ+hpGLD1o6emjk4oNGdpLstvV+rDPAF4kBIgaIGCBigIgBsv0n3B869QDWrb+CfsTNXzkyz7v6vo6KgV9EDBAxQMQAEQNEDBAxQMaOpL/y/U6HPzUlP2L3j+e3Lqrs/u4ZGSBigIgBIgaIGCBigIgB8uPIu+5+xO3ULPiRo2JudZrLqSNkPrT7L2NkgIgBIgaIGCBigIgBIgbI2DrD0hzw3dYTRhx56usnr1+afb/VNpUruxc9jAwQMUDEABEDRAwQMUDEABlbZzgy5X/k0QdbD2X65PUjiy2PfojEFc9ngGFigIgBIgaIGCBigIgBsv3cpCNT9VMTzyNT9VNT7yOvP7IP4ZP3HVl/mFo8MTJAxAARA0QMEDFAxAARA2R5nWH3EsGS3ecpbT30acojnudw5C+/ysgAEQNEDBAxQMQAEQNEDJDldYaRieSp/QmPmErfvf6w9ROZ2qRx5GuzysgAEQNEDBAxQMQAEQPk/fV6jVxo6wTi7oPUr3zLB7x+6NQ875Hz9K8YGSBigIgBIgaIGCBigIgBsrzO8Iinx259kOutbmb19UcWMT5x6oj8DxkZIGKAiAEiBogYIGKAiAEytp/hEW51YMnuLQRLb3q382xG/sgefQtfJAaIGCBigIgBIgaIGCBjR9LfytRB6iNveuXI0fZTH9/uk6yObMYwMkDEABEDRAwQMUDEABEDZHmd4crv8yiDK7un8Fdfv/UTudV5R1OMDBAxQMQAEQNEDBAxQMQAGVtnuHJkq8CVrQ+XOLI/4ZPrjNzM7pWcpf/s1u0ob0YG+EkMEDFAxAARA0QMEDFAtq8z3MrWRynv/on/1in/3Ysnq47sVDEyQMQAEQNEDBAxQMQAEQPk91pnOLKfYbdHH2F0q4dOGBkgYoCIASIGiBggYoBsn1q91cTfkZuZOp1lZEp397zwkef2Tn2sRgaIGCBigIgBIgaIGCBigIytM9zqKbRXVm9y6aiY1Tc9NeU/YveRMEfWH4wMEDFAxAARA0QMEDFAxAB5f71ep+8BbsHIABEDRAwQMUDEABEDRAwQMUDEABEDRAwQMUDEABEDRAyQ/wFAXl3CAP8RWAAAAABJRU5ErkJggg==';
+var IMG_AV = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAIAAABt+uBvAAADQElEQVR4nO2cPW4bMRBGJSGlDmAELlKm8BlyhlSqcgYjZeADBCmDFD5AylQ5Tg4gBDqADuBiBHq9y+WQnJlvudx5lQFryZnnj9wfL7R/Pj3sluN8ueZ87P7uaF3JHO/A82UaSR+F9IUQVCclc0BrWbaC1NXMTWGnyUQQwMvcjOqmlAXh1UQLUNSkJmhxNUMUNR3kQ+wasxNQqUqaoDbVBORREiWocTsBSZ31gtZih6iutmaJrUtNoG65FSdopXYCpfWXCVq7HaKoiwJBfdgh8nvJFdSTHSKzoyxB/dkhcvriBfVqh2C707nV6BhGUN/xIdI9pi4UYXYef/6Y+9Wvr98ABZwv17kLyP3cQ3uAnYSXKQBTUUfoh/ZEkZrhIZhADYnvQabxqbCjcixLtOuIoGbtaI2QYNo79DSv1ZupoxFjQXbx0e3KztHIAChBFv1gcvRGkFF87DoxGnnowTxB1n9n6/H9XozhVZDF+sJsExazBBueIIaboC3ctZdCTgwThLycs5vLlxiDC2I47HwDmud8uXqCGFwQgwticEEMB9+h0xgmCPmA3W4uX2IMLojBVhBmlZnO4gliMBdkHSLr8REJsusBsIRBS8yiE8wGh9uDdPuBXWRBN2mtrpCXoOizmLw38Bsw+6dPH5DzEcNHyMf3H9Mfvv7/F37Gvx+0fz49gO9Xn/78lRz+/fRZp448cG+YCb1Mx8GYQgjSUhMd1lqTrSAjNdMp7DQZnsUAdgBz3V4D1t2nkWpG6Ebp/u6on6AF7VjMrixoWTsWNWgKasEOoVjJTZD8SwrasUPI6yEnOglqzQ6hUtWroOoQtWmHqK4t2PBn0gxSQS3HhxBW+EbQgt+l1hRDD6IEtR8fQlLnWJCHaGSgPkFriQ9RXW1E0JZDNO09nqBtOop2XbnE1rW+iLqaZwVtLURz/aYStB1HiU6ZJbYFR+ke/V6MgRfUd4jY7rIS1KujnL5yl1h/jjI7KtiDenKU30vZJh3GBb9BoEKouegvXXwWW3uOSuuv+d/8Sh3VlV1/HfT78Uv1sXiqq/ULRQaRoLWESFKnJ4hBKqj9EAkr9AQxKAhqOUTy2nQS1KYjlarUllhrjrTqeQFDF0GNb3ic2gAAAABJRU5ErkJggg==';
+
+var GDAYS = [
+  {d:'MON', n:8},
+  {d:'TUE', n:9},
+  {d:'WED', n:10, today:true},
+  {d:'THU', n:11, closed:'travelling'},
+  {d:'FRI', n:12},
+  {d:'SAT', n:13},
+  {d:'SUN', n:14, closed:'no sittings'}
+];
+var GTIMES = ['10:00','10:30','11:00','11:30','12:00','12:30','4:00','4:30','5:00'];
+var GEVENING = {1:true, 2:true, 4:true};
+var GEV = {
+  '0|10:00':{n:'Meena D',   s:'done', t:'\u20b9500'},
+  '0|10:30':{n:'Gopal S',   s:'done', t:'\u20b9500'},
+  '0|11:00':{n:'Arun P',    s:'done', t:'\u20b9500'},
+  '0|11:30':{n:'Shanti B',  s:'done', t:'\u20b9500'},
+  '0|12:00':{n:'Vikram S',  s:'done', t:'\u20b9500'},
+  '0|12:30':{n:'Rekha N',   s:'done', t:'\u20b9500'},
+  '1|10:00':{n:'Suresh B',  s:'paid', t:'\u20b9500'},
+  '1|10:30':{n:'Priya D',   s:'live', t:'from the live'},
+  '1|11:00':{n:'Mohan L',   s:'paid', t:'3rd visit'},
+  '1|11:30':{n:'Anita R',   s:'paid', t:'\u20b9500'},
+  '1|12:30':{n:'Jaya P',    s:'paid', t:'\u20b9500'},
+  '1|16:00':{n:'Deepa K',   s:'live', t:'from the live'},
+  '1|16:30':{n:'Harish M',  s:'paid', t:'\u20b9500'},
+  '2|10:00':{n:'Sunita M',  s:'done', t:'\u20b9500'},
+  '2|11:00':{n:'Ramesh K',  s:'paid', t:'2nd visit'},
+  '2|11:30':{n:'Neha S',    s:'hold', t:'not paid yet'},
+  '2|12:00':{n:'Kavita J',  s:'paid', t:'\ud83c\udf99 note'},
+  '2|16:30':{n:'Arun P',    s:'paid', t:'\u20b9500'},
+  '4|10:30':{n:'Prakash V', s:'hold', t:'not paid yet'},
+  '4|11:00':{n:'Latika R',  s:'live', t:'from the live'},
+  '4|16:00':{n:'Ravi T',    s:'paid', t:'\u20b9500'},
+  '5|10:00':{n:'Lata M',    s:'live', t:'from the live'},
+  '5|11:00':{n:'Bhavna S',  s:'paid', t:'\u20b9500'}
+};
+function gkey(c, tm){
+  var evening = (tm.charAt(0) === '4' || tm.charAt(0) === '5');
+  var t = evening ? (tm === '4:00' ? '16:00' : (tm === '4:30' ? '16:30' : '17:00')) : tm;
+  return c + '|' + t;
+}
+function gfill(c){
+  var total = 0, taken = 0;
+  for (var r = 0; r < GTIMES.length; r++) {
+    var tm = GTIMES[r];
+    var evening = (tm.charAt(0) === '4' || tm.charAt(0) === '5');
+    if (evening && !GEVENING[c]) { continue; }
+    total++;
+    if (GEV[gkey(c, tm)]) { taken++; }
+  }
+  return taken + ' of ' + total;
+}
+function gridHtml(){
+  var h = '<div class="gcal"><table><tr><th></th>';
+  for (var d = 0; d < GDAYS.length; d++) {
+    var g = GDAYS[d];
+    h += '<th class="' + (g.closed ? 'cl' : '') + '">' + g.d + '<b>' + g.n + '</b><i>'
+       + (g.closed ? g.closed : gfill(d)) + '</i></th>';
+  }
+  h += '</tr>';
+  for (var r = 0; r < GTIMES.length; r++) {
+    var tm = GTIMES[r];
+    if (tm === '4:00') {
+      h += '<tr class="divider"><td colspan="8">afternoon \u2014 rest</td></tr>';
+    }
+    var evening = (tm.charAt(0) === '4' || tm.charAt(0) === '5');
+    h += '<tr><td class="tcol">' + tm + '</td>';
+    for (var c = 0; c < GDAYS.length; c++) {
+      var day = GDAYS[c];
+      if (day.closed) { h += '<td class="shut"></td>'; continue; }
+      if (evening && !GEVENING[c]) { h += '<td class="none"></td>'; continue; }
+      var e = GEV[gkey(c, tm)];
+      if (e) {
+        h += '<td><div class="ev ' + e.s + '"><b>' + e.n + '</b>' + e.t + '</div></td>';
+      } else {
+        h += '<td><div class="open">open</div></td>';
+      }
+    }
+    h += '</tr>';
+  }
+  h += '</table><p class="legend"><i style="background:#9C5A2C"></i>paid<i style="background:#D9A05B"></i>payment not finished'
+     + '<i style="background:#2C6B4D"></i>came from a live<i style="background:#A9A192"></i>completed'
+     + '<i style="background:#fff;border:1px dashed #DFD7C8"></i>open<i style="background:#F6F4EF"></i>day closed</p></div>';
+  return h;
+}
+
+function csNav(active, attention){
+  var items = ['Today','Calendar','Bookings','Needs attention','Money','Settings'];
+  var out = '<div class="nav"><b>Expert Sessions</b>';
+  for (var i = 0; i < items.length; i++) {
+    var badge = (items[i] === 'Needs attention' && attention) ? '<span>' + attention + '</span>' : '';
+    out += '<div class="' + (items[i] === active ? 'on' : '') + '">' + items[i] + badge + '</div>';
+  }
+  return out + '</div>';
+}
+
+var SCREENS = {
+  live: function(){ return '<div class="s yt">'
+    + '<div class="player"><img class="frame" src="' + IMG_FRAME + '" alt="">'
+    + '<span class="livebadge">LIVE</span>'
+    + '<div class="lband"><img src="' + IMG_QR + '" alt=""><em>SCAN TO BOOK<br>WITH GURUJI</em><span>30 min<br>\u20b9500</span></div>'
+    + '<div class="bband">Personal guidance from Guruji \u00b7 <b>book on WhatsApp \u2014 link in description</b></div>'
+    + '<div class="pbar"><i></i><em></em></div></div>'
+    + '<p class="title">Weekly satsang \u2014 verses on karma, and your questions</p>'
+    + '<p class="sub">3,240 watching now \u00b7 started 34 minutes ago</p>'
+    + '<div class="chan"><span class="sb">Subscribed</span><img src="' + IMG_AV + '" alt="">'
+    + '<span class="who"><b>Sri Peeth \u00b7 Guruji Vishwanath</b><i>48.2K subscribers</i></span></div>'
+    + '<div class="chips"><span>\u2191 1.2K</span><span>\u2193</span><span>Share</span><span>Save</span><span>Report</span></div>'
+    + '<div class="desc">Book time with Guruji \u2192 <a>wa.me/9198\u2022\u2022\u2022\u2022\u2022210</a><br>'
+    + 'Satsang every Wednesday, 5:00 pm. Personal guidance, 30 minutes. <s>\u2026more</s></div>'
+    + '<div class="chat">Live chat <i>2.1K messages \u25be</i></div>'
+    + '<div class="cmt"><img src="' + IMG_AV + '" alt=""><span class="c">'
+    + '<em><b>Sri Peeth</b> \u00b7 pinned \u00b7 32m</em>'
+    + 'Darshan and bookings only through the WhatsApp link above \ud83d\ude4f Please do not send money to any other number.</span></div>'
+    + '</div>'; },
+
+  qr: function(){ return '<div class="s qr"><h5>Book time with Guruji</h5>'
+    + '<p>The same code is on the stream, on the ashram notice board,<br>and on his posters</p>'
+    + '<img src="' + IMG_QR + '" alt="" style="width:150px;height:150px;margin:22px auto 0;display:block;border:8px solid #fff;outline:1px solid #e6e0d4">'
+    + '<h5 style="margin-top:22px">30 minutes \u00b7 dakshina \u20b9500</h5>'
+    + '<p>Opens WhatsApp. Nothing to install.</p></div>'; },
+
+  waSlots: function(){ return '<div class="s wa">' + waHead + '<div class="wa-b">'
+    + '<div class="outb">Hi</div>'
+    + '<div class="inb"><b>Namaste \ud83d\ude4f</b><br>Book time with Guruji \u2014 30 minutes, dakshina \u20b9500.<br>Next available:</div>'
+    + '<div class="btnr"><span>Wed 11:00 am</span><span>Wed 4:00 pm</span><span>Thu 11:00 am</span><span>Other times</span></div>'
+    + '</div></div>'; },
+
+  waPay: function(){ return '<div class="s wa">' + waHead + '<div class="wa-b">'
+    + '<div class="inb">Next available:</div>'
+    + '<div class="outb">Wed 11:00 am</div>'
+    + '<div class="payc"><em>Dakshina \u00b7 Wed 11:00 am</em><b>\u20b9500</b><u>Pay by UPI</u></div>'
+    + '<div class="inb" style="color:#8a8378">Your time is held for 10 minutes.</div>'
+    + '</div></div>'; },
+
+  waDone: function(){ return '<div class="s wa">' + waHead + '<div class="wa-b">'
+    + '<div class="payc"><em>Paid \u00b7 \u20b9500</em><b style="font-size:14px;color:#2c6b4d">Received</b></div>'
+    + '<div class="inb"><b>Your time is confirmed.</b><br>Wednesday, 11:00 am with Guruji.<br>Join here \u2192 <span style="color:#0a7cff">sessions.slike.in/j/8kq2</span></div>'
+    + '<div class="inb">If you wish, tell Guruji what you seek guidance on \u2014 type, or send a voice note.<br><br><span style="color:#128C7E">\ud83c\udf99 Hold to record</span></div>'
+    + '</div></div>'; },
+
+  guruPage: function(){ return '<div class="s gp"><div class="gp-h"><span class="av"></span><span class="tx"><b>Guruji Vishwanath</b><i>Sri Peeth, Jaipur</i></span></div>'
+    + '<div class="gp-b"><p class="about">Forty years in the Advaita tradition. Weekly satsang since 2009. Personal guidance on family, work and practice.</p>'
+    + '<p class="dak"><b>One-to-one \u00b7 30 minutes \u00b7 \u20b9500</b></p>'
+    + '<div class="avail"><p class="h">NEXT AVAILABLE</p>'
+    + '<span class="slot"><u>Book</u><b>Today, 4:00 pm</b><i>in 3 hours</i></span>'
+    + '<span class="slot"><u>Book</u><b>Tomorrow, 10:00 am</b></span>'
+    + '<span class="slot"><u>Book</u><b>Tomorrow, 11:30 am</b></span>'
+    + '<span class="more">See other times</span></div>'
+    + '<p class="orline">OR</p>'
+    + '<span class="wapp">Book on WhatsApp</span>'
+    + '<span class="lnk">My sessions</span></div></div>'; },
+
+  bookSheet: function(){ return '<div class="s"><div class="sheetwrap">'
+    + '<div class="behind">' + SCREENS.guruPage() + '</div>'
+    + '<div class="dim"></div>'
+    + '<div class="sheet"><div class="grab"></div>'
+    + '<h6>Today, 4:00 pm</h6>'
+    + '<p class="when">30 minutes with Guruji \u00b7 dakshina \u20b9500</p>'
+    + '<div class="fld"><em>YOUR WHATSAPP NUMBER</em>+91 98765 43210</div>'
+    + '<p class="note">Your confirmation and the join link come to this number on WhatsApp.</p>'
+    + '<span class="pay">Pay \u20b9500 and confirm</span>'
+    + '<p class="held">This time is held for you for 10 minutes</p>'
+    + '</div></div></div>'; },
+
+  upiPay: function(){ return '<div class="s upi">'
+    + '<div class="top"><b>Paying by UPI</b><i>Sri Peeth \u00b7 Guruji Vishwanath</i></div>'
+    + '<p class="amt">\u20b9500</p><p class="to">Dakshina \u00b7 today, 4:00 pm</p>'
+    + '<div class="apps"><p>CHOOSE AN APP TO PAY</p>'
+    + '<div class="app"><span style="background:#E8F0FE"></span>Google Pay<i>installed</i></div>'
+    + '<div class="app"><span style="background:#EDE7F6"></span>PhonePe<i>installed</i></div>'
+    + '<div class="app"><span style="background:#E3F2FD"></span>Paytm<i>installed</i></div>'
+    + '<div class="app"><span style="background:#F1F1F1"></span>Enter a UPI ID<i></i></div>'
+    + '</div></div>'; },
+
+  bookDone: function(){ return '<div class="s done">'
+    + '<div class="tick">\u2713</div>'
+    + '<h5>Your time is confirmed</h5>'
+    + '<div class="det"><div>Guruji Vishwanath<b>30 min</b></div>'
+    + '<div>Today<b>4:00 pm</b></div>'
+    + '<div>Dakshina<b>\u20b9500 paid</b></div></div>'
+    + '<p class="msg">The join link has gone to your WhatsApp.<br>A reminder will come ten minutes before.</p>'
+    + '<a class="ghost2">If you wish, tell Guruji what you seek</a>'
+    + '<a class="ghost2">See my sessions</a></div>'; },
+
+  otp: function(){ return '<div class="s gp"><div class="gp-h"><span class="av"></span><span class="tx"><b>Guruji Vishwanath</b><i>My sessions</i></span></div>'
+    + '<div class="gp-b"><p class="sec">SIGN IN</p><div class="otp"><div class="fld">+91 98765 43210</div>'
+    + '<p class="about" style="margin-top:12px">We sent a code to this number.</p>'
+    + '<div class="digits"><i>4</i><i>1</i><i>9</i><i></i></div>'
+    + '<span class="cta" style="background:#b3622f">Continue</span>'
+    + '<p class="about" style="margin-top:12px;font-size:11px">No password. Your number is how we find your sessions.</p>'
+    + '</div></div></div>'; },
+
+  mySessions: function(){ return '<div class="s gp"><div class="gp-h"><span class="av"></span><span class="tx"><b>Guruji Vishwanath</b><i>Signed in as 98\u2022\u2022\u2022\u2022\u2022210</i></span></div>'
+    + '<div class="gp-b"><p class="sec">UPCOMING</p>'
+    + '<div class="bk"><b>Wednesday, 11:00 am</b><i>One-to-one \u00b7 30 minutes \u00b7 dakshina paid</i><div class="row"><u>Join</u><s>Reschedule</s></div></div>'
+    + '<p class="sec" style="margin-top:16px">EARLIER</p>'
+    + '<div class="past"><b>12 August, 11:30 am</b><i>One-to-one \u00b7 completed</i></div>'
+    + '<div class="past"><b>3 July, 10:00 am</b><i>One-to-one \u00b7 completed</i></div>'
+    + '<p class="about" style="margin-top:14px;font-size:11px;text-align:center">Reschedule allowed once, up to 4 hours before.</p></div></div>'; },
+
+  reschedule: function(){ return '<div class="s gp"><div class="gp-h"><span class="av"></span><span class="tx"><b>Reschedule</b><i>Wednesday, 11:00 am</i></span></div>'
+    + '<div class="gp-b"><p class="about">Pick a new time. Your dakshina moves with the booking.</p>'
+    + '<div class="bk" style="margin-top:14px"><b>Thursday, 11:00 am</b><i>available</i></div>'
+    + '<div class="bk" style="margin-top:8px"><b>Thursday, 4:00 pm</b><i>available</i></div>'
+    + '<div class="bk" style="margin-top:8px"><b>Friday, 10:30 am</b><i>available</i></div>'
+    + '<span class="cta" style="background:#b3622f;margin-top:14px">Confirm new time</span>'
+    + '<p class="about" style="margin-top:12px;font-size:11px">Guruji\u2019s team is notified. You will get a fresh confirmation on WhatsApp.</p></div></div>'; },
+
+  calendar: function(){ return '<div class="s cal"><p class="d">WEDNESDAY \u00b7 9 SEPTEMBER</p><h5>Namaste, Guruji</h5>'
+    + '<p class="n">Two sessions today</p>'
+    + '<div class="tl"><span class="t">11:00 am</span><span class="dot" style="background:#b3622f"></span>'
+    + '<span class="k">ONE-TO-ONE \u00b7 30 MIN</span><b>Ramesh K \u00b7 Jaipur</b>'
+    + '<i>Second visit \u00b7 wishes to speak about a property dispute</i>'
+    + '<span class="vn">\ud83c\udf99 Play his message \u00b7 0:24</span><u>Join at 11:00</u></div>'
+    + '<div class="rest">afternoon \u2014 rest</div>'
+    + '<div class="tl"><span class="t">5:00 pm</span><span class="dot" style="background:#7d7fae"></span>'
+    + '<span class="k">SATSANG \u00b7 OPEN TO ALL</span><b>Weekly satsang</b>'
+    + '<i>Goes out on YouTube and Facebook as always</i></div></div>'; },
+
+  room: function(){ return '<div class="s room"><div class="big"><div class="f"></div><em>Guruji</em><div class="self"></div></div>'
+    + '<div class="card"><b>Ramesh K \u00b7 Jaipur</b><i>Second visit \u00b7 property dispute \u00b7 dakshina paid</i></div>'
+    + '<div class="bar"><s></s><s></s><u></u></div></div>'; },
+
+  wrCheck: function(){ return '<div class="s q">'
+    + '<p class="eyebrow">WEDNESDAY \u00b7 11:00 AM</p>'
+    + '<h5>Your session with Guruji</h5>'
+    + '<p class="lede">Thirty minutes, only the two of you.</p>'
+    + '<div class="selfie"></div><p class="selfnote">This is how Guruji will see you</p>'
+    + '<div class="checks"><div><em>\u2713</em>Microphone is working</div><div><em>\u2713</em>Camera is working</div><div><em>\u2713</em>Connection is good</div></div>'
+    + '<a class="primary">Enter the waiting room</a>'
+    + '<div class="hair"></div>'
+    + '<p class="privacy">Nothing is recorded.</p></div>'; },
+
+  wrWait: function(){ return '<div class="s q">'
+    + '<p class="eyebrow">11:02 AM</p>'
+    + '<h5>Guruji is with someone<br>before you</h5>'
+    + '<p class="lede">You are next \u2014 about five minutes.<br>You can stay on this screen.</p>'
+    + '<div class="selfie"></div><p class="selfnote">You are ready</p>'
+    + '<div class="fromteam"><em>FROM HIS TEAM</em><span>He is running a little late today. He will join you in about ten minutes.</span></div>'
+    + '<div class="hair"></div>'
+    + '<p class="privacy">This conversation will be only<br>between you and Guruji.</p></div>'; },
+
+  wrRoom: function(){ return '<div class="s rm"><div class="stage">'
+    + '<span class="name">Guruji</span><div class="face"></div><div class="self"></div>'
+    + '<p class="quiet">Only the two of you \u00b7 nothing recorded</p>'
+    + '<div class="ctrl"><s></s><s></s><u></u></div>'
+    + '</div></div>'; },
+
+  wrEscape: function(){ return '<div class="s q">'
+    + '<p class="eyebrow">11:10 AM</p>'
+    + '<h5>Guruji has not been<br>able to join</h5>'
+    + '<p class="lede">Something has kept him. You do not need to wait,<br>or call anyone.</p>'
+    + '<a class="primary">Choose another time</a>'
+    + '<a class="ghost">Ask for the dakshina back</a>'
+    + '<div class="hair"></div>'
+    + '<p class="privacy">His team can see you were waiting.<br>Either choice is settled at once.</p></div>'; },
+
+  wrEnd: function(){ return '<div class="s q">'
+    + '<p class="eyebrow">11:34 AM</p>'
+    + '<h5>Your session is complete</h5>'
+    + '<p class="lede">Thirty-two minutes with Guruji.</p>'
+    + '<div class="hair"></div>'
+    + '<p class="privacy" style="font-size:12.5px;color:#7C756A">The next satsang is on Friday at 5:00 pm,<br>open to all.</p>'
+    + '<a class="ghost" style="margin-top:26px">Book another time</a>'
+    + '<div class="hair"></div>'
+    + '<p class="privacy">A note has gone to your WhatsApp.</p></div>'; },
+
+  csToday: function(){ return '<div class="s cs">' + csNav('Today', 2)
+    + '<div class="main"><div class="bar"><b>Guruji Vishwanath \u00b7 Today</b><i>Wednesday, 9 September</i><u>+ Booking for a caller</u></div>'
+    + '<div class="alert">Two things need you: a payment hold expired at 10:20, and Kavita J has asked for a time next week. <s>Open</s></div>'
+    + '<div class="kpis">'
+    + '<div class="kpi"><em>COLLECTED TODAY</em><b>\u20b94,200</b></div>'
+    + '<div class="kpi"><em>THIS WEEK</em><b>\u20b918,750</b></div>'
+    + '<div class="kpi"><em>SLOTS FILLED</em><b>24 / 30</b></div>'
+    + '<div class="kpi"><em>DUE TO SETTLE</em><b>\u20b941,300</b></div></div>'
+    + '<div class="cols split"><div class="p"><h6>Today\u2019s sessions<i>6 slots \u00b7 1 open</i></h6>'
+    + '<table><tr><th>TIME</th><th>WHO</th><th>ASKED ABOUT</th><th>STATUS</th></tr>'
+    + '<tr><td>10:00</td><td>Sunita M</td><td>her son\u2019s schooling</td><td><span class="tag n">DONE</span></td></tr>'
+    + '<tr><td>11:00</td><td>Ramesh K \u00b7 2nd visit</td><td>property dispute</td><td><span class="tag g">PAID</span></td></tr>'
+    + '<tr><td>12:00</td><td>Kavita J</td><td>\ud83c\udf99 voice note \u00b7 0:31</td><td><span class="tag g">PAID</span></td></tr>'
+    + '<tr><td>4:00</td><td>\u2014</td><td>open</td><td><span class="tag o">FILLABLE</span></td></tr>'
+    + '<tr><td>4:30</td><td>Arun P</td><td>new shop, auspicious day</td><td><span class="tag g">PAID</span></td></tr></table></div>'
+    + '<div class="p wt"><h6>Waiting now<i>nobody yet</i></h6>'
+    + '<p class="hint">When a session is running, whoever has opened their link appears here \u2014 with how long they have been waiting, so you can speak to them before they wonder.</p></div>'
+    + '</div></div></div>'; },
+
+  csWaiting: function(){ return '<div class="s cs">' + csNav('Today', 2)
+    + '<div class="main"><div class="bar"><b>11:06 \u00b7 running eleven minutes late</b><i>Guruji still with Sunita M</i></div>'
+    + '<div class="cols split"><div class="p wt"><h6>Waiting now<i>2 people</i></h6>'
+    + '<div class="row"><span class="mins">waiting 6 min</span><b>Ramesh K \u00b7 11:00</b><i>In the waiting room \u00b7 mic and camera fine</i></div>'
+    + '<div class="row"><span class="up">12:00 slot</span><b>Kavita J</b><i>Link not opened yet \u2014 message will go to WhatsApp</i></div>'
+    + '<div class="chips"><u>Joining in 5 minutes</u><u>Joining in 10 minutes</u><s>Would another time suit you?</s><s>Write a message</s><s>Call Ramesh</s></div>'
+    + '<p class="sent">\u2713 \u201cJoining in 10 minutes\u201d shown in Ramesh\u2019s waiting room at 11:04<em>Kavita has not opened her link \u2014 the same note went to her WhatsApp</em></p>'
+    + '<p class="hint">You can speak to the waiting room or call. You never enter the session.</p></div>'
+    + '<div class="p"><h6>If he cannot get to Ramesh</h6>'
+    + '<table><tr><td>Move to a later slot today</td><td style="text-align:right"><span class="tag o">4:00 FREE</span></td></tr>'
+    + '<tr><td>Move to tomorrow</td><td style="text-align:right"><span class="tag o">10:00, 11:30</span></td></tr>'
+    + '<tr><td>Return the dakshina</td><td style="text-align:right"><span class="tag r">\u20b9500</span></td></tr></table>'
+    + '<p class="hint">Whichever you choose, he is told on WhatsApp at once. After ten minutes he is offered the same choices himself, so nobody is left waiting on us.</p></div>'
+    + '</div></div></div>'; },
+
+  csWeek: function(){ return '<div class="s cs">' + csNav('Calendar', 2)
+    + '<div class="main"><div class="bar"><b>This week</b><i>9 \u2013 14 September</i><u>Close a day</u></div>'
+    + gridHtml()
+    + '<p class="hint" style="margin-top:10px">One glance answers what she is always asked: is he free, has that person paid, and where are the gaps. Times come from his Monday-to-Saturday pattern \u2014 10 to 1 daily, plus Tuesday, Wednesday and Friday evenings \u2014 so nothing is negotiated in a chat.</p>'
+    + '</div></div>'; },
+
+  csCloseDay: function(){ return '<div class="s cs">' + csNav('Calendar', 2)
+    + '<div class="main"><div class="bar"><b>Guruji is travelling on Tuesday</b><i>closing the day</i></div>'
+    + '<div class="modal"><b>Close Tuesday, 15 September</b>'
+    + '<p>Three sessions are booked. These are the nearest times that suit each of them.</p>'
+    + '<div class="ppl"><div>Meena D \u00b7 10:00 <span style="color:#9C5A2C">\u2192 Wednesday 10:00</span></div>'
+    + '<div>Arun P \u00b7 11:00 <span style="color:#9C5A2C">\u2192 Wednesday 11:30</span></div>'
+    + '<div>Vikram S \u00b7 12:00 <span style="color:#9C5A2C">\u2192 Thursday 10:00</span></div></div>'
+    + '<div class="act"><u>Move all three and tell them</u><s>Choose times myself</s><s>Cancel</s></div>'
+    + '<p class="hint">Each one gets a fresh confirmation on WhatsApp with the new time. Nobody is called, and the dakshina moves with the booking.</p>'
+    + '</div></div></div>'; },
+
+  csAttention: function(){ return '<div class="s cs">' + csNav('Needs attention', 2)
+    + '<div class="main"><div class="bar"><b>Needs attention</b><i>two now, nothing older than today</i></div>'
+    + '<div class="cols"><div class="p"><h6>Money or a slot is at stake</h6>'
+    + '<table><tr><th>WHAT</th><th>WHO</th><th>WHY IT MATTERS</th><th></th></tr>'
+    + '<tr><td><span class="tag o">HOLD EXPIRED</span></td><td>Neha S \u00b7 4:00 today</td><td>Chose the time, did not finish paying \u2014 the slot is open again</td><td style="text-align:right"><span class="tag n">SEND LINK</span></td></tr>'
+    + '<tr><td><span class="tag o">NO SLOT SUITED</span></td><td>Kavita J</td><td>Asked to be told when next week opens</td><td style="text-align:right"><span class="tag n">OFFER A TIME</span></td></tr>'
+    + '<tr><td><span class="tag n">DID NOT JOIN</span></td><td>Prakash V \u00b7 yesterday</td><td>Paid, never opened the link \u2014 mark it, or offer another time</td><td style="text-align:right"><span class="tag n">DECIDE</span></td></tr>'
+    + '<tr><td><span class="tag r">REFUND SENT</span></td><td>Suresh B</td><td>Guruji could not sit on Monday \u2014 \u20b9500 returned, reaches him today</td><td style="text-align:right"><span class="tag g">DONE</span></td></tr></table>'
+    + '<p class="hint">This is the list that keeps money from leaking. Everything here was invisible in the notebook.</p></div></div>'
+    + '</div></div>'; },
+
+  csMoney: function(){ return '<div class="s cs">' + csNav('Money', 2)
+    + '<div class="main"><div class="bar"><b>Money</b><i>nothing to add up by hand</i></div>'
+    + '<div class="kpis">'
+    + '<div class="kpi"><em>COLLECTED TODAY</em><b>\u20b94,200</b></div>'
+    + '<div class="kpi"><em>THIS WEEK</em><b>\u20b918,750</b></div>'
+    + '<div class="kpi"><em>RETURNED THIS WEEK</em><b>\u20b91,000</b></div>'
+    + '<div class="kpi"><em>SETTLES FRIDAY</em><b>\u20b941,300</b></div></div>'
+    + '<div class="cols"><div class="p"><h6>Every entry, as it happened<i>today</i></h6>'
+    + '<table><tr><th>TIME</th><th>ENTRY</th><th>WHO</th><th style="text-align:right">AMOUNT</th></tr>'
+    + '<tr><td>10:41</td><td>UPI \u00b7 booking</td><td>Kavita J \u00b7 12:00</td><td style="text-align:right">+ \u20b9500</td></tr>'
+    + '<tr><td>09:58</td><td>UPI \u00b7 booking</td><td>Ramesh K \u00b7 11:00</td><td style="text-align:right">+ \u20b9500</td></tr>'
+    + '<tr><td>09:30</td><td>Returned \u00b7 guruji could not sit</td><td>Neha S</td><td style="text-align:right">\u2212 \u20b9500</td></tr>'
+    + '<tr><td>08:15</td><td>UPI \u00b7 booking from Friday\u2019s live</td><td>Arun P \u00b7 4:30</td><td style="text-align:right">+ \u20b9500</td></tr></table>'
+    + '<p class="hint">Bookings that came from a live are marked, because that is the number the pilot is judged on.</p></div></div>'
+    + '</div></div>'; }
+};
+
+/* ---------- content ---------- */
+var SURFACES = [
+  {
+    tab:'1 \u00b7 Booking on WhatsApp',
+    title:'Booking on WhatsApp',
+    sub:'The first of two doors, and the one most people will use. She never leaves the app she already lives in \u2014 no download, no account.',
+    device:'Her phone',
+    inv1:['Slot buttons drawn from availability the team sets once','UPI payment inside the thread','Confirmation, reminders and room link as approved templates','Optional voice note, asked only after payment'],
+    notv1:['No free-text understanding \u2014 anything she types returns the same buttons','No booking by voice note or phone call','No search, discovery or expert directory','No separate identity for the person she is booking for'],
+    steps:[
+      {s:'She is watching the satsang', why:'A QR band sits on the stream while he speaks, the link is in the description and the pinned comment, and he says it aloud. This is where the wanting happens \u2014 and today it has nowhere to go.', screen:'live'},
+      {s:'She scans the band, or taps the link', why:'Watching on a laptop or a TV, she scans. Watching on her phone, she taps the description. Printed at the ashram, the same QR. Every route lands in one WhatsApp thread.', screen:'qr'},
+      {s:'Three nearest times come back as buttons', why:'No calendar grid, no typing. \u201cOther times\u201d opens days first, then times. The dakshina is stated before she chooses.', screen:'waSlots'},
+      {s:'She taps a time and pays by UPI', why:'The slot is held ten minutes while she pays. Money moves inside the thread \u2014 no page she has to trust, no account to make.', screen:'waPay'},
+      {s:'Confirmed \u2014 then, if she wishes, her question', why:'Nothing optional stands before the money. The voice note comes after, and it is what guruji hears in the ten seconds before he speaks.', screen:'waDone'}
+    ]
+  },
+  {
+    tab:'2 \u00b7 His page \u2014 booking and sessions',
+    title:'His page \u2014 the second door',
+    sub:'When he shares a link in a bio, a poster or a WhatsApp forward, she should be able to book on the page itself \u2014 three taps, under a minute, no account.',
+    device:'Her phone',
+    inv1:['Next three times shown on the page \u2014 booking starts in one tap','A short sheet: her number, then pay. No sign-up, no OTP before paying','UPI handoff to the app already on her phone','Confirmation on the page and on WhatsApp, with the join link','\u201cMy sessions\u201d behind a number and OTP \u2014 join, reschedule once, history','Both doors share one slot inventory, one ledger, one WhatsApp thread'],
+    notv1:['No account, no password, no profile to fill','No card or netbanking \u2014 UPI only in v1','No OTP before paying; the payment is the proof of intent','No self-serve cancellation or refund','No reviews, ratings or public counts of sessions'],
+    steps:[
+      {s:'She lands on his page', why:'From a bio link, a poster QR or a forward. His photo and lineage settle whether he is real \u2014 and the next three available times are already on the screen, so booking has begun before she has scrolled.', screen:'guruPage'},
+      {s:'One tap on a time', why:'A short sheet, not a new page: the time, the dakshina, and her WhatsApp number. Nothing to sign up for \u2014 the only thing we need is where to send the confirmation.', screen:'bookSheet'},
+      {s:'Pay, in the app she already has', why:'UPI hands off to Google Pay or PhonePe and comes back. Her time is held ten minutes while she pays, so nobody loses a slot to a slow PIN.', screen:'upiPay'},
+      {s:'Confirmed \u2014 on the page and on WhatsApp', why:'Three taps and a PIN. The join link and reminders now live in her WhatsApp, so the two doors end in the same place, and she never has to find this page again.', screen:'bookDone'},
+      {s:'Later: her own sessions', why:'One code, no password. Her number is the only identity the system keeps, and it is the one she already gave. This is also where she books again.', screen:'otp'},
+      {s:'She moves her time herself', why:'Once, up to four hours before. Beyond that the slot cannot be resold, so the team handles it as a judgement rather than a button.', screen:'reschedule'}
+    ]
+  },
+  {
+    tab:'3 \u00b7 Guruji\u2019s day',
+    title:'Guruji\u2019s day',
+    sub:'A day, not a dashboard. He glances in the morning and taps join when it is time.',
+    device:'His phone',
+    inv1:['Today and the days ahead as a read-only timeline','Who is coming, and what they carry','Her voice note, played before he speaks','One tap to join, one tap to end, then the next name'],
+    notv1:['No money on this screen \u2014 not earnings, not payment status','No slots, no pricing, no settings','No notes or prescriptions to write','No notification that can interrupt a session'],
+    steps:[
+      {s:'He opens the app once, in the morning', why:'Times down the left, sessions beside them. Empty afternoons say rest \u2014 the calendar honours his day rather than filling it.', screen:'calendar'},
+      {s:'He sees what the person carries', why:'Second visit, and what she asked last time. This one line is what the notebook could never do, and it is why the session starts warm.', screen:'calendar'},
+      {s:'At the hour, he taps join', why:'Straight into the room with her card beside the video. Nothing loads, nothing asks him for permission twice, no amount anywhere on screen.', screen:'room'}
+    ]
+  },
+  {
+    tab:'4 \u00b7 The team\u2019s console',
+    title:'The team\u2019s console',
+    sub:'Six screens, one job: the volunteer who runs the practice never has to remember anything. If she keeps a notebook alongside this, we have failed.',
+    device:'Her laptop', wide:true,
+    inv1:['Today \u2014 sessions, money so far, and what needs her','Waiting panel \u2014 who is waiting, how long, and one-tap messages to them','Calendar \u2014 a week grid of every slot: who, paid or not, live-sourced, and the gaps','Bookings \u2014 search by name or number, book for someone who called','Needs attention \u2014 expired holds, no-slot requests, did-not-joins, refunds','Money \u2014 every entry as it happened, and what settles when','Settings \u2014 pattern, dakshina, and the words on his page'],
+    notv1:['No full CRM \u2014 only the record a booking creates','No campaigns, segments or marketing tools','No analytics beyond the pilot numbers','No roles or permissions; one shared login','No entering a session, ever'],
+    steps:[
+      {s:'Today \u2014 her first screen', why:'Sessions, money so far, slots still open, and a strip at the top naming the two things that need her. Nothing is buried in a tab she has to remember to check.', screen:'csToday'},
+      {s:'A session runs late \u2014 the waiting panel', why:'Both people who are waiting, how long each has been there, and whether they have even opened their link. She speaks to them in one tap; she never joins the session.', screen:'csWaiting'},
+      {s:'And if he cannot get to them at all', why:'The same panel offers the three real answers \u2014 a later slot today, tomorrow, or the dakshina back \u2014 and after ten minutes the devotee is offered the same choices herself.', screen:'csWaiting'},
+      {s:'The week, laid out like a calendar', why:'The screen she lives in: every slot in the week, who is in it, whether they have paid, which came from a live, and where the gaps are. Closed days are visible rather than remembered.', screen:'csWeek'},
+      {s:'Guruji is travelling: she closes the day', why:'Three bookings, three suggested new times, one action, three WhatsApp confirmations. This used to be twelve phone calls and a scratched-out page.', screen:'csCloseDay'},
+      {s:'Needs attention \u2014 where money used to leak', why:'A hold that expired, someone no slot suited, a devotee who paid and never joined, a refund on its way. Every one of these was invisible in the notebook.', screen:'csAttention'},
+      {s:'Money, without adding anything up', why:'Every entry as it happened, what has been returned, and what settles on Friday. Live-sourced bookings are marked, because that is what the pilot is judged on.', screen:'csMoney'}
+    ]
+  },
+  {
+    tab:'5 \u00b7 The session',
+    title:'The waiting room, and the session',
+    sub:'Everything else is scheduling. This is the half hour she paid for \u2014 so it is quiet, warm and almost empty. That restraint is the point.',
+    device:'Her phone',
+    inv1:['A check before she enters \u2014 mic, camera, connection, and how she will look','A waiting room that tells her the truth in words, not a countdown','Messages from his team, shown gently in the same screen','A browser room on an established SDK; audio holds when video drops','The ten-minute way out: another time, or the dakshina back','A closing screen \u2014 what happened, and when the next satsang is'],
+    notv1:['No recording \u2014 it changes the promise, and needs his consent','No chat, screen share or files in the room','No group rooms; those arrive with paid sessions','No native app \u2014 the room is a browser page','No transcripts, notes or ratings afterwards'],
+    steps:[
+      {s:'Before she enters', why:'Her session named, thirty minutes stated, and the three things that ruin a call checked while it still costs nothing to fix them. She also sees how she will look, which quietly settles nerves.', screen:'wrCheck'},
+      {s:'Waiting, told the truth', why:'\u201cGuruji is with someone before you. You are next \u2014 about five minutes.\u201d Words, not a timer that runs out and leaves her guessing. Almost nothing else on screen.', screen:'wrWait'},
+      {s:'His team can reach her here', why:'One line, in the same calm frame: he is running late, ten more minutes. She learns it from the screen instead of wondering, and nobody has to call her.', screen:'wrWait'},
+      {s:'The session itself', why:'Him, her small self-view, three controls, and one line that matters: only the two of you, nothing recorded. No chat, no share, nothing to press by mistake.', screen:'wrRoom'},
+      {s:'If he cannot come', why:'Ten minutes past, two clear choices, settled at once. Our worst moment, handled without her chasing anyone \u2014 this screen is why she trusts us the next time.', screen:'wrEscape'},
+      {s:'Afterwards', why:'What happened, when the next satsang is, and a quiet way to book again. No rating, no survey \u2014 nothing that turns a darshan into a transaction at the end.', screen:'wrEnd'}
+    ]
+  }
+];
+
+/* ---------- wiring ---------- */
+var si = 0, pi = 0;
+function $(id){ return document.getElementById(id); }
+
+function renderTabs(){
+  var html = '';
+  for (var i = 0; i < SURFACES.length; i++) {
+    html += '<button role="tab" aria-selected="' + (i === si) + '" data-i="' + i + '">' + SURFACES[i].tab + '</button>';
+  }
+  $('tabs').innerHTML = html;
+  var bs = $('tabs').getElementsByTagName('button');
+  for (var j = 0; j < bs.length; j++) {
+    bs[j].onclick = function(){ si = parseInt(this.getAttribute('data-i'), 10); pi = 0; render(); };
+  }
+}
+
+function render(){
+  var s = SURFACES[si], step = s.steps[pi];
+  renderTabs();
+  $('stitle').innerHTML = s.title;
+  $('ssub').innerHTML = s.sub;
+  $('devlabel').innerHTML = s.device;
+  $('stage').className = 'stage' + (s.wide ? ' wide' : '');
+  $('device').className = 'device' + (s.wide ? ' wide' : '');
+  $('screen').innerHTML = SCREENS[step.screen]();
+
+  var rail = '';
+  for (var i = 0; i < s.steps.length; i++) {
+    rail += '<li tabindex="0" data-i="' + i + '" aria-current="' + (i === pi) + '">'
+         +  '<span class="num">' + (i + 1) + '</span>'
+         +  '<span class="step">' + s.steps[i].s + '</span>'
+         +  '<span class="why">' + s.steps[i].why + '</span></li>';
+  }
+  $('rail').innerHTML = rail;
+  var lis = $('rail').getElementsByTagName('li');
+  for (var k = 0; k < lis.length; k++) {
+    lis[k].onclick = function(){ pi = parseInt(this.getAttribute('data-i'), 10); render(); };
+    lis[k].onkeydown = function(e){
+      if (e.keyCode === 13 || e.keyCode === 32) { e.preventDefault(); pi = parseInt(this.getAttribute('data-i'), 10); render(); }
+    };
+  }
+
+  var a = '', b = '';
+  for (var m = 0; m < s.inv1.length; m++) { a += '<li>' + s.inv1[m] + '</li>'; }
+  for (var n = 0; n < s.notv1.length; n++) { b += '<li>' + s.notv1[n] + '</li>'; }
+  $('inv1').innerHTML = a;
+  $('notv1').innerHTML = b;
+
+  $('prev').disabled = (pi === 0);
+  $('next').disabled = (pi === s.steps.length - 1);
+  $('count').innerHTML = 'Step ' + (pi + 1) + ' of ' + s.steps.length;
+}
+
+$('prev').onclick = function(){ if (pi > 0) { pi--; render(); } };
+$('next').onclick = function(){ if (pi < SURFACES[si].steps.length - 1) { pi++; render(); } };
+document.onkeydown = function(e){
+  if (e.keyCode === 39 && pi < SURFACES[si].steps.length - 1) { pi++; render(); }
+  if (e.keyCode === 37 && pi > 0) { pi--; render(); }
+};
+render();
+</script>
+</body></html>

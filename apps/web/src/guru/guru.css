@@ -1,0 +1,37 @@
+/* Guruji's own screen. Warm, unhurried, and never a rupee on it. */
+.guru { background: var(--warm-bg); color: var(--warm-ink); font-family: var(--sans); min-height: 100vh; }
+.guru .wrap { max-width: 520px; margin: 0 auto; padding: 34px 22px 60px; }
+.guru h1 { font-family: var(--serif); font-weight: 500; font-size: 30px; margin: 0 0 4px; }
+.guru .date { font-size: 12px; letter-spacing: .1em; color: var(--warm-muted); margin: 0 0 14px; }
+.guru .summary { color: var(--warm-muted); margin: 0 0 30px; }
+.guru .problem { color: #8E3120; }
+
+/* Times down the left, what is at them beside. */
+.guru .tl { position: relative; border-left: 2px solid #E8E0CF; margin-left: 68px; padding-left: 20px; padding-bottom: 30px; }
+.guru .tl .t { position: absolute; left: -88px; width: 68px; text-align: right; font-size: 13px; color: var(--warm-muted); line-height: 1.3; }
+.guru .tl .dot { position: absolute; left: -7px; top: 5px; width: 12px; height: 12px; border-radius: 7px; background: var(--accent); }
+.guru .tl.satsang .dot { background: #5A5A8E; }
+.guru .tl.done .dot { background: #C4BBA8; }
+.guru .tl .k { font-size: 11px; font-weight: 700; letter-spacing: .09em; color: var(--warm-muted); text-transform: uppercase; }
+.guru .tl b { display: block; font-family: var(--serif); font-weight: 500; font-size: 21px; margin-top: 6px; }
+.guru .tl i { font-style: normal; display: block; font-size: 14px; color: #7D7668; margin-top: 6px; line-height: 1.5; }
+.guru .rest { margin-left: 68px; padding-left: 20px; border-left: 2px solid #E8E0CF; padding-bottom: 30px; position: relative; font-size: 13px; color: #C4BBA8; }
+.guru .rest .t { position: absolute; left: -88px; width: 68px; text-align: right; font-size: 13px; color: #C4BBA8; }
+
+.guru .join { display: block; width: 100%; max-width: 230px; text-align: center; background: var(--accent); color: #fff; border: 0; border-radius: 24px; padding: 14px 0; margin-top: 14px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.guru .join:disabled { opacity: .5; }
+.guru .voice { display: inline-flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #E8E0CF; border-radius: 22px; padding: 8px 14px; margin-top: 12px; font-size: 13.5px; color: #5F5949; cursor: pointer; font: inherit; }
+.guru .voice audio { height: 32px; }
+.guru .waitingnow { color: var(--ok); font-size: 13.5px; margin-top: 10px; }
+.guru .foot { color: #B0A794; font-size: 13px; text-align: center; margin-top: 40px; }
+.guru .said { color: var(--ok); margin-bottom: 20px; }
+
+/* The room: her card beside the video, and nothing else to press. */
+.guru .room { position: fixed; inset: 0; display: flex; flex-direction: column; background: #1A1712; }
+.guru .room .video { flex: 1; min-height: 0; }
+.guru .card { flex: none; background: #231F19; color: #F4F1EA; padding: 14px 18px; display: flex; align-items: center; gap: 14px; }
+.guru .card b { font-family: var(--serif); font-weight: 500; font-size: 17px; display: block; }
+.guru .card i { font-style: normal; font-size: 13px; color: #C9C0AF; display: block; margin-top: 3px; }
+.guru .card .end { margin-left: auto; background: none; border: 1px solid #5A5147; color: #F4F1EA; border-radius: 20px; padding: 9px 16px; font: inherit; font-size: 14px; cursor: pointer; }
+
+.guru .signin { max-width: 380px; margin: 14vh auto; text-align: center; }

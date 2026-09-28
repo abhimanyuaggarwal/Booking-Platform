@@ -1,0 +1,16 @@
+{
+  "name": "Guruji's day",
+  "short_name": "His day",
+  "description": "The times he is sitting today, and one tap to join each one.",
+  "start_url": "/guru",
+  "scope": "/guru",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F1EA",
+  "theme_color": "#231F19",
+  "icons": [
+    { "src": "/guru-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/guru-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/guru-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

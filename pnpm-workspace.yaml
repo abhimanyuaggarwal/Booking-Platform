@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+# pnpm asks before running dependencies' install scripts. esbuild (Vite's bundler) needs its one.
+allowBuilds:
+  core-js: false
+  esbuild: true

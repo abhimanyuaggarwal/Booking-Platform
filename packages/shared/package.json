@@ -1,0 +1,13 @@
+{
+  "name": "@expert-sessions/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Slot maths and formatting used by both the api and the web app",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": { ".": { "types": "./index.d.ts", "default": "./index.js" } },
+  "scripts": {
+    "test": "node --test"
+  }
+}
