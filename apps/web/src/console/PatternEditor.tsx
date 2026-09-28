@@ -57,9 +57,9 @@ export default function PatternEditor({ settings, onSaved }: { settings: Setting
               {pattern.weeklyPattern[day].length === 0 && <span className="muted" style={{ padding: '8px 0' }}>no sittings</span>}
               {pattern.weeklyPattern[day].map((w, i) => (
                 <div className="window" key={i}>
-                  <input type="time" value={w[0]} onChange={(e) => setWindow(day, i, 0, e.target.value)} required />
+                  <input type="time" step={300} value={w[0]} onChange={(e) => setWindow(day, i, 0, e.target.value)} required />
                   <span className="muted">to</span>
-                  <input type="time" value={w[1]} onChange={(e) => setWindow(day, i, 1, e.target.value)} required />
+                  <input type="time" step={300} value={w[1]} onChange={(e) => setWindow(day, i, 1, e.target.value)} required />
                   <button type="button" className="quiet" onClick={() => removeWindow(day, i)}>Remove</button>
                 </div>
               ))}
@@ -72,9 +72,9 @@ export default function PatternEditor({ settings, onSaved }: { settings: Setting
       <section className="panel">
         <h2>Each time</h2>
         <div className="row">
-          <label>Minutes per session<input type="number" min={5} max={180} value={pattern.slotMinutes} onChange={(e) => setNumber('slotMinutes', e.target.value)} /></label>
-          <label>Gap between sessions<input type="number" min={0} max={120} value={pattern.gapMinutes} onChange={(e) => setNumber('gapMinutes', e.target.value)} /></label>
-          <label>Earliest booking, minutes ahead<input type="number" min={0} max={10080} value={pattern.minimumNoticeMinutes} onChange={(e) => setNumber('minimumNoticeMinutes', e.target.value)} /></label>
+          <label>Minutes per session<input type="number" min={5} max={180} step={5} value={pattern.slotMinutes} onChange={(e) => setNumber('slotMinutes', e.target.value)} /></label>
+          <label>Gap between sessions<input type="number" min={0} max={120} step={5} value={pattern.gapMinutes} onChange={(e) => setNumber('gapMinutes', e.target.value)} /></label>
+          <label>Earliest booking, minutes ahead<input type="number" min={0} max={10080} step={5} value={pattern.minimumNoticeMinutes} onChange={(e) => setNumber('minimumNoticeMinutes', e.target.value)} /></label>
           <label>Days offered ahead<input type="number" min={1} max={60} value={pattern.daysAhead} onChange={(e) => setNumber('daysAhead', e.target.value)} /></label>
         </div>
         <div className="row" style={{ marginTop: 10 }}>

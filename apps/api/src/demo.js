@@ -176,8 +176,8 @@ function postWebhook(url, body) {
 
 async function razorpayPaid(paymentLinkId) {
   const body = JSON.stringify({
-    event: 'payment_link.paid',
-    payload: { payment_link: { entity: { id: paymentLinkId } }, payment: { entity: { id: `pay_demo_${Date.now()}`, amount: 50000 } } },
+    event: 'order.paid',
+    payload: { order: { entity: { id: paymentLinkId } }, payment: { entity: { id: `pay_demo_${Date.now()}`, amount: 50000 } } },
   });
   const signature = crypto.createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET).update(body).digest('hex');
   await fetch(`${API}/razorpay/webhook`, {

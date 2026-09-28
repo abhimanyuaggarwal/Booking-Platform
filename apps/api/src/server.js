@@ -11,6 +11,7 @@ import { consoleRoutes } from './console-routes.js';
 import { siteRoutes } from './site-routes.js';
 import { sessionRoutes } from './session-routes.js';
 import { guruRoutes } from './guru-routes.js';
+import { payRoutes } from './pay-routes.js';
 import { createConversation } from './conversation.js';
 import { attachRealtime } from './realtime.js';
 import { startJobs } from './jobs.js';
@@ -30,6 +31,7 @@ app.use(whatsappDoor(env, conversation));
 app.use('/api/console', consoleRoutes(env, conversation));
 app.use('/api/site', siteRoutes(env, conversation));
 app.use('/api/guru', guruRoutes(env));
+app.use(payRoutes(env, conversation));
 app.use(sessionRoutes(env, conversation));
 // Production: the same process serves the built web app, so /join/:id, /console and /guru are
 // pages here rather than the dev-only redirect in routes.js. Mounted before routes() on purpose.

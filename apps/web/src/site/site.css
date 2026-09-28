@@ -167,3 +167,8 @@
 .site .linkbox { background: #fff; border: 1px solid #E4DBC9; border-radius: 12px; padding: 14px 16px; margin: 22px 0 0; }
 .site .linkbox code { display: block; font-size: 13px; line-height: 1.5; color: var(--warm-muted); overflow-wrap: anywhere; margin-bottom: 12px; }
 .site .linkbox button { margin-top: 0; }
+
+/* The payment page: the amount is the headline, the button is the only thing to do. */
+.site .pay h1 { font-size: 40px; margin: 4px 0 10px; }
+.site .pay .primary { margin-top: 18px; }
+.site .pay .held { text-align: left; }

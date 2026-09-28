@@ -3,6 +3,7 @@ import ConsoleShell from './console/ConsoleShell';
 import GuruShell from './guru/GuruShell';
 import SiteShell from './site/SiteShell';
 import Join from './site/Join';
+import Pay from './site/Pay';
 import FrontDoor from './FrontDoor';
 
 // Three surfaces, three route groups. His website answers at the root of his own domain, where the
@@ -16,6 +17,8 @@ export default function App() {
       <Route path="/guru/*" element={<GuruShell />} />
       <Route path="/join/:bookingId" element={<Join />} />
       <Route path="/s/:guruSlug/join/:bookingId" element={<Join />} />
+      <Route path="/pay/:bookingId" element={<Pay />} />
+      <Route path="/s/:guruSlug/pay/:bookingId" element={<Pay />} />
       <Route path="/s/:guruSlug/*" element={<SiteShell />} />
       {onHisDomain
         ? <Route path="/*" element={<SiteShell />} />

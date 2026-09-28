@@ -50,8 +50,7 @@ export function siteRoutes(env, conversation) {
     const devotee = await devotees.findOrCreateDevotee(req.guru.id, phone);
     const held = await conversation.startPayment({
       guru: req.guru, devotee, slotId, source: 'page',
-      notify: false,                      // she is looking at the payment page; the confirmation follows it
-      callbackUrlFor: (b) => `${siteOrigin(req)}${sitePath(req)}/booked/${b.id}`,
+      notify: false,                      // she is about to see the payment page; the confirmation follows it
     });
     if (!held) return res.status(409).json({ error: 'That time was just taken. Please choose another.' });
     if (typeof question === 'string' && question.trim()) await bookings.setQuestion(held.id, { text: question.trim() });

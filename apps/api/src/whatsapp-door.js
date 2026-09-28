@@ -122,10 +122,13 @@ export function whatsappDoor(env, conversation) {
     }
     res.sendStatus(200);
 
-    if (req.body.event !== 'payment_link.paid') return;
-    const paymentLinkId = req.body.payload?.payment_link?.entity?.id;
-    const payment = req.body.payload?.payment?.entity;
-    if (!paymentLinkId || !payment) return console.error('payment_link.paid webhook without payment_link and payment entities; nothing confirmed');
+    // order.paid is today's event; payment_link.paid still arrives for links made before the switch.
+    const { event, payload } = req.body;
+    const paymentLinkId = event === 'order.paid' ? payload?.order?.entity?.id
+      : event === 'payment_link.paid' ? payload?.payment_link?.entity?.id : null;
+    if (!paymentLinkId) return; // payment.captured and friends: not ours to act on
+    const payment = payload?.payment?.entity;
+    if (!payment) return console.error(`${event} webhook without a payment entity; nothing confirmed`);
 
     try {
       // The same settlement the hourly reconciliation uses, so a lost webhook and a delivered one

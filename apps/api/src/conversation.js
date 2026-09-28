@@ -82,27 +82,26 @@ export function createConversation(env) {
    * If Razorpay refuses, the hold is released at once — nobody should lose a slot to our outage —
    * and the ProviderError says why.
    */
-  async function startPayment({ guru, devotee, slotId, source, notify = true, callbackUrlFor = null, team = false }) {
+  async function startPayment({ guru, devotee, slotId, source, notify = true, team = false }) {
     await bookings.assertBookable(guru, slotId, { team }); // BookingRuleError carries the sentence
     const booking = await bookings.holdSlot({ guruId: guru.id, devoteeId: devotee.id, slotId, source });
     if (!booking) return null;
     const dakshina = formatRupees(guru.dakshina_paise);
-    let link;
+    let order;
     try {
-      link = await pay.createPaymentLink({
+      order = await pay.createOrder({
         amountPaise: guru.dakshina_paise,
-        description: `Dakshina · ${guru.name} · ${describeSlot(slotId)}`,
-        phone: devotee.phone,
-        referenceId: booking.id,
-        callbackUrl: callbackUrlFor ? callbackUrlFor(booking) : null,
+        receipt: booking.id,
+        notes: { booking_id: booking.id, guru: guru.slug, time: describeSlot(slotId) },
       });
     } catch (err) {
-      await bookings.expireHold(booking.id);
+      await bookings.expireHold(booking.id); // an outage never blocks a slot
       throw err;
     }
-    await bookings.attachPaymentLink(booking.id, link.id);
-    if (notify) await speak(guru, devotee, booking.id).link(copy.held({ guruName: guru.name, slotId, dakshina }), `Pay ${dakshina}`, link.url);
-    return { ...booking, payUrl: link.url };
+    await bookings.attachPaymentLink(booking.id, order.id); // the column holds the order id now
+    const payUrl = payLink(booking, guru);
+    if (notify) await speak(guru, devotee, booking.id).link(copy.held({ guruName: guru.name, slotId, dakshina }), `Pay ${dakshina}`, payUrl);
+    return { ...booking, payUrl };
   }
 
   async function sendConfirmation({ guru, devotee, booking }) {
@@ -121,9 +120,8 @@ export function createConversation(env) {
    * calendar, which would let her hold a second slot while the first is still waiting on her.
    */
   async function resendPaymentLink({ guru, devotee, booking }) {
-    const link = await pay.getPaymentLink(booking.payment_link_id);
     const say = speak(guru, devotee, booking.id);
-    await say.link(copy.stillToPay({ slotId: booking.slotId, dakshina: formatRupees(guru.dakshina_paise) }), 'Pay the dakshina', link.url);
+    await say.link(copy.stillToPay({ slotId: booking.slotId, dakshina: formatRupees(guru.dakshina_paise) }), 'Pay the dakshina', payLink(booking, guru));
   }
 
   /** She wrote in just after her session. Say we heard her, and leave it for the team to answer. */
@@ -189,9 +187,17 @@ export function createConversation(env) {
    * overrides it while the pilot runs behind ngrok or on localhost, where his domain resolves nowhere.
    */
   function joinLink(booking, guru) {
-    const base = env.JOIN_LINK_BASE || (guru?.domain ? `https://${guru.domain}` : env.APP_BASE_URL);
-    return `${base}/join/${booking.id}`;
+    return `${linkBase(guru)}/join/${booking.id}`;
   }
 
-  return { speak, startPayment, sendConfirmation, sendPaidTooLateNote, resendPaymentLink, sendHeardAfterSession, sendNewTime, sendCancelledNote, sendRefundNote, sendWaitingMessage, receiveWaitingMessage, joinLink };
+  /** Our own payment page, on the same origin as her join link. */
+  function payLink(booking, guru) {
+    return `${linkBase(guru)}/pay/${booking.id}`;
+  }
+
+  function linkBase(guru) {
+    return env.JOIN_LINK_BASE || (guru?.domain ? `https://${guru.domain}` : env.APP_BASE_URL);
+  }
+
+  return { speak, startPayment, sendConfirmation, sendPaidTooLateNote, resendPaymentLink, sendHeardAfterSession, sendNewTime, sendCancelledNote, sendRefundNote, sendWaitingMessage, receiveWaitingMessage, joinLink, payLink };
 }

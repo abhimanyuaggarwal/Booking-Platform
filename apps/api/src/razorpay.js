@@ -1,6 +1,8 @@
-// Razorpay Payment Links: we create a link, send it as a WhatsApp button,
-// and Razorpay calls our webhook when it is paid.
-// Docs: https://razorpay.com/docs/api/payments/payment-links/
+// Razorpay. Since 2026-09-28 a booking is paid through an Order and Razorpay Checkout on our own
+// page (/pay/:bookingId), because test mode allows thirty Payment Links per account for ever and
+// the pilot account used them. Razorpay tells us she paid twice over: the `order.paid` webhook and
+// the signed result Checkout hands the page. Payment Links stay readable for the bookings made
+// before the switch. Docs: https://razorpay.com/docs/api/orders/ and /docs/payments/payment-gateway/web-integration/standard/
 
 import axios from 'axios';
 import crypto from 'node:crypto';
@@ -10,6 +12,47 @@ export function client(env) {
   const auth = { username: env.RAZORPAY_KEY_ID, password: env.RAZORPAY_KEY_SECRET };
 
   return {
+    keyId: env.RAZORPAY_KEY_ID,
+
+    /**
+     * One order per hold; Checkout on /pay/:bookingId collects against it.
+     * @returns {{id: string}}
+     */
+    async createOrder({ amountPaise, receipt, notes = {} }) {
+      try {
+        const res = await axios.post('https://api.razorpay.com/v1/orders', {
+          amount: amountPaise, currency: 'INR', receipt, notes,
+        }, { auth });
+        return { id: res.data.id };
+      } catch (err) {
+        const detail = err.response ? JSON.stringify(err.response.data) : err.message;
+        throw new ProviderError(`Razorpay order failed for booking ${receipt}: ${detail}`);
+      }
+    },
+
+    /**
+     * What Razorpay holds against a reference we stored: an order (order_…) or an older payment link
+     * (plink_…). Same shape either way, so reconciliation and the pay page do not care which.
+     * @returns {{status: string, payments: {id: string, status: string, amountPaise: number}[], url: string|null}}
+     */
+    async findPayments(ref) {
+      if (!String(ref).startsWith('order_')) return this.getPaymentLink(ref);
+      try {
+        const [order, list] = await Promise.all([
+          axios.get(`https://api.razorpay.com/v1/orders/${ref}`, { auth }),
+          axios.get(`https://api.razorpay.com/v1/orders/${ref}/payments`, { auth }),
+        ]);
+        return {
+          status: order.data.status,   // created | attempted | paid
+          payments: (list.data.items ?? []).map((p) => ({ id: p.id, status: p.status, amountPaise: p.amount })),
+          url: null,
+        };
+      } catch (err) {
+        const detail = err.response ? JSON.stringify(err.response.data) : err.message;
+        throw new ProviderError(`Razorpay could not find order ${ref}: ${detail}`);
+      }
+    },
+
     /**
      * @returns {{id: string, url: string}}
      */
@@ -82,6 +125,19 @@ export function isValidWebhook(rawBody, signatureHeader, secret) {
   const expected = Buffer.from(crypto.createHmac('sha256', secret).update(rawBody).digest('hex'));
   const given = Buffer.from(signatureHeader);
   // timingSafeEqual throws on different lengths; a wrong-length header is simply a bad signature.
+  if (given.length !== expected.length) return false;
+  return crypto.timingSafeEqual(expected, given);
+}
+
+/**
+ * Checkout hands the page an order id, a payment id and a signature: HMAC-SHA256 of
+ * "order_id|payment_id" with the key secret. Only a matching triple confirms a booking from the
+ * browser; the webhook confirms it independently anyway.
+ */
+export function isValidCheckout({ orderId, paymentId, signature }, keySecret) {
+  if (!orderId || !paymentId || !signature || !keySecret) return false;
+  const expected = Buffer.from(crypto.createHmac('sha256', keySecret).update(`${orderId}|${paymentId}`).digest('hex'));
+  const given = Buffer.from(String(signature));
   if (given.length !== expected.length) return false;
   return crypto.timingSafeEqual(expected, given);
 }

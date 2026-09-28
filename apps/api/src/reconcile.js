@@ -8,8 +8,8 @@ import { settlePaidLink } from './paid-link.js';
 import { ProviderError } from './errors.js';
 
 /**
- * Pure. The payment that actually went through on a fetched link, or null if none did.
- * Razorpay lists every attempt on the link; only a captured one is money we hold.
+ * Pure. The payment that actually went through on a fetched order or link, or null if none did.
+ * Razorpay lists every attempt; only a captured one is money we hold.
  */
 export function capturedPayment(link) {
   if (!link || link.status !== 'paid') return null;
@@ -25,7 +25,7 @@ export async function reconcilePayments({ pay, conversation }) {
   for (const row of links) {
     let link;
     try {
-      link = await pay.getPaymentLink(row.payment_link_id);
+      link = await pay.findPayments(row.payment_link_id);
     } catch (err) {
       if (!(err instanceof ProviderError)) throw err;
       result.failed += 1;

@@ -21,6 +21,11 @@ export interface PublicEvent {
 export interface SitePage { guru: PublicGuru; events: PublicEvent[]; nextSlots: PublicSlot[]; openCount: number }
 
 export interface HeldBooking { bookingId: string; payUrl: string; holdMinutes: number }
+/** What /api/pay/:id says about the booking she is about to pay for. */
+export interface PayView {
+  status: string; orderId: string | null; keyId: string; amountPaise: number; dakshina: string;
+  guru: { name: string; slug: string }; when: string; phone: string; holdMinutes: number;
+}
 export interface BookingStatus {
   id: string; slotId: string; when: string; status: string;
   dakshinaPaise: number; guruName: string; joinUrl: string | null;

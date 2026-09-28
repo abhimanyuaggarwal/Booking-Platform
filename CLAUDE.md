@@ -48,7 +48,9 @@ If a task seems to need one of these, stop and say so instead of building it.
   `db.js` module exports a pool and a `migrate()` that runs files in order.
 - **WhatsApp:** Meta Cloud API directly (`apps/api/src/whatsapp.js`). Interactive reply buttons
   (max 3) and list messages (max 10 rows). No BSP SDK.
-- **Payments:** Razorpay. Payment Links + `payment_link.paid` webhook now; native `order_details`
+- **Payments:** Razorpay Orders + Checkout on our own page `/pay/:bookingId` (UPI first); confirmed by the
+  `order.paid` webhook and by the signed Checkout result, idempotently. Payment Links were retired on
+  2026-09-28 (test mode caps an account at thirty links for ever). Native `order_details`
   in-chat payment later. Signature-verify every webhook.
 - **Video:** 100ms prebuilt room UI (`@100mslive/roomkit-react`). We build the waiting room ourselves
   and mount the SDK room only after the "guruji joined" event. Audio-first fallback on.
