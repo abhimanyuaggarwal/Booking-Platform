@@ -206,14 +206,17 @@ export function consoleRoutes(env, conversation) {
     bookings.transition(b.status, 'refund'); // throws BookingRuleError before any money moves
     const paid = await bookings.paymentFor(b.id);
     if (!paid) return res.status(409).json({ error: 'Nothing was paid for this booking, so there is nothing to return' });
-    let providerRef = null;
-    if (paid.kind === 'payment') {
+    // Money Razorpay collected goes back through Razorpay; money the team took by hand is handed
+    // back by hand, and the ledger row says so.
+    const byHand = paid.kind === 'payment' && String(paid.provider_ref ?? '').startsWith('offline:');
+    let providerRef = byHand ? `offline:refund:${b.id}` : null;
+    if (paid.kind === 'payment' && !byHand) {
       providerRef = (await pay.refundPayment({ paymentId: paid.provider_ref, amountPaise: paid.amount_paise, bookingId: b.id })).id;
     }
     const refunded = await bookings.refundBooking({ bookingId: b.id, providerRef });
     const devotee = await devotees.findDevoteeById(b.devotee_id);
-    const note = await tell(() => conversation.sendRefundNote({ guru: req.guru, devotee, booking: refunded, amountPaise: paid.amount_paise, viaCredit: paid.kind === 'credit_used' }));
-    res.json({ booking: bookingRow({ ...refunded, phone: devotee.phone, devotee_name: devotee.name }), amountPaise: paid.amount_paise, viaCredit: paid.kind === 'credit_used', notified: note.ok, notDelivered: note.reason ?? null });
+    const note = await tell(() => conversation.sendRefundNote({ guru: req.guru, devotee, booking: refunded, amountPaise: paid.amount_paise, viaCredit: paid.kind === 'credit_used', byHand }));
+    res.json({ booking: bookingRow({ ...refunded, phone: devotee.phone, devotee_name: devotee.name }), amountPaise: paid.amount_paise, viaCredit: paid.kind === 'credit_used', byHand, notified: note.ok, notDelivered: note.reason ?? null });
   }));
 
   // The team took the dakshina by hand after holding the time. Confirms it and sends her the join link.

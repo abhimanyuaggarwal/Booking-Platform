@@ -89,9 +89,9 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
                 const r = await api<{ creditPaise: number; notified: boolean }>(`/bookings/${d.id}/cancel`, { method: 'POST' });
                 return `Cancelled. ${formatRupees(r.creditPaise)} is kept as her credit.${r.notified ? '' : ' WhatsApp did not deliver. Call her.'}`;
               }); }}>Cancel, keep as credit</button>}
-              {can('refund') && <button className="danger" disabled={busy} onClick={() => { if (window.confirm(`Return ${name}'s dakshina? Razorpay sends it back and she is told on WhatsApp. This cannot be undone.`)) act('Refund', async () => {
-                const r = await api<{ amountPaise: number; notified: boolean; viaCredit: boolean }>(`/bookings/${d.id}/refund`, { method: 'POST' });
-                return `${formatRupees(r.amountPaise)} ${r.viaCredit ? 'returned as a credit' : 'is on its way back'}.${r.notified ? '' : ' WhatsApp did not deliver. Call her.'}`;
+              {can('refund') && <button className="danger" disabled={busy} onClick={() => { if (window.confirm(d.paidWith?.providerRef?.startsWith('offline:') ? `Return ${name}'s dakshina? The team hands it back; she is told on WhatsApp. This cannot be undone.` : `Return ${name}'s dakshina? Razorpay sends it back and she is told on WhatsApp. This cannot be undone.`)) act('Refund', async () => {
+                const r = await api<{ amountPaise: number; notified: boolean; viaCredit: boolean; byHand?: boolean }>(`/bookings/${d.id}/refund`, { method: 'POST' });
+                return `${formatRupees(r.amountPaise)} ${r.viaCredit ? 'returned as a credit' : r.byHand ? 'to be handed back to her by the team' : 'is on its way back'}.${r.notified ? '' : ' WhatsApp did not deliver. Call her.'}`;
               }); }}>Return the dakshina</button>}
               {can('no_show') && <button disabled={busy} onClick={() => { if (window.confirm(`Mark ${name} as did not join? The dakshina stands.`)) act('No-show', async () => {
                 await api(`/bookings/${d.id}/no-show`, { method: 'POST' });

@@ -39,6 +39,8 @@ export const copy = {
   guruNow: ({ devoteeName, time, question }) =>
     `${devoteeName} is booked for ${time}.${question ? `\n\nShe wishes to speak about: ${question}` : ''}\n\nYour team sent this note.`,
   paymentUnavailable: () => 'The payment page could not be opened just now, so nothing is booked. Please send Hi again in a few minutes, or write to his team.',
+  refundedByHand: ({ guruName, slotId, dakshina }) =>
+    `${guruName} could not sit at ${describeSlot(slotId)}. His team will return your dakshina of ${dakshina} to you directly.`,
   refundedAsCredit: ({ guruName, slotId, dakshina }) =>
     `${guruName} could not sit at ${describeSlot(slotId)}. Your dakshina of ${dakshina} is back in your credit — book any other time with it within thirty days.`,
 };
@@ -172,8 +174,8 @@ export function createConversation(env) {
     await speak(guru, devotee, booking.id).text(copy.cancelled({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
   }
 
-  async function sendRefundNote({ guru, devotee, booking, amountPaise, viaCredit = false }) {
-    const words = viaCredit ? copy.refundedAsCredit : copy.refunded;
+  async function sendRefundNote({ guru, devotee, booking, amountPaise, viaCredit = false, byHand = false }) {
+    const words = viaCredit ? copy.refundedAsCredit : byHand ? copy.refundedByHand : copy.refunded;
     await speak(guru, devotee, booking.id).text(words({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
   }
 
