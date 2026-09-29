@@ -9,7 +9,7 @@ about keeping it up.
 | | |
 |---|---|
 | Server | `192.46.215.107`, Ubuntu 24.04, 1 vCPU, 1 GB RAM + 2 GB swap, Docker 29 |
-| Address | https://192-46-215-107.sslip.io (Let's Encrypt certificate; swap for `sessions.slike.in` when DNS exists) |
+| Address | https://samvad.sli.ke (A record → the server; Let's Encrypt certificate). The first address, https://192-46-215-107.sslip.io, still serves through `EXTRA_HOSTS` because both provider webhooks point at it |
 | Code | https://github.com/abhimanyuaggarwal/Booking-Platform (`main`) |
 | Checkout on the server | `/opt/expert-sessions`, a git checkout of the same repository; `deploy/deploy.sh` copies the working tree over it (the `.git` folder, `deploy/.env` and `deploy/backups` are never touched). `ssh root@192.46.215.107 'cd /opt/expert-sessions && git log -1 --oneline && git status --short'` shows what commit the server runs and whether anything differs |
 | Access | `ssh root@192.46.215.107` with the deploy key in `~/.ssh/id_ed25519_expert_sessions` (see `~/.ssh/config`); disable password login once every operator has a key |

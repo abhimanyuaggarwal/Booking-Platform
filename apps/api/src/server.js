@@ -43,7 +43,10 @@ app.use((err, _req, res, _next) => {
 });
 
 const server = http.createServer(app);
-attachRealtime(server, { corsOrigin: env.WEB_ORIGIN || 'http://localhost:5173' });
+attachRealtime(server, {
+  // Every address we serve: the main one, and any older one kept alive for the provider webhooks.
+  corsOrigin: [env.WEB_ORIGIN || 'http://localhost:5173', ...(env.EXTRA_HOSTS ?? '').split(',').map((h) => h.trim()).filter(Boolean).map((h) => `https://${h}`)],
+});
 startJobs({ conversation, pay: razorpay.client(env) });
 
 const port = env.PORT || 3000;

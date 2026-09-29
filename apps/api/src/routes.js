@@ -31,8 +31,7 @@ export function routes() {
     try {
       const domain = String(req.query.domain ?? '').toLowerCase();
       if (!domain) return res.status(400).end();
-      const ours = (process.env.PUBLIC_HOST ?? '').toLowerCase();
-      if (domain === ours || (await gurus.findGuruByDomain(domain))) return res.status(200).end();
+      if (platformHosts().has(domain) || (await gurus.findGuruByDomain(domain))) return res.status(200).end();
       res.status(404).end();
     } catch (err) {
       next(err);
@@ -80,4 +79,13 @@ export function routes() {
   });
 
   return router;
+}
+
+/**
+ * The hostnames that are ours rather than a guru's: PUBLIC_HOST, plus EXTRA_HOSTS (comma-separated)
+ * for an older address that still serves — the provider webhooks point at it until they are moved.
+ */
+export function platformHosts() {
+  const list = [process.env.PUBLIC_HOST ?? '', ...(process.env.EXTRA_HOSTS ?? '').split(',')];
+  return new Set(list.map((h) => h.trim().toLowerCase()).filter(Boolean));
 }
