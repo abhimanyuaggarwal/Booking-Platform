@@ -363,6 +363,7 @@ test('sign-in asks for a WhatsApp number and a password, offers the code for a f
 const draft: GuruDetail = {
   slug: 'bhagwat', name: 'Bhagwat', language: 'hi', status: 'setting_up', domain: null, subdomain: 'bhagwat.samvad.sli.ke',
   subscription: { plan: 'Pilot', feePaise: 999900, status: 'trial', nextDueOn: '2026-11-01' }, business: {}, activatedAt: null,
+  payments: { connected: false, keyId: '', mode: null, connectedAt: null, verifiedAt: null, webhookUrl: 'https://samvad.sli.ke/razorpay/webhook/bhagwat', pending: null, canApprove: true, secretsReady: true },
   readiness: [
     { key: 'identity', done: true, required: true }, { key: 'address', done: true, required: true, detail: 'subdomain' }, { key: 'team', done: false, required: true },
     { key: 'sittings', done: true, required: true }, { key: 'payments', done: false, required: false, detail: 'shared' }, { key: 'whatsapp', done: false, required: false, detail: 'shared' },
@@ -390,4 +391,17 @@ test('the Setup page lists nine steps with why and a way in, gates Go live on th
   expect(html).toMatch(/<button class="primary" disabled="" title="Finish the required steps to go live\.">Go live<\/button>/);
   expect(html).toContain('created');
   expect(html).toContain('Abhimanyu');
+});
+
+test('the Payments card asks for the three Razorpay secrets and shows the webhook address; connected, it shows the masked key and the checks', () => {
+  const html = renderToStaticMarkup(<StaticRouter location="/console/gurus/bhagwat"><GuruSetupView g={draft} me={me} onChanged={() => {}} /></StaticRouter>);
+  expect(html).toContain('His Razorpay account');
+  expect(html).toContain('placeholder="rzp_live_…"');
+  expect(html).toContain('https://samvad.sli.ke/razorpay/webhook/bhagwat');
+  expect(html).toContain('send to guruji for approval');
+  const connected = { ...draft, payments: { ...draft.payments, connected: true, keyId: 'rzp_live_…1234', mode: 'live' as const, connectedAt: '2026-10-07T10:00:00Z' } };
+  const html2 = renderToStaticMarkup(<StaticRouter location="/console/gurus/bhagwat"><GuruSetupView g={connected} me={me} onChanged={() => {}} /></StaticRouter>);
+  expect(html2).toContain('rzp_live_…1234');
+  expect(html2).toContain('Check the connection');
+  expect(html2).not.toContain('placeholder="rzp_live_…"');
 });

@@ -7,12 +7,42 @@
 import axios from 'axios';
 import crypto from 'node:crypto';
 import { ProviderError } from './errors.js';
+import { decrypt, secretsKey } from './secrets.js';
+
+/**
+ * The client for one guru: his own keys when his account is connected (decrypted here, never
+ * returned), otherwise the platform's keys from .env. Every money call goes through this.
+ */
+export function clientFor(guru, env) {
+  if (guru?.razorpay_key_id && guru.razorpay_secret_enc) {
+    return client({ RAZORPAY_KEY_ID: guru.razorpay_key_id, RAZORPAY_KEY_SECRET: decrypt(guru.razorpay_secret_enc, secretsKey(env)) });
+  }
+  return client(env);
+}
+
+/** The webhook secret Razorpay signs this guru's deliveries with: his own, or the platform's. */
+export function webhookSecretFor(guru, env) {
+  if (guru?.razorpay_webhook_secret_enc) return decrypt(guru.razorpay_webhook_secret_enc, secretsKey(env));
+  return env.RAZORPAY_WEBHOOK_SECRET;
+}
 
 export function client(env) {
   const auth = { username: env.RAZORPAY_KEY_ID, password: env.RAZORPAY_KEY_SECRET };
 
   return {
     keyId: env.RAZORPAY_KEY_ID,
+
+    /** Do these keys open the account? One cheap read; a wrong secret answers 401. */
+    async verifyKeys() {
+      try {
+        await axios.get('https://api.razorpay.com/v1/orders?count=1', { auth });
+        return true;
+      } catch (err) {
+        if (err.response?.status === 401) return false;
+        const detail = err.response ? JSON.stringify(err.response.data) : err.message;
+        throw new ProviderError(`Razorpay could not be reached to check the keys: ${detail}`);
+      }
+    },
 
     /**
      * One order per hold; Checkout on /pay/:bookingId collects against it.

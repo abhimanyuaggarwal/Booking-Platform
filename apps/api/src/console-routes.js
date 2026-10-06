@@ -7,7 +7,9 @@ import { describeSlot } from '@expert-sessions/shared';
 import { consoleAuth, readCookie } from './console-auth.js';
 import { listUsers, validateUser, createUser, deactivateUser, findUser } from './console-users.js';
 import * as whatsapp from './whatsapp.js';
-import { findGuruBySlug, findGuruById, listGurus, validatePattern, validateSite, updatePattern, updateSite, validateNewGuru, createGuru, validateSetup, updateSetup, setGuruStatus, subdomainOf, GURU_STATUSES } from './gurus.js';
+import { findGuruBySlug, findGuruById, listGurus, validatePattern, validateSite, updatePattern, updateSite, validateNewGuru, createGuru, validateSetup, updateSetup, setGuruStatus, subdomainOf, GURU_STATUSES, validateRazorpayKeys, connectRazorpay, markRazorpayVerified, disconnectRazorpay } from './gurus.js';
+import { encrypt, secretsKey, maskKey } from './secrets.js';
+import { requestApproval, pendingApproval } from './approvals.js';
 import { audit, auditTrail } from './audit.js';
 import {
   todayReport, weekReport, moneyReport, todayIst, mondayOf, attentionQueue, waitingBoard, closeDayPreview, bookingDetail, bookingRow,
@@ -35,7 +37,6 @@ export function consoleRoutes(env, conversation) {
     // The sign-in code goes out on WhatsApp from the platform's number, in both languages.
     sendCode: (phone, code) => wa.text(phone, `Samvad: your sign-in code is ${code}. It works for ten minutes.\nसंवाद: आपका साइन-इन कोड ${code} है। यह दस मिनट तक चलेगा।`),
   });
-  const pay = razorpay.client(env);
   const guruSlug = env.CONSOLE_GURU_SLUG || 'guruji';
   const GURU_COOKIE = 'es_console_guru';   // which guru an admin is looking at
   const router = express.Router();
@@ -123,7 +124,13 @@ export function consoleRoutes(env, conversation) {
       listSessionTypes(g.id), listQrCodes(g), listUsers({ guruId: g.id }),
     ]);
     const steps = readiness({ guru: g, sessionTypes: types, qrCount: qr.length, teamCount: team.filter((u) => u.active).length, publicHost: env.PUBLIC_HOST });
+    const pending = await pendingApproval(g.id, 'payments');
     return {
+      payments: {
+        connected: Boolean(g.razorpay_connected_at), keyId: maskKey(g.razorpay_key_id), mode: g.razorpay_mode,
+        connectedAt: g.razorpay_connected_at ? g.razorpay_connected_at.toISOString() : null, verifiedAt: g.razorpay_verified_at ? g.razorpay_verified_at.toISOString() : null,
+        webhookUrl: `${env.APP_BASE_URL}/razorpay/webhook/${g.slug}`, pending, canApprove: Boolean(g.guru_phone), secretsReady: Boolean(secretsKey(env)),
+      },
       slug: g.slug, name: g.name, language: g.language, status: g.status, domain: g.domain, subdomain: subdomainOf(g, env.PUBLIC_HOST),
       subscription: g.subscription_json ?? {}, business: g.business_json ?? {}, activatedAt: g.activated_at ? g.activated_at.toISOString() : null,
       readiness: steps, done: steps.filter((st) => st.done).length, total: steps.length,
@@ -176,6 +183,52 @@ export function consoleRoutes(env, conversation) {
     res.json(await guruSummary(updated));
   }));
 
+  // ---- his Razorpay: keys in, guruji's Yes, then connected (admin only) -----------------------
+  router.post('/admin/gurus/:slug/payments', auth.requireAdmin, handle(async (req, res) => {
+    const g = await findGuruBySlug(req.params.slug);
+    if (!g) return res.status(404).json({ error: 'No such guru' });
+    const problem = validateRazorpayKeys(req.body);
+    if (problem) return res.status(400).json({ error: problem });
+    const key = secretsKey(env);
+    if (!key) return res.status(503).json({ error: 'SECRETS_KEY is not set on the server, so secrets cannot be stored. Add it to deploy/.env (openssl rand -hex 32) and restart.' });
+    if (!g.guru_phone) return res.status(409).json({ error: 'Guruji has no WhatsApp number yet, so he cannot approve this. Add it under Settings, Messages, first.' });
+    const keyId = req.body.keyId.trim();
+    // The keys must open the account before guruji is even asked.
+    const ok = await razorpay.client({ RAZORPAY_KEY_ID: keyId, RAZORPAY_KEY_SECRET: req.body.keySecret.trim() }).verifyKeys();
+    if (!ok) return res.status(400).json({ error: 'Razorpay does not accept that key id and secret together. Check both, or make a new key in his dashboard.' });
+    const payload = { keyId, secretEnc: encrypt(req.body.keySecret.trim(), key), webhookSecretEnc: encrypt(req.body.webhookSecret.trim(), key) };
+    const summary = `Razorpay ${maskKey(keyId)} (${keyId.startsWith('rzp_live_') ? 'live' : 'test'})`;
+    const approval = await requestApproval({ guru: g, kind: 'payments', payload, summary, requestedBy: req.user.name, key });
+    const W = conversation.wordsFor(g.language);
+    try {
+      await conversation.askGuru({ guru: g, text: W.approvalAsk({ summary, by: req.user.name || 'Slike' }), approvalId: approval.id });
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+      return res.status(502).json({ error: `The request is saved, but WhatsApp could not reach guruji's number: ${err.message}` });
+    }
+    await audit({ guruId: g.id, user: req.user, action: 'payments.requested', detail: { keyId: maskKey(keyId) } });
+    res.status(202).json(await guruSummary(await findGuruBySlug(g.slug)));
+  }));
+
+  // Do the connected keys still open the account? Marks the date they were last seen working.
+  router.post('/admin/gurus/:slug/payments/verify', auth.requireAdmin, handle(async (req, res) => {
+    const g = await findGuruBySlug(req.params.slug);
+    if (!g) return res.status(404).json({ error: 'No such guru' });
+    if (!g.razorpay_key_id) return res.status(409).json({ error: 'No account is connected yet' });
+    const ok = await razorpay.clientFor(g, env).verifyKeys();
+    await markRazorpayVerified(g.id, ok);
+    await audit({ guruId: g.id, user: req.user, action: ok ? 'payments.verified' : 'payments.failed', detail: {} });
+    res.json({ ok, ...(await guruSummary(await findGuruBySlug(g.slug))) });
+  }));
+
+  router.delete('/admin/gurus/:slug/payments', auth.requireAdmin, handle(async (req, res) => {
+    const g = await findGuruBySlug(req.params.slug);
+    if (!g) return res.status(404).json({ error: 'No such guru' });
+    await disconnectRazorpay(g.id);
+    await audit({ guruId: g.id, user: req.user, action: 'payments.disconnected', detail: {} });
+    res.json(await guruSummary(await findGuruBySlug(g.slug)));
+  }));
+
   // ---- who has access (admin only) ------------------------------------------------------------
   router.get('/admin/users', auth.requireAdmin, handle(async (req, res) => {
     const forGuru = typeof req.query.guru === 'string' ? await findGuruBySlug(req.query.guru) : null;
@@ -210,7 +263,8 @@ export function consoleRoutes(env, conversation) {
   }));
 
   router.get('/money', handle(async (req, res) => {
-    res.json(await moneyReport(req.guru, mondayOf(dateParam(req.query.start) ?? todayIst())));
+    const report = await moneyReport(req.guru, mondayOf(dateParam(req.query.start) ?? todayIst()));
+    res.json({ ...report, account: req.guru.razorpay_connected_at ? { own: true, keyId: maskKey(req.guru.razorpay_key_id), mode: req.guru.razorpay_mode } : { own: false } });
   }));
 
   router.get('/settings', handle(async (req, res) => res.json(await settingsWithTypes(req.guru))));
@@ -380,7 +434,7 @@ export function consoleRoutes(env, conversation) {
   // button. "Return the dakshina" below is for when guruji could not sit.
   router.post('/bookings/:id/cancel', handle(async (req, res) => {
     const b = await ownBooking(req, res); if (!b) return;
-    const { booking, amountPaise, how } = await cancelAndRefund({ booking: b, pay, reason: 'cancelled by the team at her request' });
+    const { booking, amountPaise, how } = await cancelAndRefund({ booking: b, pay: razorpay.clientFor(req.guru, env), reason: 'cancelled by the team at her request' });
     const devotee = await devotees.findDevoteeById(b.devotee_id);
     const note = await tell(() => conversation.sendCancelledNote({ guru: req.guru, devotee, booking, amountPaise, how }));
     res.json({ booking: bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }), amountPaise, how, notified: note.ok, notDelivered: note.reason ?? null });
@@ -397,7 +451,7 @@ export function consoleRoutes(env, conversation) {
     const byHand = paid.kind === 'payment' && String(paid.provider_ref ?? '').startsWith('offline:');
     let providerRef = byHand ? `offline:refund:${b.id}` : null;
     if (paid.kind === 'payment' && !byHand) {
-      providerRef = (await pay.refundPayment({ paymentId: paid.provider_ref, amountPaise: paid.amount_paise, bookingId: b.id })).id;
+      providerRef = (await razorpay.clientFor(req.guru, env).refundPayment({ paymentId: paid.provider_ref, amountPaise: paid.amount_paise, bookingId: b.id })).id;
     }
     const refunded = await bookings.refundBooking({ bookingId: b.id, providerRef });
     const devotee = await devotees.findDevoteeById(b.devotee_id);

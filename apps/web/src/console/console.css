@@ -362,3 +362,6 @@
 .console form.settings.narrow { max-width: 620px; }
 .console .progress-text { font-size: 14px; }
 @media (max-width: 900px) { .console .step { flex-wrap: wrap; } .console .step .do { width: 100%; flex-direction: row; justify-content: space-between; } }
+.console .ok-line { display: flex; align-items: center; gap: 8px; color: var(--ok); margin: 0 0 10px; }
+.console .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; overflow-wrap: anywhere; margin: 0 0 12px; display: flex; align-items: center; gap: 6px; }
+.console .mono code { background: var(--hover); padding: 4px 8px; border-radius: 6px; }

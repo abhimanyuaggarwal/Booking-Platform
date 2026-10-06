@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Circle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Check, Circle, ExternalLink, Copy } from 'lucide-react';
 import { formatRupees } from '@expert-sessions/shared';
 import { api, useApi } from './api';
 import { useWords } from './lang';
@@ -68,6 +68,7 @@ export function GuruSetupView({ g, me, justCreated = false, onChanged }: { g: Gu
         <BusinessCard g={g} onChanged={onChanged} />
       </div>
       <DomainCard g={g} onChanged={onChanged} />
+      <PaymentsCard g={g} onChanged={onChanged} />
 
       <section className="panel">
         <h2>{W.gurus.steps.team.title} <i>{W.gurus.teamOf(g.team.length)}</i></h2>
@@ -100,12 +101,13 @@ function Step({ n, step: st, g, onOpen, onGoLive }: { n: number; step: Readiness
         <h3>{n}. {words.title} <span className={`muted small ${st.required ? 'req' : ''}`}>{st.required ? W.gurus.required : W.gurus.optional}</span></h3>
         <p className="muted">{words.why}</p>
         {st.key === 'address' && <p className="small">{g.domain ?? g.subdomain ?? `/s/${g.slug}`}</p>}
-        {shared && <p className="small muted">{W.gurus.shared} · {W.gurus.soon}</p>}
+        {shared && <p className="small muted">{W.gurus.shared}{st.key === 'whatsapp' ? ` · ${W.gurus.soon}` : ''}</p>}
       </div>
       <div className="do">
         {link && <button onClick={() => onOpen(link)}>{words.action}</button>}
         {st.key === 'address' && <a href="#domain" className="btn">{words.action}</a>}
         {st.key === 'business' && <a href="#business" className="btn">{words.action}</a>}
+        {st.key === 'payments' && <a href="#payments" className="btn">{words.action}</a>}
         {st.key === 'live' && !st.done && <button className="primary" disabled={!g.readyToGoLive} onClick={onGoLive}>{words.action}</button>}
         <span className={`muted small ${st.done ? 'ok' : ''}`}>{st.done ? W.gurus.done : W.gurus.todo}</span>
       </div>
@@ -181,5 +183,59 @@ function DomainCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }) 
       <div className="row"><label>{W.gurus.newDomain}<input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="guruji.com" /></label></div>
       <div className="row" style={{ marginTop: 12 }}><button className="primary">{W.gurus.save}</button>{note && <span className="status">{note}</span>}</div>
     </form>
+  );
+}
+
+function PaymentsCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }) {
+  const W = useWords();
+  const P = W.gurus.payments;
+  const pay = g.payments;
+  const [keyId, setKeyId] = useState('');
+  const [keySecret, setKeySecret] = useState('');
+  const [webhookSecret, setWebhookSecret] = useState('');
+  const [note, setNote] = useState<{ text: string; tone: 'ok' | 'problem' } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+
+  async function act(work: () => Promise<string>) {
+    setBusy(true); setNote(null);
+    try { setNote({ text: await work(), tone: 'ok' }); onChanged(); } catch (err) { setNote({ text: (err as Error).message, tone: 'problem' }); } finally { setBusy(false); }
+  }
+  const send = (e: FormEvent) => { e.preventDefault(); act(async () => { await api(`/admin/gurus/${g.slug}/payments`, { method: 'POST', json: { keyId, keySecret, webhookSecret } }); setKeySecret(''); setWebhookSecret(''); return P.sent; }); };
+  const verify = () => act(async () => (await api<{ ok: boolean }>(`/admin/gurus/${g.slug}/payments/verify`, { method: 'POST' })).ok ? P.verifiedOk : P.verifiedBad);
+  const disconnect = () => { if (window.confirm(P.confirmDisconnect)) act(async () => { await api(`/admin/gurus/${g.slug}/payments`, { method: 'DELETE' }); return W.gurus.saved; }); };
+
+  return (
+    <section className="panel" id="payments">
+      <h2>{P.title}</h2>
+      {note && <p className={`banner ${note.tone}`}>{note.text}</p>}
+      {pay.connected ? (
+        <>
+          <p className="ok-line"><Check size={16} aria-hidden="true" /> {P.connected(pay.keyId, P.modeWords[pay.mode ?? 'test'], when(pay.connectedAt!))}{pay.verifiedAt ? <span className="muted small"> · {P.lastVerified(when(pay.verifiedAt))}</span> : null}</p>
+          <p className="muted small">{P.webhook}</p>
+          <p className="mono"><code>{pay.webhookUrl}</code> <button type="button" className="quiet" aria-label="Copy" onClick={() => navigator.clipboard?.writeText(pay.webhookUrl)}><Copy size={14} aria-hidden="true" /></button></p>
+          <div className="row"><button onClick={verify} disabled={busy}>{P.verify}</button><button className="quiet" onClick={disconnect} disabled={busy}>{P.disconnect}</button></div>
+        </>
+      ) : pay.pending ? (
+        <p className="banner ok">{P.pending(pay.pending.summary, pay.pending.requestedBy ?? 'Slike', when(pay.pending.createdAt))}</p>
+      ) : (
+        <>
+          <p className="muted">{P.shared}</p>
+          {!pay.canApprove && <p className="banner problem">{P.noPhone}</p>}
+          {!pay.secretsReady && <p className="banner problem">{P.noSecrets}</p>}
+          <form onSubmit={send}>
+            <p className="muted small">{P.where}</p>
+            <div className="row">
+              <label>{P.keyId}<input value={keyId} onChange={(e) => setKeyId(e.target.value)} placeholder="rzp_live_…" required /></label>
+              <label>{P.keySecret}<input type="password" value={keySecret} onChange={(e) => setKeySecret(e.target.value)} autoComplete="off" required /></label>
+              <label>{P.webhookSecret}<input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} autoComplete="off" required /></label>
+            </div>
+            <p className="muted small" style={{ marginTop: 8 }}>{P.webhook}</p>
+            <p className="mono"><code>{pay.webhookUrl}</code></p>
+            <div className="row"><button className="primary" disabled={busy || !pay.canApprove || !pay.secretsReady}>{P.send}</button></div>
+          </form>
+        </>
+      )}
+    </section>
   );
 }

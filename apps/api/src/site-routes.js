@@ -23,7 +23,6 @@ const SLOT = /^slot:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
 export function siteRoutes(env, conversation) {
   const auth = devoteeAuth(env);
-  const pay = razorpay.client(env);
   const router = express.Router();
   router.use(withGuru);
 
@@ -111,7 +110,7 @@ export function siteRoutes(env, conversation) {
     const b = await herBooking(req, res); if (!b) return;
     const problem = bookings.whyCannotCancel(b);
     if (problem) return res.status(409).json({ error: problem });
-    const { booking, amountPaise, how } = await cancelAndRefund({ booking: b, pay });
+    const { booking, amountPaise, how } = await cancelAndRefund({ booking: b, pay: razorpay.clientFor(req.guru, env) });
     const note = await tell(() => conversation.sendCancelledNote({ guru: req.guru, devotee: req.devotee, booking, amountPaise, how }));
     const said = how === 'online' ? `That time is cancelled. Your dakshina of ${formatRupees(amountPaise)} comes back to your account in ${REFUND_DAYS}.`
       : how === 'byHand' ? `That time is cancelled. His team will return your dakshina of ${formatRupees(amountPaise)} to you directly.`

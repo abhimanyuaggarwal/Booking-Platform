@@ -8,7 +8,8 @@ const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
 
 // closed_dates comes back as 'YYYY-MM-DD' strings, the form availableSlots() compares against.
 const COLUMNS = `id, slug, domain, name, about, marketing_json, dakshina_paise, whatsapp_number, guru_phone, language,
-  pattern_json, closed_dates::text[] as closed_dates, created_at, status, subscription_json, business_json, activated_at`;
+  pattern_json, closed_dates::text[] as closed_dates, created_at, status, subscription_json, business_json, activated_at,
+  razorpay_key_id, razorpay_secret_enc, razorpay_webhook_secret_enc, razorpay_mode, razorpay_connected_at, razorpay_verified_at`;
 
 export async function findGuruBySlug(slug) {
   const { rows } = await query(`select ${COLUMNS} from gurus where slug = $1`, [slug]);
@@ -231,5 +232,37 @@ export async function setGuruStatus(guruId, status) {
   const { rows } = await query(
     `update gurus set status = $2, activated_at = case when $2 = 'live' and activated_at is null then now() else activated_at end where id = $1 returning ${COLUMNS}`,
     [guruId, status]);
+  return rows[0];
+}
+
+// ---- His own Razorpay --------------------------------------------------------------------------
+
+export function validateRazorpayKeys(body) {
+  const id = String(body?.keyId ?? '').trim();
+  if (!/^rzp_(test|live)_[A-Za-z0-9]{8,}$/.test(id)) return 'The key id looks like rzp_live_… or rzp_test_…, from his Razorpay dashboard under Settings, API keys';
+  if (String(body?.keySecret ?? '').trim().length < 16) return 'The key secret is shown once, when the key is made; paste it here';
+  if (String(body?.webhookSecret ?? '').trim().length < 6) return 'The webhook secret is the one typed into his Razorpay dashboard when the webhook was made';
+  return null;
+}
+
+/** Writes the connection after guruji approved it. Secrets arrive already encrypted (secrets.js). */
+export async function connectRazorpay(guruId, { keyId, secretEnc, webhookSecretEnc }) {
+  const mode = keyId.startsWith('rzp_live_') ? 'live' : 'test';
+  const { rows } = await query(
+    `update gurus set razorpay_key_id = $2, razorpay_secret_enc = $3, razorpay_webhook_secret_enc = $4, razorpay_mode = $5,
+            razorpay_connected_at = now(), razorpay_verified_at = null where id = $1 returning ${COLUMNS}`,
+    [guruId, keyId, secretEnc, webhookSecretEnc, mode]);
+  return rows[0];
+}
+
+export async function markRazorpayVerified(guruId, ok) {
+  const { rows } = await query(`update gurus set razorpay_verified_at = case when $2 then now() else null end where id = $1 returning ${COLUMNS}`, [guruId, ok]);
+  return rows[0];
+}
+
+export async function disconnectRazorpay(guruId) {
+  const { rows } = await query(
+    `update gurus set razorpay_key_id = null, razorpay_secret_enc = null, razorpay_webhook_secret_enc = null, razorpay_mode = null,
+            razorpay_connected_at = null, razorpay_verified_at = null where id = $1 returning ${COLUMNS}`, [guruId]);
   return rows[0];
 }

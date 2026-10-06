@@ -7,7 +7,7 @@ import { closeAbandonedSessions } from './sessions.js';
 import { reconcilePayments } from './reconcile.js';
 import { query } from './db.js';
 
-export function startJobs({ conversation, pay }) {
+export function startJobs({ conversation, payFor }) {
   // Every minute: sessions nobody ended. One forgotten session makes the api answer "he is with
   // someone" for ever, so every other devotee waits for a sitting that finished long ago.
   cron.schedule('* * * * *', async () => {
@@ -44,7 +44,7 @@ export function startJobs({ conversation, pay }) {
   // sleeping laptop or a dropped tunnel otherwise leaves her paid with no time and no ledger row.
   cron.schedule('0 * * * *', async () => {
     try {
-      const r = await reconcilePayments({ pay, conversation });
+      const r = await reconcilePayments({ payFor, conversation });
       if (r.asked) console.log(`Reconciled payments: asked Razorpay about ${r.asked} link(s), settled ${r.settled}, ${r.failed} could not be fetched`);
     } catch (err) {
       console.error(`Payment reconciliation failed: ${err.message}`);

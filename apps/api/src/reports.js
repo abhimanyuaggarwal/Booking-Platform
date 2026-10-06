@@ -586,7 +586,7 @@ export function readiness({ guru, sessionTypes, qrCount, teamCount, publicHost }
     { key: 'address', done: true, required: true, detail: guru.domain ? 'domain' : publicHost ? 'subdomain' : 'preview' },
     { key: 'team', done: teamCount > 0, required: true },
     { key: 'sittings', done: steps.kinds && steps.timings, required: true },
-    { key: 'payments', done: false, required: false, detail: 'shared' },
+    { key: 'payments', done: Boolean(guru.razorpay_connected_at), required: false, detail: guru.razorpay_connected_at ? (guru.razorpay_mode ?? 'own') : 'shared' },
     { key: 'whatsapp', done: false, required: false, detail: 'shared' },
     { key: 'distribution', done: steps.qr, required: false },
     { key: 'business', done: Boolean(biz.legalName), required: false },

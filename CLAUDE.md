@@ -52,7 +52,8 @@ If a task seems to need one of these, stop and say so instead of building it.
   `db.js` module exports a pool and a `migrate()` that runs files in order.
 - **WhatsApp:** Meta Cloud API directly (`apps/api/src/whatsapp.js`). Interactive reply buttons
   (max 3) and list messages (max 10 rows). No BSP SDK.
-- **Payments:** Razorpay Orders + Checkout on our own page `/pay/:bookingId` (UPI first); confirmed by the
+- **Payments (per guru since 2026-10-07):** each guru's own Razorpay keys, stored encrypted (`SECRETS_KEY`), connected by a
+  Slike admin and approved by guruji on WhatsApp; Slike's keys serve a guru who has none yet. Razorpay Orders + Checkout on our own page `/pay/:bookingId` (UPI first); confirmed by the
   `order.paid` webhook and by the signed Checkout result, idempotently. Payment Links were retired on
   2026-09-28 (test mode caps an account at thirty links for ever). Native `order_details`
   in-chat payment later. Signature-verify every webhook.

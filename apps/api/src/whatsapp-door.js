@@ -21,10 +21,13 @@ import { logMessage } from './messages-log.js';
 import { copy } from './conversation.js';
 import { settlePaidLink } from './paid-link.js';
 import { cancelAndRefund } from './cancellations.js';
+import * as approvals from './approvals.js';
+import { secretsKey } from './secrets.js';
+import { audit } from './audit.js';
 
 export function whatsappDoor(env, conversation) {
   const router = express.Router();
-  const pay = razorpay.client(env);
+  const wa = whatsapp.client(env);
   const pendingSource = new Map(); // phone -> source, remembered until she picks a slot (in memory; lost on restart)
 
   // ---------------------------------------------------------------------------
@@ -61,6 +64,8 @@ export function whatsappDoor(env, conversation) {
           'Set WHATSAPP_DISPLAY_NUMBER in .env and run pnpm seed, or fix gurus.whatsapp_number.');
         return;
       }
+      // Guruji's own Yes or No to a change his team asked for: only from his number, nothing else happens.
+      if ((msg.kind === 'button') && /^(approve|reject):/.test(msg.id)) return await decideApproval(guru, msg);
       const devotee = await devotees.findOrCreateDevotee(guru.id, msg.from, { name: msg.profileName });
       await logMessage({ guruId: guru.id, devoteeId: devotee.id, direction: 'in', kind: msg.kind, payload: msg });
       const say = conversation.speak(guru, devotee);
@@ -165,10 +170,13 @@ export function whatsappDoor(env, conversation) {
   // ---------------------------------------------------------------------------
   // 3. Razorpay tells us she paid.
   // ---------------------------------------------------------------------------
-  router.post('/razorpay/webhook', async (req, res) => {
+  // The platform's webhook, and one per guru (/razorpay/webhook/<slug>) signed with his own secret.
+  router.post(['/razorpay/webhook', '/razorpay/webhook/:slug'], async (req, res) => {
     const signature = req.header('X-Razorpay-Signature');
-    if (!razorpay.isValidWebhook(req.rawBody, signature, env.RAZORPAY_WEBHOOK_SECRET)) {
-      return res.status(400).send('Bad signature — check RAZORPAY_WEBHOOK_SECRET matches the Razorpay dashboard');
+    const guru = req.params.slug ? await gurus.findGuruBySlug(req.params.slug) : null;
+    if (req.params.slug && !guru) return res.status(404).send('No guru at this webhook address');
+    if (!razorpay.isValidWebhook(req.rawBody, signature, razorpay.webhookSecretFor(guru, env))) {
+      return res.status(400).send(guru ? `Bad signature — the webhook secret in ${guru.name}'s Razorpay dashboard must match the one connected in the console` : 'Bad signature — check RAZORPAY_WEBHOOK_SECRET matches the Razorpay dashboard');
     }
     res.sendStatus(200);
 
@@ -307,7 +315,7 @@ export function whatsappDoor(env, conversation) {
     if (problem) return say.buttons(W.cannotChange({ reason: problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
     let result;
     try {
-      result = await cancelAndRefund({ booking: b, pay });
+      result = await cancelAndRefund({ booking: b, pay: razorpay.clientFor(guru, env) });
     } catch (err) {
       if (!(err instanceof ProviderError)) throw err;
       console.error(err.message);
@@ -322,6 +330,22 @@ export function whatsappDoor(env, conversation) {
     const b = await herBooking(guru, devotee, bookingId);
     if (b) await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: b.id, direction: 'in', kind: 'asked.team', payload: { text: 'Asked on WhatsApp to change or cancel this time' } });
     await say.text(wordsFor(guru.language).teamWillCall({ guruName: guru.name }));
+  }
+
+  // ---------------------------------------------------------------------------
+  // 6. Guruji approves a change to his money or his number (approvals.js). The tap must come from
+  //    his own phone; the request was sent there by the console.
+  // ---------------------------------------------------------------------------
+  async function decideApproval(guru, msg) {
+    const [, verb, id] = msg.id.match(/^(approve|reject):(.+)$/);
+    const from = String(msg.from).replace(/\D/g, '');
+    if (!guru.guru_phone || from !== String(guru.guru_phone).replace(/\D/g, '')) return;
+    const decision = await approvals.decide({ id, approved: verb === 'approve', key: secretsKey(env) });
+    const W = wordsFor(guru.language);
+    if (!decision) return wa.text(from, W.approvalGone());
+    if (decision.approved && decision.kind === 'payments') await gurus.connectRazorpay(guru.id, decision.payload);
+    await audit({ guruId: guru.id, user: { id: 'guruji', name: guru.name }, action: decision.approved ? `${decision.kind}.approved` : `${decision.kind}.rejected`, detail: {} });
+    await wa.text(from, decision.approved ? W.approvalThanks() : W.approvalDeclined());
   }
 
   // "Hi" always means she wants a time, whatever else is in flight.

@@ -54,7 +54,7 @@ export interface LedgerEntry {
   at: string; date: string; time: string; name: string; source: Source | null; slotId: string | null; slotTime: string | null;
   expiresAt: string | null;
 }
-export interface MoneyReport { monday: string; sunday: string; label: string; kpis: MoneyKpis; entries: LedgerEntry[] }
+export interface MoneyReport { monday: string; sunday: string; label: string; kpis: MoneyKpis; entries: LedgerEntry[]; account?: { own: boolean; keyId?: string; mode?: 'test' | 'live' | null } }
 
 export type DayKey = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
 export interface Pattern {
@@ -159,8 +159,13 @@ export type StepKey = 'identity' | 'address' | 'team' | 'sittings' | 'payments' 
 export interface ReadinessStep { key: StepKey; done: boolean; required: boolean; detail?: string }
 export interface Subscription { plan?: string; feePaise?: number; status?: 'trial' | 'active' | 'overdue' | 'cancelled'; nextDueOn?: string }
 export interface Business { legalName?: string; address?: string; gst?: string; pan?: string }
+export interface PaymentsState {
+  connected: boolean; keyId: string; mode: 'test' | 'live' | null; connectedAt: string | null; verifiedAt: string | null;
+  webhookUrl: string; pending: { id: string; summary: string; requestedBy: string | null; createdAt: string } | null; canApprove: boolean; secretsReady: boolean;
+}
 export interface GuruSummary {
   slug: string; name: string; language: 'en' | 'hi'; status: GuruStatus; domain: string | null; subdomain: string | null;
+  payments: PaymentsState;
   subscription: Subscription; business: Business; activatedAt: string | null;
   readiness: ReadinessStep[]; done: number; total: number; readyToGoLive: boolean;
 }

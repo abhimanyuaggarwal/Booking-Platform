@@ -20,7 +20,6 @@ export const copy = wordsFor('en');
 
 export function createConversation(env) {
   const wa = whatsapp.client(env);
-  const pay = razorpay.client(env);
 
   /**
    * Talk to one devotee and keep the record: every message becomes a messages_log row, delivered or
@@ -66,7 +65,7 @@ export function createConversation(env) {
     const dakshina = formatRupees(booking.dakshina_paise);
     let order;
     try {
-      order = await pay.createOrder({
+      order = await razorpay.clientFor(guru, env).createOrder({
         amountPaise: booking.dakshina_paise,
         receipt: booking.id,
         notes: { booking_id: booking.id, guru: guru.slug, time: describeSlot(slotId) },
@@ -119,6 +118,20 @@ export function createConversation(env) {
       throw err;
     }
     await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: booking.id, direction: 'out', kind, payload: { ...payload, delivered: true } });
+  }
+
+  /** A change his team asked for, put to guruji on his own WhatsApp with Approve and Decline. */
+  async function askGuru({ guru, text, approvalId }) {
+    if (!guru.guru_phone) throw new BookingRuleError('Guruji has no WhatsApp number yet. Add it in Settings, Messages, and try again.');
+    const W = wordsFor(guru.language);
+    try {
+      await wa.buttons(guru.guru_phone, text, [{ id: `approve:${approvalId}`, title: W.approve }, { id: `reject:${approvalId}`, title: W.decline }]);
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+      await logMessage({ guruId: guru.id, devoteeId: null, bookingId: null, direction: 'out', kind: 'approval.guru', payload: { body: text, to: 'guru', delivered: false, reason: err.message } }).catch(() => {});
+      throw err;
+    }
+    await logMessage({ guruId: guru.id, devoteeId: null, bookingId: null, direction: 'out', kind: 'approval.guru', payload: { body: text, to: 'guru', delivered: true } }).catch(() => {});
   }
 
   // Her confirmation points at her booking page (see it, move it, cancel it). The join link comes
@@ -255,7 +268,7 @@ export function createConversation(env) {
     return env.JOIN_LINK_BASE || (guru?.domain ? `https://${guru.domain}` : env.APP_BASE_URL);
   }
 
-  return { speak, startPayment, sendConfirmation, sendPaidTooLateNote, resendPaymentLink, sendHeardAfterSession, sendNewTime, sendCancelledNote, sendRefundNote, sendWaitingMessage, receiveWaitingMessage, joinLink, payLink, bookingLink, bookPaidOutside, tellGuru, copy, wordsFor };
+  return { speak, startPayment, sendConfirmation, sendPaidTooLateNote, resendPaymentLink, sendHeardAfterSession, sendNewTime, sendCancelledNote, sendRefundNote, sendWaitingMessage, receiveWaitingMessage, joinLink, payLink, bookingLink, bookPaidOutside, tellGuru, askGuru, copy, wordsFor };
 }
 
 /** Pure. True when the time begins within the ten-minute reminder window, or has begun and can still be joined. */

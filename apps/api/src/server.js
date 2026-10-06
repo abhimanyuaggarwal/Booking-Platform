@@ -9,6 +9,7 @@ import { whatsappDoor } from './whatsapp-door.js';
 import { routes } from './routes.js';
 import { consoleRoutes } from './console-routes.js';
 import { ensureFirstAdmin } from './console-users.js';
+import { findGuruById } from './gurus.js';
 import { siteRoutes } from './site-routes.js';
 import { sessionRoutes } from './session-routes.js';
 import { guruRoutes } from './guru-routes.js';
@@ -48,7 +49,7 @@ attachRealtime(server, {
   // Every address we serve: the main one, and any older one kept alive for the provider webhooks.
   corsOrigin: [env.WEB_ORIGIN || 'http://localhost:5173', ...(env.EXTRA_HOSTS ?? '').split(',').map((h) => h.trim()).filter(Boolean).map((h) => `https://${h}`)],
 });
-startJobs({ conversation, pay: razorpay.client(env) });
+startJobs({ conversation, payFor: async (guruId) => razorpay.clientFor(await findGuruById(guruId), env) });
 
 const port = env.PORT || 3000;
 // With ADMIN_PHONE set and no admin yet, that phone becomes the first Slike admin (console-users.js).

@@ -5,6 +5,7 @@ import { useOpenBooking } from './open-booking';
 import { paymentWords } from './BookingDrawer';
 import { addDays, todayYmd } from './format';
 import type { LedgerEntry, MoneyReport } from './types';
+import { useWords } from './lang';
 
 // Two numbers she is asked for, then only the money that moved the wrong way. The full ledger is
 // there, behind one click, for the day an accountant wants it.
@@ -32,6 +33,7 @@ export default function Money() {
 
 export function MoneyView({ report: r, today, showAllAtFirst = false }: { report: MoneyReport; today: string; showAllAtFirst?: boolean }) {
   const open = useOpenBooking();
+  const W = useWords();
   const [showAll, setShowAll] = useState(showAllAtFirst);
   const exceptions = r.entries.filter((e) => e.kind !== 'payment');
   const fromLives = r.entries.filter((e) => e.kind === 'payment' && e.source === 'live');
@@ -46,6 +48,7 @@ export function MoneyView({ report: r, today, showAllAtFirst = false }: { report
         <Kpi label="Returned this week" value={formatRupees(r.kpis.returnedWeekPaise)} sub={r.kpis.returnedWeekPaise === 0 ? 'nothing went back' : 'cash refunds only'} />
         <Kpi label={`Settles ${r.kpis.settlesOn}`} value={formatRupees(r.kpis.dueToSettlePaise)} sub="estimate, since last Friday" />
       </section>
+      {r.account && <p className="muted small">{r.account.own ? W.gurus.payments.moneyOwn(r.account.keyId ?? '', W.gurus.payments.modeWords[r.account.mode ?? 'test']) : W.gurus.payments.moneyShared}</p>}
       <p className="muted small pilot">From his lives this week: {fromLives.length === 0 ? 'no bookings yet' : `${fromLives.length} ${fromLives.length === 1 ? 'booking' : 'bookings'} · ${formatRupees(fromLivesPaise)}`}. That is the number the pilot is judged on.</p>
 
       <section className="panel">

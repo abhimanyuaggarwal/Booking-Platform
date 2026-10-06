@@ -364,7 +364,7 @@ export async function markNoShows({ afterMinutes = NO_SHOW_AFTER_MINUTES } = {})
  */
 export async function unreconciledPaymentLinks() {
   const { rows } = await query(
-    `select b.id, b.payment_link_id, b.status
+    `select b.id, b.guru_id, b.payment_link_id, b.status
        from bookings b
       where b.payment_link_id is not null and b.payment_link_id not like 'plink_seed_%' and b.status in ('held', 'expired')
         and b.created_at between now() - interval '3 days' and now() - interval '15 minutes'

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validatePattern, validateSite, validateNewGuru, validateSetup, findGuruBySubdomain } from './gurus.js';
+import { validatePattern, validateSite, validateNewGuru, validateSetup, findGuruBySubdomain, validateRazorpayKeys } from './gurus.js';
 
 const good = {
   pattern: { slotMinutes: 30, gapMinutes: 10, minimumNoticeMinutes: 60, daysAhead: 7,
@@ -62,4 +62,10 @@ test('a new guru needs a name, a short address name and a language; his subdomai
   assert.equal(await findGuruBySubdomain('samvad.sli.ke', 'samvad.sli.ke'), null, 'the platform host itself is nobody');
   assert.equal(await findGuruBySubdomain('www.samvad.sli.ke', 'samvad.sli.ke'), null);
   assert.equal(await findGuruBySubdomain('guruji.com', 'samvad.sli.ke'), null);
+});
+
+test('Razorpay keys are checked for shape before anyone is asked', () => {
+  assert.equal(validateRazorpayKeys({ keyId: 'rzp_live_AbCdEfGh1234', keySecret: 'x'.repeat(24), webhookSecret: 'whsec-1' }), null);
+  assert.match(validateRazorpayKeys({ keyId: 'key_123', keySecret: 'x'.repeat(24), webhookSecret: 'whsec-1' }), /rzp_live/);
+  assert.match(validateRazorpayKeys({ keyId: 'rzp_test_AbCdEfGh1234', keySecret: 'short', webhookSecret: 'whsec-1' }), /secret/);
 });

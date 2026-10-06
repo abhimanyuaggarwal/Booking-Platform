@@ -13,7 +13,6 @@ import { settlePaidLink } from './paid-link.js';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function payRoutes(env, conversation) {
-  const pay = razorpay.client(env);
   const router = express.Router();
 
   router.get('/api/pay/:id', handle(async (req, res) => {
@@ -23,7 +22,7 @@ export function payRoutes(env, conversation) {
     res.json({
       status: b.status,
       orderId: b.status === 'held' ? b.payment_link_id : null,
-      keyId: pay.keyId,
+      keyId: razorpay.clientFor(guru, env).keyId,   // his account's key when connected, the platform's otherwise
       amountPaise: b.dakshina_paise,
       dakshina: formatRupees(b.dakshina_paise),
       minutes: b.minutes,
@@ -41,7 +40,10 @@ export function payRoutes(env, conversation) {
     const b = await find(req, res); if (!b) return;
     const { razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: signature } = req.body ?? {};
     if (orderId !== b.payment_link_id) return res.status(400).json({ error: 'This payment does not belong to this booking.' });
-    if (!razorpay.isValidCheckout({ orderId, paymentId, signature }, env.RAZORPAY_KEY_SECRET)) {
+    const guru = await gurus.findGuruById(b.guru_id);
+    const pay = razorpay.clientFor(guru, env);
+    const keySecret = guru.razorpay_secret_enc ? (await import('./secrets.js')).decrypt(guru.razorpay_secret_enc, (await import('./secrets.js')).secretsKey(env)) : env.RAZORPAY_KEY_SECRET;
+    if (!razorpay.isValidCheckout({ orderId, paymentId, signature }, keySecret)) {
       return res.status(400).json({ error: 'The payment could not be verified. If money left your account it is confirmed within the hour, and his team can see it.' });
     }
     const found = await pay.findPayments(orderId);

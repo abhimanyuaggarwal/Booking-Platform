@@ -19,13 +19,13 @@ export function capturedPayment(link) {
 /**
  * @returns {{ asked: number, settled: number, failed: number }}
  */
-export async function reconcilePayments({ pay, conversation }) {
+export async function reconcilePayments({ payFor, conversation }) {
   const links = await bookings.unreconciledPaymentLinks();
   const result = { asked: links.length, settled: 0, failed: 0 };
   for (const row of links) {
     let link;
     try {
-      link = await pay.findPayments(row.payment_link_id);
+      link = await (await payFor(row.guru_id)).findPayments(row.payment_link_id);   // the account that collected it
     } catch (err) {
       if (!(err instanceof ProviderError)) throw err;
       result.failed += 1;

@@ -104,6 +104,12 @@ const EN = {
   soon: ({ guruName }) =>
     `Your time with ${guruName} begins in about ten minutes. Open this link when you are ready.`,
   // to guruji
+  // to guruji: his Yes to a change
+  approvalAsk: ({ summary, by }) => `${by} at Samvad asks to connect ${summary} as the account your dakshina lands in. Nothing changes until you approve.`,
+  approve: 'Approve', decline: 'Decline',
+  approvalThanks: () => 'Approved. The change is made.',
+  approvalDeclined: () => 'Declined. Nothing was changed.',
+  approvalGone: () => 'This request has already been decided, or has lapsed.',
   guruSoon: ({ devoteeName, time, question }) =>
     `In ten minutes: ${devoteeName} at ${time}.${question ? `\n\nShe wishes to speak about: ${question}` : ''}\n\nOpen your day to join.`,
   guruNow: ({ devoteeName, time, question }) =>
@@ -182,6 +188,11 @@ const HI = {
     `याद दिलाना: ${guruName} के साथ आपका समय कल है, ${describeSlot(slotId, 'hi').split(', ').slice(1).join(', ')}।\n\nआपकी बुकिंग इस लिंक पर है। जुड़ने का लिंक समय से दस मिनट पहले आएगा।`,
   soon: ({ guruName }) =>
     `${guruName} के साथ आपका समय लगभग दस मिनट में शुरू होगा। तैयार हों तो यह लिंक खोलें।`,
+  approvalAsk: ({ summary, by }) => `संवाद से ${by} ${summary} को उस खाते के रूप में जोड़ना चाहते हैं जिसमें आपकी दक्षिणा आएगी। आपकी मंज़ूरी के बिना कुछ नहीं बदलेगा।`,
+  approve: 'मंज़ूर', decline: 'नामंज़ूर',
+  approvalThanks: () => 'मंज़ूर। बदलाव कर दिया गया।',
+  approvalDeclined: () => 'नामंज़ूर। कुछ नहीं बदला।',
+  approvalGone: () => 'इस पर पहले ही फ़ैसला हो चुका है, या समय निकल गया।',
   guruSoon: ({ devoteeName, time, question }) =>
     `दस मिनट में: ${devoteeName}, ${time}।${question ? `\n\nवे इस बारे में बात करना चाहते हैं: ${question}` : ''}\n\nजुड़ने के लिए अपना दिन खोलें।`,
   guruNow: ({ devoteeName, time, question }) =>
