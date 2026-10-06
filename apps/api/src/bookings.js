@@ -6,6 +6,7 @@ import { query, transaction } from './db.js';
 import { BookingRuleError } from './errors.js';
 import { availableSlots } from '@expert-sessions/shared';
 import { availabilityOf } from './gurus.js';
+import { defaultSessionType } from './session-types.js';
 
 /**
  * The one check every door makes before a slot is written. A devotee may only take a time his
@@ -13,12 +14,12 @@ import { availabilityOf } from './gurus.js';
  * a Sunday). His team may book any time that has not passed — a sitting outside the pattern is
  * their judgement. Throws BookingRuleError with the sentence to show.
  */
-export async function assertBookable(guru, slotId, { team = false } = {}) {
+export async function assertBookable(guru, slotId, { team = false, type = null } = {}) {
   if (team) {
     if (slotIdToInstant(slotId) < new Date()) throw new BookingRuleError('That time has already passed. Pick a later one.');
     return;
   }
-  const open = availableSlots(availabilityOf(guru), await takenSlotIds(guru.id));
+  const open = availableSlots(availabilityOf(guru), await takenIntervals(guru.id), undefined, { minutes: type?.minutes, typeId: type?.id });
   if (!open.some((s) => s.id === slotId)) throw new BookingRuleError('That time is not open any more. Please choose one of the times shown.');
 }
 
@@ -50,23 +51,29 @@ function withSlotId(row) {
   return { ...row, slotId: instantToSlotId(row.slot_start) };
 }
 
-/** Slot ids nobody else may take right now — held or confirmed — for availableSlots(). */
-export async function takenSlotIds(guruId) {
+/** Every sitting nobody else may collide with right now — held or confirmed — with its length, for availableSlots(). */
+export async function takenIntervals(guruId) {
   const { rows } = await query(
-    `select slot_start from bookings where guru_id = $1 and status in ('held', 'confirmed')`, [guruId]);
-  return new Set(rows.map((r) => instantToSlotId(r.slot_start)));
+    `select slot_start, minutes from bookings where guru_id = $1 and status in ('held', 'confirmed')`, [guruId]);
+  return rows.map((r) => ({ id: instantToSlotId(r.slot_start), minutes: r.minutes }));
+}
+
+/** The same sittings as a set of start ids, for callers that only ask "is this start taken". */
+export async function takenSlotIds(guruId) {
+  return new Set((await takenIntervals(guruId)).map((t) => t.id));
 }
 
 /**
  * Reserve a slot for a devotee while she pays. Returns null if someone else holds or has
  * confirmed it — the unique index bookings_one_per_slot decides, not a check we do first.
  */
-export async function holdSlot({ guruId, devoteeId, slotId, source }) {
+export async function holdSlot({ guruId, devoteeId, slotId, source, type = null }) {
+  const t = type ?? await defaultSessionType(guruId);   // the length and price this sitting is made with
   try {
     const { rows } = await query(
-      `insert into bookings (guru_id, devotee_id, slot_start, status, source)
-       values ($1, $2, $3, 'held', $4) returning *`,
-      [guruId, devoteeId, slotIdToInstant(slotId), source]);
+      `insert into bookings (guru_id, devotee_id, slot_start, status, source, session_type_id, minutes, dakshina_paise)
+       values ($1, $2, $3, 'held', $4, $5, $6, $7) returning *`,
+      [guruId, devoteeId, slotIdToInstant(slotId), source, t.id, t.minutes, t.dakshina_paise]);
     return withSlotId(rows[0]);
   } catch (err) {
     if (err.code === '23505' && err.constraint === 'bookings_one_per_slot') return null;
@@ -115,18 +122,24 @@ export async function confirmByPayment({ paymentLinkId, providerRef, amountPaise
  * The team took the dakshina by hand — cash at the ashram, or UPI straight to its account — and
  * confirms the held time themselves. Same transition as a Razorpay payment, same ledger row; the
  * provider reference says it never touched Razorpay, so Money keeps it out of the settlement.
- * `method` is 'cash' or 'upi'. Returns the booking, confirmed; throws BookingRuleError if not held.
+ * `method` is 'cash' or 'upi', or 'complimentary' when guruji asked for this one to be free: then
+ * the ledger row is ₹0 and the booking says so. The amount is the booking's own dakshina unless
+ * the caller says otherwise. Returns the booking, confirmed; throws BookingRuleError if not held.
  */
-export async function confirmOffline({ bookingId, method, amountPaise }) {
+export async function confirmOffline({ bookingId, method, amountPaise = null }) {
   const booking = await findById(bookingId);
   if (!booking) throw new BookingRuleError('No such booking');
   if (booking.status === 'confirmed') return booking;
   const next = transition(booking.status, 'pay');
+  const complimentary = method === 'complimentary';
   const updated = await query(
-    `update bookings set status = $2, paid_at = now() where id = $1 and status = 'held' returning *`,
-    [booking.id, next]);
+    `update bookings set status = $2, paid_at = now(), complimentary = $3 where id = $1 and status = 'held' returning *`,
+    [booking.id, next, complimentary]);
   if (updated.rowCount === 0) return findById(booking.id);
-  await recordPayment(booking, { providerRef: `offline:${method}:${booking.id}`, amountPaise });
+  await recordPayment(booking, {
+    providerRef: complimentary ? `complimentary:${booking.id}` : `offline:${method}:${booking.id}`,
+    amountPaise: complimentary ? 0 : (amountPaise ?? booking.dakshina_paise),
+  });
   return withSlotId(updated.rows[0]);
 }
 
@@ -244,9 +257,11 @@ export async function rescheduleBooking({ bookingId, slotId }) {
     let created;
     try {
       ({ rows: [created] } = await q(
-        `insert into bookings (guru_id, devotee_id, slot_start, status, source, question_text, question_media_id, rescheduled_from_id, paid_at)
-         values ($1, $2, $3, 'confirmed', $4, $5, $6, $7, $8) returning *`,
-        [old.guru_id, old.devotee_id, slotIdToInstant(slotId), old.source, old.question_text, old.question_media_id, old.id, old.paid_at]));
+        `insert into bookings (guru_id, devotee_id, slot_start, status, source, question_text, question_media_id, rescheduled_from_id, paid_at,
+                               session_type_id, minutes, dakshina_paise, complimentary)
+         values ($1, $2, $3, 'confirmed', $4, $5, $6, $7, $8, $9, $10, $11, $12) returning *`,
+        [old.guru_id, old.devotee_id, slotIdToInstant(slotId), old.source, old.question_text, old.question_media_id, old.id, old.paid_at,
+          old.session_type_id, old.minutes, old.dakshina_paise, old.complimentary]));
     } catch (err) {
       if (err.code === '23505' && err.constraint === 'bookings_one_per_slot') return null;
       throw err;
@@ -469,14 +484,15 @@ export async function cancelToCredit({ bookingId }) {
  * breath, with a credit_used row instead of a payment. Returns null if the slot was taken.
  * The caller checks she has the credit; this writes the row that spends it.
  */
-export async function confirmWithCredit({ guruId, devoteeId, slotId, source, amountPaise }) {
+export async function confirmWithCredit({ guruId, devoteeId, slotId, source, amountPaise, type = null }) {
+  const t = type ?? await defaultSessionType(guruId);
   return transaction(async (q) => {
     let created;
     try {
       ({ rows: [created] } = await q(
-        `insert into bookings (guru_id, devotee_id, slot_start, status, source, paid_at)
-         values ($1, $2, $3, 'confirmed', $4, now()) returning *`,
-        [guruId, devoteeId, slotIdToInstant(slotId), source]));
+        `insert into bookings (guru_id, devotee_id, slot_start, status, source, paid_at, session_type_id, minutes, dakshina_paise)
+         values ($1, $2, $3, 'confirmed', $4, now(), $5, $6, $7) returning *`,
+        [guruId, devoteeId, slotIdToInstant(slotId), source, t.id, t.minutes, t.dakshina_paise]));
     } catch (err) {
       if (err.code === '23505' && err.constraint === 'bookings_one_per_slot') return null;
       throw err;
@@ -484,7 +500,7 @@ export async function confirmWithCredit({ guruId, devoteeId, slotId, source, amo
     await q(
       `insert into ledger_entries (guru_id, booking_id, devotee_id, kind, amount_paise)
        values ($1, $2, $3, 'credit_used', $4)`,
-      [guruId, created.id, devoteeId, amountPaise]);
+      [guruId, created.id, devoteeId, amountPaise ?? t.dakshina_paise]);
     return withSlotId(created);
   });
 }

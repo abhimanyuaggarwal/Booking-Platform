@@ -35,7 +35,7 @@ step, and the "built in v1 / left for later" split per surface. When in doubt ab
 do or look like, that file wins. Static references are in `docs/mockups/`.
 
 ### Not in v1 — do not build, do not stub, do not "leave a hook for"
-Paid questions on air · ticketed group sessions · simulcast · discovery/directory · reviews or ratings ·
+Paid questions on air · ticketed group sessions · more than three session types · simulcast · discovery/directory · reviews or ratings ·
 free-text NLU on WhatsApp · booking by voice or phone call · proxy identities (one optional "who is this
 for" field only) · accounts/passwords · OTP before payment · cards/netbanking (UPI only) · self-serve **cash**
 refunds (cancellation converts the dakshina to a credit; cash refunds stay with the team) · recording · chat/screen-share/files in the room · native apps · roles &
@@ -70,9 +70,16 @@ If a task seems to need one of these, stop and say so instead of building it.
   the tenant from the `Host` header; `/s/:guruSlug` renders the same pages as an internal preview. In
   dev, `?host=guruji.com` or the `/s/` path selects the tenant. TLS is on-demand via Caddy (or
   Cloudflare in front) — the guru's team adds one CNAME record pointing at us.
-- **Cancellation policy (v1):** devotee may cancel or reschedule once, up to 4 hours before. Cancel →
-  the dakshina becomes a **credit** valid 30 days for the same guru; no automatic cash refund. Cash
-  refund is a team action only (guruji could not sit).
+- **Session types (2026-10-06):** a guru offers up to three kinds of sitting (`session_types`: minutes +
+  dakshina, the first active one is the default). Every booking snapshots `minutes` and `dakshina_paise`;
+  prices live on the types, `gurus.dakshina_paise` / `pattern_json.slotMinutes` only mirror the default.
+  Open times are computed per kind (`availableSlots(..., { minutes, typeId })`), a timing window may be
+  limited to some kinds (`[from, to, [typeIds]]`), and the team may book a sitting as `complimentary` (₹0).
+- **Cancellation policy (changed 2026-10-06, decided by the client):** devotee may cancel or reschedule
+  once, up to 4 hours before. Cancel → the dakshina is **refunded to her account** (Razorpay refund, or
+  the team hands cash back) and she is told in how many days it reaches her. Credits are no longer
+  issued to devotees; the credit ledger kinds stay for old rows. Being built in piece B (WhatsApp cancel /
+  change time).
 
 ## Domain model
 

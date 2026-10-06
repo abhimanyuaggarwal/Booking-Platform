@@ -14,25 +14,28 @@ export interface PublicGuru {
   dakshinaPaise: number; slotMinutes: number; whatsappLink: string | null;
 }
 export interface PublicSlot { id: string; label: string; when: string }
+/** One kind of sitting he offers: a length and a dakshina. The first is the default. */
+export interface PublicSessionType { id: string; name: string; minutes: number; dakshinaPaise: number; dakshina: string; active: boolean }
 export interface PublicEvent {
   id: string; title: string; kind: 'satsang' | 'live' | 'meetup';
   startsAt: string; when: string; link: string | null; location: string | null; notes: string | null;
 }
-export interface SitePage { guru: PublicGuru; events: PublicEvent[]; nextSlots: PublicSlot[]; openCount: number }
+export interface SitePage { guru: PublicGuru; sessionTypes: PublicSessionType[]; events: PublicEvent[]; nextSlots: PublicSlot[]; openCount: number }
 
 export interface HeldBooking { bookingId: string; payUrl: string; holdMinutes: number }
 /** What /api/pay/:id says about the booking she is about to pay for. */
 export interface PayView {
-  status: string; orderId: string | null; keyId: string; amountPaise: number; dakshina: string;
+  status: string; orderId: string | null; keyId: string; amountPaise: number; dakshina: string; minutes?: number;
   guru: { name: string; slug: string }; when: string; phone: string; holdMinutes: number;
 }
 export interface BookingStatus {
   id: string; slotId: string; when: string; status: string;
-  dakshinaPaise: number; guruName: string; joinUrl: string | null;
+  minutes?: number; dakshinaPaise: number; guruName: string; joinUrl: string | null;
 }
 
 export interface MyBooking {
   id: string; slotId: string; when: string; status: string; joinUrl: string | null;
+  minutes?: number; dakshinaPaise?: number; sessionTypeId?: string | null;
   cannotReschedule: string | null; cannotCancel: string | null;
 }
 export interface MySessions {
@@ -40,6 +43,7 @@ export interface MySessions {
   guru: PublicGuru;
   upcoming: MyBooking[]; earlier: MyBooking[];
   credit: { balancePaise: number; expiresAt: string | null };
+  sessionTypes?: PublicSessionType[];
   slots: PublicSlot[];
   said?: string; notified?: boolean;
 }

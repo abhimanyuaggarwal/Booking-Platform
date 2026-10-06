@@ -51,10 +51,9 @@ export function guruRoutes(env) {
           where guru_id = $1 and starts_at >= $2 and starts_at < $3 order by starts_at`, [req.guru.id, start, end]),
     ]);
 
-    const minutes = req.guru.pattern_json.slotMinutes ?? 30;
     const entries = [
       ...sittings.rows.map((r) => ({
-        kind: 'session', id: r.id, at: wall(r.slot_start), time: formatTime(wall(r.slot_start)), minutes,
+        kind: 'session', id: r.id, at: wall(r.slot_start), time: formatTime(wall(r.slot_start)), minutes: r.minutes,
         name: r.name ?? 'Someone', context: contextLine({
           priorVisits: r.prior_visits, question: r.question_text, hasVoiceNote: !!r.question_media_id, forWhom: r.for_whom,
         }),

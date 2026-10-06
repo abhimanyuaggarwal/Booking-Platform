@@ -103,11 +103,11 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
                 await api(`/bookings/${d.id}/no-show`, { method: 'POST' });
                 return 'Marked as did not join.';
               }); }}>{W.drawer.noShow}</button>}
-              {can('mark_paid') && ['cash', 'upi'].map((method) => (
-                <button key={method} disabled={busy} onClick={() => { if (window.confirm(`Confirm ${name}'s time as paid ${method === 'cash' ? 'in cash' : 'by UPI to the ashram'}? She gets the join link on WhatsApp.`)) act('Mark paid', async () => {
+              {can('mark_paid') && ['cash', 'upi', 'complimentary'].map((method) => (
+                <button key={method} disabled={busy} onClick={() => { if (window.confirm(method === 'complimentary' ? `Confirm ${name}'s time as complimentary, with no dakshina? She gets the join link on WhatsApp.` : `Confirm ${name}'s time as paid ${method === 'cash' ? 'in cash' : 'by UPI to the ashram'}? She gets the join link on WhatsApp.`)) act('Mark paid', async () => {
                   const r = await api<{ notified: boolean }>(`/bookings/${d.id}/mark-paid`, { method: 'POST', json: { method } });
-                  return `Confirmed, paid ${method === 'cash' ? 'in cash' : 'by UPI to the ashram'}.${r.notified ? ' She has the join link on WhatsApp.' : ' WhatsApp did not deliver. Call her.'}`;
-                }); }}>{method === 'cash' ? W.drawer.paidCash : W.drawer.paidUpi}</button>
+                  return `Confirmed, ${method === 'complimentary' ? 'complimentary' : method === 'cash' ? 'paid in cash' : 'paid by UPI to the ashram'}.${r.notified ? ' She has the join link on WhatsApp.' : ' WhatsApp did not deliver. Call her.'}`;
+                }); }}>{method === 'cash' ? W.drawer.paidCash : method === 'upi' ? W.drawer.paidUpi : W.drawer.paidFree}</button>
               ))}
               {can('tell_guru') && <button disabled={busy} onClick={() => act('Tell guruji', async () => {
                 await api(`/bookings/${d.id}/tell-guru`, { method: 'POST' });
@@ -126,6 +126,7 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
           <dl className="kv">
             <dt>{W.drawer.phone}</dt><dd><a href={`tel:+${d.devotee.phone}`}>+{d.devotee.phone}</a></dd>
             {d.devotee.forWhom && <><dt>{W.drawer.forWhom}</dt><dd>{d.devotee.forWhom}</dd></>}
+            {d.minutes != null && <><dt>{W.drawer.sitting}</dt><dd>{W.drawer.minutes(d.minutes)}{d.complimentary ? ` · ${W.drawer.complimentary}` : d.dakshinaPaise != null ? ` · ${formatRupees(d.dakshinaPaise)}` : ''}</dd></>}
             <dt>{W.drawer.askedAbout}</dt><dd>{d.question ?? (d.hasVoiceNote ? W.drawer.voiceNote : <span className="muted">{W.drawer.nothingYet}</span>)}</dd>
             <dt>{W.drawer.dakshina}</dt><dd>{d.paidWith ? `${formatRupees(d.paidWith.amountPaise)} ${d.paidWith.kind === 'credit_used' ? W.drawer.byCredit : paymentWords(d.paidWith.providerRef).replace('Paid ', '')}` : <span className="muted">{W.drawer.notPaid}</span>}</dd>
             {d.session?.devoteeJoinedAt && <><dt>{W.drawer.openedLink}</dt><dd>{when(d.session.devoteeJoinedAt)}</dd></>}
@@ -238,6 +239,7 @@ export function ledgerWords(kind: BookingDetail['ledger'][number]['kind'], provi
 
 /** Pure. Where a payment came from, from its provider reference. */
 export function paymentWords(providerRef: string | null | undefined) {
+  if (providerRef?.startsWith('complimentary:')) return 'Complimentary, no dakshina';
   if (providerRef?.startsWith('offline:cash')) return 'Paid in cash at the ashram';
   if (providerRef?.startsWith('offline:upi')) return 'Paid by UPI to the ashram';
   return 'Paid by UPI';

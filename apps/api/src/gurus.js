@@ -77,12 +77,14 @@ export function validatePattern(body) {
     const windows = p.weeklyPattern[day];
     if (!Array.isArray(windows)) return `Windows for ${day} must be a list`;
     for (const w of windows) {
-      if (!Array.isArray(w) || w.length !== 2 || !HHMM.test(w[0]) || !HHMM.test(w[1])) return `Each ${day} window needs a start and end like 10:00 and 13:00`;
+      if (!Array.isArray(w) || w.length < 2 || w.length > 3 || !HHMM.test(w[0]) || !HHMM.test(w[1])) return `Each ${day} window needs a start and end like 10:00 and 13:00`;
       if (w[0] >= w[1]) return `A ${day} window ends before it starts (${w[0]} to ${w[1]})`;
+      // An optional third element: which session types this window is for. Absent means all of them.
+      if (w.length === 3 && (!Array.isArray(w[2]) || w[2].some((id) => typeof id !== 'string'))) return `The session types for a ${day} window must be a list of ids`;
     }
   }
   if (!Array.isArray(body.closedDates) || body.closedDates.some((d) => !YMD.test(d))) return 'Closed dates must be a list like 2026-09-17';
-  if (!inRange(body.dakshinaPaise, 0, 10_000_000)) return 'Dakshina must be a whole number of paise, up to 1,00,000 rupees';
+  if (body.dakshinaPaise !== undefined && !inRange(body.dakshinaPaise, 0, 10_000_000)) return 'Dakshina must be a whole number of paise, up to 1,00,000 rupees';
   return null;
 }
 
@@ -106,13 +108,16 @@ export function validateSite(body) {
 export async function updatePattern(guruId, { pattern, closedDates, dakshinaPaise }) {
   const clean = {
     slotMinutes: pattern.slotMinutes, gapMinutes: pattern.gapMinutes, minimumNoticeMinutes: pattern.minimumNoticeMinutes,
-    daysAhead: pattern.daysAhead, weeklyPattern: Object.fromEntries(DAY_KEYS.map((d) => [d, pattern.weeklyPattern[d]])),
+    daysAhead: pattern.daysAhead,
+    // Each window keeps its optional list of session types (gurus.validatePattern).
+    weeklyPattern: Object.fromEntries(DAY_KEYS.map((d) => [d, pattern.weeklyPattern[d].map((w) => (w.length === 3 ? [w[0], w[1], w[2]] : [w[0], w[1]]))])),
     // How far apart the offered starts are. Left out by an older editor: back to back (slots.js).
     stepMinutes: pattern.stepMinutes ?? pattern.slotMinutes + pattern.gapMinutes,
   };
+  // The dakshina lives on the session types now; an editor that still sends it only updates the mirror.
   const { rows } = await query(
-    `update gurus set pattern_json = $2, closed_dates = $3::date[], dakshina_paise = $4 where id = $1 returning ${COLUMNS}`,
-    [guruId, JSON.stringify(clean), closedDates, dakshinaPaise]);
+    `update gurus set pattern_json = $2, closed_dates = $3::date[], dakshina_paise = coalesce($4, dakshina_paise) where id = $1 returning ${COLUMNS}`,
+    [guruId, JSON.stringify(clean), closedDates, dakshinaPaise ?? null]);
   return rows[0];
 }
 

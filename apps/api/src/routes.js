@@ -4,6 +4,7 @@
 import express from 'express';
 import { availableSlots, describeSlot, slotIdToInstant } from '@expert-sessions/shared';
 import * as bookings from './bookings.js';
+import { listSessionTypes, publicType } from './session-types.js';
 import * as gurus from './gurus.js';
 import { query } from './db.js';
 
@@ -43,9 +44,13 @@ export function routes() {
     try {
       const guru = await gurus.findGuruBySlug(req.params.slug);
       if (!guru) return res.status(404).json({ error: `No guru with slug ${req.params.slug}` });
-      const open = availableSlots(gurus.availabilityOf(guru), await bookings.takenSlotIds(guru.id));
+      // Times for one kind of sitting (?type=<id>), the default kind when none is named.
+      const types = await listSessionTypes(guru.id, { activeOnly: true });
+      const type = types.find((t) => t.id === req.query.type) ?? types[0];
+      const open = availableSlots(gurus.availabilityOf(guru), await bookings.takenIntervals(guru.id), undefined, { minutes: type.minutes, typeId: type.id });
       res.json({
         guru: { slug: guru.slug, name: guru.name, dakshinaPaise: guru.dakshina_paise, slotMinutes: guru.pattern_json.slotMinutes },
+        sessionTypes: types.map(publicType), type: publicType(type),
         slots: open.map((s) => ({ id: s.id, label: s.label, startsAt: slotIdToInstant(s.id).toISOString() })),
       });
     } catch (err) {

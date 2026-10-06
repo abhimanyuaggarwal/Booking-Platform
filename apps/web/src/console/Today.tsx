@@ -110,7 +110,7 @@ export function TodayView({ report: r, attention, onSendLink, onTellGuru, onCann
               {r.timeline.map((t) => t.booking ? (
                 <tr key={t.slotId} className={`clickable ${t.booking.id === nextId ? 'next' : ''}`} onClick={() => open(t.booking!.id)}>
                   <td className="time">{t.time}</td>
-                  <td className="person-cell"><Initials name={t.booking.name} size="s" /><span><b>{t.booking.name}</b>{t.booking.forWhom && <span className="muted"> · {t.booking.forWhom}</span>}</span></td>
+                  <td className="person-cell"><Initials name={t.booking.name} size="s" /><span><b>{t.booking.name}</b>{t.booking.forWhom && <span className="muted"> · {t.booking.forWhom}</span>}{t.booking.minutes ? <span className="muted"> · {W.drawer.minutes(t.booking.minutes)}</span> : null}</span></td>
                   <td><StateTag status={t.booking.status} /></td>
                 </tr>
               ) : (

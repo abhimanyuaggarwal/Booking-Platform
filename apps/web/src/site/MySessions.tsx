@@ -4,7 +4,7 @@ import { formatRupees } from '@expert-sessions/shared';
 import { siteApi, useSite } from './api';
 import SignIn from './SignIn';
 import PickTime from './PickTime';
-import type { MyBooking, MySessions as Sessions } from './types';
+import type { MyBooking, MySessions as Sessions, PublicSlot } from './types';
 
 // Her own sessions: join, move once, cancel, and her history. This is also where she books again.
 export default function MySessions({ call, base }: { call: ReturnType<typeof siteApi>; base: string }) {
@@ -31,14 +31,21 @@ export default function MySessions({ call, base }: { call: ReturnType<typeof sit
         return next;
       }}
       onSignOut={async () => { await call('/signout', { method: 'POST' }); window.location.assign(base || '/'); }}
+      slotsFor={async (b) => (await call<{ slots: PublicSlot[] }>(`/slots?type=${encodeURIComponent(b.sessionTypeId ?? '')}`)).slots}
     />
   );
 }
 
 type Act = (path: string, json?: unknown) => Promise<Sessions>;
 
-export function MySessionsView({ sessions: s, base, onAct, onSignOut }: { sessions: Sessions; base: string; onAct: Act; onSignOut: () => void }) {
+export function MySessionsView({ sessions: s, base, onAct, onSignOut, slotsFor }: { sessions: Sessions; base: string; onAct: Act; onSignOut: () => void; slotsFor?: (b: MyBooking) => Promise<PublicSlot[]> }) {
   const [moving, setMoving] = useState<MyBooking | null>(null);
+  // The times for the kind of sitting being moved; the page's own list is for the default kind.
+  const [movingSlots, setMovingSlots] = useState<PublicSlot[] | null>(null);
+  async function startMoving(b: MyBooking) {
+    setMoving(b); setMovingSlots(null);
+    if (slotsFor) setMovingSlots(await slotsFor(b)); else setMovingSlots(s.slots);
+  }
   const [booking, setBooking] = useState(false);
   const [said, setSaid] = useState<string | null>(s.said ?? null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -97,7 +104,7 @@ export function MySessionsView({ sessions: s, base, onAct, onSignOut }: { sessio
             <h3 style={{ marginBottom: 2 }}>{b.when}</h3>
             <p className="muted" style={{ fontSize: 14 }}>One to one · {s.guru.slotMinutes} minutes · dakshina paid</p>
             {b.joinUrl && <a className="primary" href={b.joinUrl}>Join</a>}
-            {!b.cannotReschedule && <button className="ghost" onClick={() => setMoving(b)}>Reschedule</button>}
+            {!b.cannotReschedule && <button className="ghost" onClick={() => startMoving(b)}>Reschedule</button>}
             {!b.cannotCancel && <button className="ghost" onClick={() => cancel(b)}>Cancel this time</button>}
             {b.cannotReschedule && <p className="muted" style={{ fontSize: 14, margin: '10px 0 0' }}>{b.cannotReschedule}</p>}
             {b.cannotCancel && b.cannotCancel !== b.cannotReschedule && <p className="muted" style={{ fontSize: 14, margin: '6px 0 0' }}>{b.cannotCancel}</p>}
@@ -109,7 +116,7 @@ export function MySessionsView({ sessions: s, base, onAct, onSignOut }: { sessio
         <PickTime
           title={`Move ${moving.when}`}
           note="Pick a new time. Your dakshina moves with the booking."
-          slots={s.slots}
+          slots={movingSlots ?? []}
           confirmLabel="Confirm new time"
           onConfirm={(slotId) => act(`/me/bookings/${moving.id}/reschedule`, { slotId })}
           onCancel={() => setMoving(null)}

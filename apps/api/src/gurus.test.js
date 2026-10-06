@@ -45,3 +45,10 @@ test('website content needs a name, a plausible domain, a tagline and well-forme
   assert.match(validateSite({ ...site, domain: 'not a domain' }), /guruji.com/);
   assert.match(validateSite({ ...site, marketing: { tagline: 'x', blocks: [{ heading: 'a' }] } }), /heading and a body/);
 });
+
+test('a timing window may name the kinds of sitting it is for; the dakshina no longer has to be sent', () => {
+  const typed = { ...good, pattern: { ...good.pattern, weeklyPattern: { ...good.pattern.weeklyPattern, mon: [['10:00', '13:00', ['a-type-id']]] } } };
+  assert.equal(validatePattern(typed), null);
+  assert.equal(validatePattern({ ...good, dakshinaPaise: undefined }), null);
+  assert.match(validatePattern({ ...good, pattern: { ...good.pattern, weeklyPattern: { ...good.pattern.weeklyPattern, mon: [['10:00', '13:00', 'short']] } } }), /list of ids/);
+});

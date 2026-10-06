@@ -16,6 +16,7 @@ import * as whatsapp from './whatsapp.js';
 import * as razorpay from './razorpay.js';
 import { ProviderError, BookingRuleError } from './errors.js';
 import { wordsFor, slotLabel } from './devotee-words.js';
+import { listSessionTypes, findSessionType, typeLabel } from './session-types.js';
 import { logMessage } from './messages-log.js';
 import { copy } from './conversation.js';
 import { settlePaidLink } from './paid-link.js';
@@ -63,8 +64,13 @@ export function whatsappDoor(env, conversation) {
       const say = conversation.speak(guru, devotee);
 
       const tapped = msg.kind === 'button' || msg.kind === 'list';
-      if (tapped && msg.id === 'more') return await sendMoreTimes(guru, say);
-      if (tapped && msg.id.startsWith('slot:')) return await holdAndAskForPayment(guru, devotee, say, msg.id);
+      // Button ids carry everything the next step needs, so nothing is remembered between taps:
+      //   type:<id>                 she chose a kind of sitting -> the two nearest times for it
+      //   more:<typeId>             -> up to ten more times for it
+      //   t:<typeId>|slot:<slotId>  she chose a time -> hold it and ask for the dakshina
+      if (tapped && msg.id.startsWith('type:')) return await sendNearestSlots(guru, devotee, say, pendingSource.get(devotee.phone) || 'direct', await typeOrDefault(guru, msg.id.slice(5)));
+      if (tapped && msg.id.startsWith('more')) return await sendMoreTimes(guru, say, await typeOrDefault(guru, msg.id.split(':')[1]));
+      if (tapped && /^(t:[^|]+\|)?slot:/.test(msg.id)) return await holdAndAskForPayment(guru, devotee, say, msg.id);
       if (msg.kind === 'audio') return await attachVoiceNote(guru, devotee, say, msg.mediaId);
       if (msg.kind === 'text' && !isGreeting(msg.text) && await answerFromWhereSheStands(guru, devotee, say, msg.text)) return;
       // "Hi", or a message from someone with nothing in flight: she wants a time.
@@ -74,25 +80,44 @@ export function whatsappDoor(env, conversation) {
     }
   });
 
-  async function sendNearestSlots(guru, devotee, say, source) {
-    const open = availableSlots(gurus.availabilityOf(guru), await bookings.takenSlotIds(guru.id));
-    const W = wordsFor(guru.language);
-    if (open.length === 0) return say.text(W.noTimes({ guruName: guru.name }));
-    pendingSource.set(devotee.phone, source);
-    const buttons = open.slice(0, 2).map((s) => ({ id: s.id, title: slotLabel(s.label, guru.language) }));
-    buttons.push({ id: 'more', title: W.otherTimes });
-    await say.buttons(
-      W.greeting({ guruName: guru.name, minutes: guru.pattern_json.slotMinutes, dakshina: formatRupees(guru.dakshina_paise) }),
-      buttons);
+  /** The active types; a tapped id that no longer matches one falls back to the default. */
+  async function typeOrDefault(guru, id) {
+    const types = await listSessionTypes(guru.id, { activeOnly: true });
+    return types.find((t) => t.id === id) ?? types[0];
   }
 
-  async function sendMoreTimes(guru, say) {
-    const open = availableSlots(gurus.availabilityOf(guru), await bookings.takenSlotIds(guru.id)).slice(0, 10);
+  /**
+   * "Hi": with one kind of sitting, straight to the two nearest times; with more, the kinds as
+   * buttons first ("10 मिनट · ₹500"), then the times for the one she tapped.
+   */
+  async function sendNearestSlots(guru, devotee, say, source, type = null) {
+    const W = wordsFor(guru.language);
+    pendingSource.set(devotee.phone, source);
+    if (!type) {
+      const types = await listSessionTypes(guru.id, { activeOnly: true });
+      if (types.length > 1) {
+        return say.buttons(W.chooseType({ guruName: guru.name }), types.map((t) => ({ id: `type:${t.id}`, title: typeLabel(t, guru.language) })));
+      }
+      type = types[0];
+    }
+    const open = openFor(guru, type, await bookings.takenIntervals(guru.id));
+    if (open.length === 0) return say.text(W.noTimes({ guruName: guru.name }));
+    const buttons = open.slice(0, 2).map((s) => ({ id: `t:${type.id}|${s.id}`, title: slotLabel(s.label, guru.language) }));
+    buttons.push({ id: `more:${type.id}`, title: W.otherTimes });
+    await say.buttons(W.greeting({ guruName: guru.name, minutes: type.minutes, dakshina: formatRupees(type.dakshina_paise) }), buttons);
+  }
+
+  function openFor(guru, type, taken) {
+    return availableSlots(gurus.availabilityOf(guru), taken, undefined, { minutes: type.minutes, typeId: type.id });
+  }
+
+  async function sendMoreTimes(guru, say, type) {
+    const open = openFor(guru, type, await bookings.takenIntervals(guru.id)).slice(0, 10);
     const byDay = new Map();
     for (const s of open) {
       const day = s.label.split(' ')[0];                 // "Today" | "Tomorrow" | "Thu"
       if (!byDay.has(day)) byDay.set(day, []);
-      byDay.get(day).push({ id: s.id, title: s.label.replace(`${day} `, '') });
+      byDay.get(day).push({ id: `t:${type.id}|${s.id}`, title: s.label.replace(`${day} `, '') });
     }
     const W = wordsFor(guru.language);
     for (const [day, rows] of [...byDay]) {
@@ -102,11 +127,13 @@ export function whatsappDoor(env, conversation) {
     await say.list(W.chooseTime, W.seeTimes, sections);
   }
 
-  async function holdAndAskForPayment(guru, devotee, say, slotId) {
+  async function holdAndAskForPayment(guru, devotee, say, tappedId) {
     const source = pendingSource.get(devotee.phone) || 'direct';
+    const [, typeId, slotId] = tappedId.match(/^(?:t:([^|]+)\|)?(slot:.+)$/);
+    const type = await typeOrDefault(guru, typeId);
     let booking;
     try {
-      booking = await conversation.startPayment({ guru, devotee, slotId, source });
+      booking = await conversation.startPayment({ guru, devotee, slotId, source, type });
     } catch (err) {
       if (err instanceof ProviderError) { console.error(err.message); return say.text(wordsFor(guru.language).paymentUnavailable()); }
       if (err instanceof BookingRuleError) { await say.text(err.message); return sendNearestSlots(guru, devotee, say, source); }

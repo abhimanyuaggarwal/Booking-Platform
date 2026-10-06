@@ -108,7 +108,7 @@ export function WeekGrid({ week, onOpen = () => {}, onBook = () => {} }: { week:
                   return (
                     <td key={d.date}>
                       <button className={`ev ${chipClass(slot.booking.status)}`} onClick={() => onOpen(slot.booking!.id)} title={slot.booking.name}>
-                        <b>{slot.booking.name}</b>{W.state[slot.booking.status]}
+                        <b>{slot.booking.name}</b>{W.state[slot.booking.status]}{slot.booking.minutes ? ` · ${slot.booking.minutes}m` : ''}
                       </button>
                     </td>
                   );
@@ -151,7 +151,7 @@ function DayCard({ day: d, index, times, events, onOpen, onBook }: { day: GridDa
       {d.closed && <p className="muted">{d.closed === 'closed' ? W.week.closedNobody : W.week.noSittingsLine}</p>}
       {!d.closed && slots.map((s) => s.booking ? (
         <button key={s.slotId} className={`line ev ${chipClass(s.booking.status)}`} onClick={() => onOpen(s.booking!.id)}>
-          <span className="time">{shortTime(s.slotId.slice(16))}</span><b>{s.booking.name}</b><StateTag status={s.booking.status} />
+          <span className="time">{shortTime(s.slotId.slice(16))}</span><b>{s.booking.name}</b>{s.booking.minutes ? <span className="muted small">{s.booking.minutes} min</span> : null}<StateTag status={s.booking.status} />
         </button>
       ) : (
         <button key={s.slotId} className="line open" onClick={() => onBook(s.slotId)}>

@@ -281,3 +281,14 @@
 .console .slotpicker { display: flex; gap: 6px; }
 .console .slotpicker select:first-child { flex: 0 0 auto; width: auto; }   /* the form gives every select width: 100%; two must share the line */
 .console .slotpicker select:last-child { flex: 1; width: auto; }
+
+/* Kinds of sitting (SessionTypesEditor) and the kinds a timing window is for */
+.console .kinds-editor { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+.console .kind-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-s); padding: 10px 12px; }
+.console .kind-row.off { opacity: .6; }
+.console .kind-row .order { display: flex; gap: 2px; }
+.console .kind-row label { min-width: 120px; }
+.console label.check { display: flex; flex-direction: row; align-items: center; gap: 6px; }
+.console label.check input { width: auto; height: auto; }
+.console .kinds-in-window { display: flex; gap: 10px; align-items: center; }
+.console label.check.small { font-size: 12px; }

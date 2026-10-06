@@ -71,6 +71,12 @@
 .site .slot u { text-decoration: none; font-size: 13px; font-weight: 700; color: var(--accent); }
 .site .slot i { font-style: normal; font-size: 13px; color: var(--warm-muted); }
 
+/* How long would you like: the kinds of sitting as cards */
+.site .kinds { display: flex; gap: 10px; margin-bottom: 22px; }
+.site .kind { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; background: #fff; border: 1px solid #E4DBC9; border-radius: 14px; padding: 14px 8px; font: inherit; color: inherit; cursor: pointer; }
+.site .kind b { font-size: 15px; font-weight: 600; } .site .kind span { font-size: 14px; color: var(--accent); font-weight: 600; } .site .kind i { font-style: normal; font-size: 12px; color: var(--warm-muted); }
+.site .kind.on { border-color: var(--accent); background: #F7EDE3; }
+
 /* Every open time, a day at a time (TimeChooser) */
 .site .chooser .days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; scrollbar-width: none; }
 .site .chooser .days::-webkit-scrollbar { display: none; }

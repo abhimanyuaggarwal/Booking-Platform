@@ -9,6 +9,7 @@ import { withGuru } from './tenancy.js';
 import { devoteeAuth, normalisePhone } from './devotee-auth.js';
 import { availabilityOf } from './gurus.js';
 import { creditFor } from './credits.js';
+import { listSessionTypes, findSessionType, defaultSessionType, publicType } from './session-types.js';
 import { listEvents } from './events.js';
 import { waLink, GREETINGS } from './qr-codes.js';
 import * as bookings from './bookings.js';
@@ -26,17 +27,21 @@ export function siteRoutes(env, conversation) {
   // ---- The page itself -------------------------------------------------------------------------
 
   router.get('/', handle(async (req, res) => {
-    const [open, events] = await Promise.all([openSlots(req.guru), listEvents(req.guru.id)]);
+    const types = await listSessionTypes(req.guru.id, { activeOnly: true });
+    const [open, events] = await Promise.all([openSlots(req.guru, types[0]), listEvents(req.guru.id)]);
     res.json({
       guru: publicGuru(req.guru),
+      sessionTypes: types.map(publicType),
       events: events.filter((e) => new Date(e.startsAt) > new Date()).map(publicEvent),
       nextSlots: open.slice(0, 3).map(publicSlot),
       openCount: open.length,
     });
   }));
 
+  // Times for one kind of sitting (?type=<id>); the default kind when none is named.
   router.get('/slots', handle(async (req, res) => {
-    res.json({ slots: (await openSlots(req.guru)).map(publicSlot) });
+    const type = await typeFrom(req);
+    res.json({ type: publicType(type), slots: (await openSlots(req.guru, type)).map(publicSlot) });
   }));
 
   // ---- Booking: her number, then pay. No account, no OTP before paying. ------------------------
@@ -46,10 +51,11 @@ export function siteRoutes(env, conversation) {
     const { slotId, question } = req.body ?? {};
     if (!phone) return res.status(400).json({ error: 'Your WhatsApp number, with the country code' });
     if (!SLOT.test(slotId ?? '')) return res.status(400).json({ error: 'Choose a time' });
+    const type = await typeFrom(req);
 
     const devotee = await devotees.findOrCreateDevotee(req.guru.id, phone);
     const held = await conversation.startPayment({
-      guru: req.guru, devotee, slotId, source: 'page',
+      guru: req.guru, devotee, slotId, type, source: 'page',
       notify: false,                      // she is about to see the payment page; the confirmation follows it
     });
     if (!held) return res.status(409).json({ error: 'That time was just taken. Please choose another.' });
@@ -64,7 +70,7 @@ export function siteRoutes(env, conversation) {
     if (!b || b.guru_id !== req.guru.id) return res.status(404).json({ error: 'This booking link is not valid' });
     res.json({
       id: b.id, slotId: b.slotId, when: describeSlot(b.slotId), status: b.status,
-      dakshinaPaise: req.guru.dakshina_paise, guruName: req.guru.name,
+      minutes: b.minutes, dakshinaPaise: b.dakshina_paise, guruName: req.guru.name,
       joinUrl: b.status === 'confirmed' ? conversation.joinLink(b, req.guru) : null,
     });
   }));
@@ -110,7 +116,7 @@ export function siteRoutes(env, conversation) {
     const problem = bookings.whyCannotReschedule(b);
     if (problem) return res.status(409).json({ error: problem });
     if (!SLOT.test(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Choose the new time' });
-    await bookings.assertBookable(req.guru, req.body.slotId);
+    await bookings.assertBookable(req.guru, req.body.slotId, { type: { id: b.session_type_id, minutes: b.minutes } }); // the same kind of sitting moves
     const moved = await bookings.rescheduleBooking({ bookingId: b.id, slotId: req.body.slotId });
     if (!moved) return res.status(409).json({ error: 'That time was just taken. Please choose another.' });
     const note = await tell(() => conversation.sendNewTime({ guru: req.guru, devotee: req.devotee, booking: moved }));
@@ -120,11 +126,12 @@ export function siteRoutes(env, conversation) {
   // She cancelled earlier and books again with the credit: confirmed at once, no payment page.
   router.post('/me/book-with-credit', requireDevotee, handle(async (req, res) => {
     if (!SLOT.test(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Choose a time' });
+    const type = await typeFrom(req);
     const credit = await creditFor(req.guru.id, req.devotee.id);
-    if (credit.balancePaise < req.guru.dakshina_paise) return res.status(409).json({ error: 'Your credit does not cover this dakshina. Please book and pay as usual.' });
-    await bookings.assertBookable(req.guru, req.body.slotId);
+    if (credit.balancePaise < type.dakshina_paise) return res.status(409).json({ error: 'Your credit does not cover this dakshina. Please book and pay as usual.' });
+    await bookings.assertBookable(req.guru, req.body.slotId, { type });
     const booked = await bookings.confirmWithCredit({
-      guruId: req.guru.id, devoteeId: req.devotee.id, slotId: req.body.slotId, source: 'page', amountPaise: req.guru.dakshina_paise,
+      guruId: req.guru.id, devoteeId: req.devotee.id, slotId: req.body.slotId, source: 'page', amountPaise: type.dakshina_paise, type,
     });
     if (!booked) return res.status(409).json({ error: 'That time was just taken. Please choose another.' });
     const note = await tell(() => conversation.sendConfirmation({ guru: req.guru, devotee: req.devotee, booking: booked }));
@@ -162,14 +169,15 @@ export function siteRoutes(env, conversation) {
   }
 
   async function mySessions(req) {
+    const types = await listSessionTypes(req.guru.id, { activeOnly: true });
     const [rows, credit, open] = await Promise.all([
       bookings.listForDevoteeWithGuru(req.guru.id, req.devotee.id),
       creditFor(req.guru.id, req.devotee.id),
-      openSlots(req.guru),
+      openSlots(req.guru, types[0]),
     ]);
     const now = new Date();
     const mine = rows.map((b) => ({
-      id: b.id, slotId: b.slotId, when: describeSlot(b.slotId), status: b.status,
+      id: b.id, slotId: b.slotId, when: describeSlot(b.slotId), status: b.status, minutes: b.minutes, dakshinaPaise: b.dakshina_paise,
       joinUrl: b.status === 'confirmed' ? conversation.joinLink(b, req.guru) : null,
       cannotReschedule: bookings.whyCannotReschedule(b, now),
       cannotCancel: bookings.whyCannotCancel(b, now),
@@ -181,12 +189,22 @@ export function siteRoutes(env, conversation) {
       // A hold that is still paying, or one that lapsed, is not a session she had: it stays off this page.
       earlier: mine.filter((b) => (new Date(slotIdToInstant(b.slotId)) <= now || b.status !== 'confirmed') && b.status !== 'held' && b.status !== 'expired'),
       credit: { balancePaise: credit.balancePaise, expiresAt: credit.vouchers[0]?.expiresAt ?? null },
+      sessionTypes: types.map(publicType),
       slots: open.map(publicSlot),
     };
   }
 
-  async function openSlots(guru) {
-    return availableSlots(availabilityOf(guru), await bookings.takenSlotIds(guru.id));
+  async function openSlots(guru, type) {
+    return availableSlots(availabilityOf(guru), await bookings.takenIntervals(guru.id), undefined, { minutes: type.minutes, typeId: type.id });
+  }
+
+  /** The kind of sitting a request names (?type= or body.typeId), or the guru's default. An unknown or inactive id is refused. */
+  async function typeFrom(req) {
+    const id = req.query.type ?? req.body?.typeId;
+    if (!id) return defaultSessionType(req.guru.id);
+    const type = await findSessionType(req.guru.id, String(id));
+    if (!type || !type.active) throw new BookingRuleError('That kind of sitting is not offered any more. Please choose again.');
+    return type;
   }
 
   return router;

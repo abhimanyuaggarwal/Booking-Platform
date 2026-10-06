@@ -58,6 +58,7 @@ const EN = {
   // the door
   greeting: ({ guruName, minutes, dakshina }) =>
     `Namaste 🙏\nBook time with ${guruName} — ${minutes} minutes, dakshina ${dakshina}.\nNext available:`,
+  chooseType: ({ guruName }) => `Namaste 🙏\nBook time with ${guruName}. How long would you like?`,
   otherTimes: 'Other times',
   chooseTime: 'Choose a time that suits you.',
   seeTimes: 'See times',
@@ -113,6 +114,7 @@ const HI = {
     `${guruName} ${describeSlot(slotId, 'hi')} को नहीं बैठ सके। आपकी ${dakshina} की दक्षिणा फिर से आपके जमा में है — तीस दिन के भीतर कोई भी समय बुक कर लें।`,
   greeting: ({ guruName, minutes, dakshina }) =>
     `नमस्ते 🙏\n${guruName} के साथ समय बुक करें — ${minutes} मिनट, दक्षिणा ${dakshina}।\nअगला खाली समय:`,
+  chooseType: ({ guruName }) => `नमस्ते 🙏\n${guruName} के साथ समय बुक करें। कितना समय चाहिए?`,
   otherTimes: 'और समय',
   chooseTime: 'अपने लिए समय चुनें।',
   seeTimes: 'समय देखें',

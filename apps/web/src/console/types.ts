@@ -7,6 +7,7 @@ export type Source = 'live' | 'ashram' | 'poster' | 'page' | 'direct';
 
 export interface SessionRow {
   id: string; slotId: string; status: BookingStatus; source: Source;
+  minutes?: number; dakshinaPaise?: number; complimentary?: boolean;
   name: string; forWhom: string | null; priorVisits: number;
   question: string | null; hasVoiceNote: boolean; paid: boolean;
 }
@@ -26,7 +27,7 @@ export interface TodayReport {
 }
 
 export type GridKind = 'paid' | 'hold' | 'live' | 'done' | 'noshow';
-export interface GridBooking { id: string; slotId: string; name: string; status: BookingStatus; source: Source; kind: GridKind; note: string }
+export interface GridBooking { id: string; slotId: string; name: string; status: BookingStatus; source: Source; kind: GridKind; note: string; minutes?: number }
 export interface GridDay {
   date: string; weekday: string; dayOfMonth: number; today: boolean;
   closed: 'closed' | 'no sittings' | null; filled: number; total: number;
@@ -54,8 +55,12 @@ export interface Pattern {
   slotMinutes: number; gapMinutes: number; minimumNoticeMinutes: number; daysAhead: number;
   /** How far apart the offered starts are. Missing on a pattern saved before the setting existed: back to back. */
   stepMinutes?: number;
-  weeklyPattern: Record<DayKey, [string, string][]>;
+  /** Each window is [from, to] or [from, to, sessionTypeIds]: a window with ids is only for those kinds of sitting. */
+  weeklyPattern: Record<DayKey, TimingWindow[]>;
 }
+export type TimingWindow = [string, string] | [string, string, string[]];
+/** One kind of sitting: a length and a dakshina. The first active one is the default. */
+export interface SessionType { id?: string; name: string; minutes: number; dakshinaPaise: number; dakshina?: string; active: boolean }
 export interface Marketing {
   tagline: string;
   blocks: { heading: string; body: string }[];
@@ -68,6 +73,7 @@ export interface Marketing {
 export interface Settings {
   id: string; slug: string; name: string; domain: string | null; about: string; marketing: Marketing;
   dakshinaPaise: number; whatsappNumber: string | null; guruPhone?: string | null; language?: 'en' | 'hi'; pattern: Pattern; closedDates: string[];
+  sessionTypes?: SessionType[];
 }
 
 export type EventKind = 'satsang' | 'live' | 'meetup';
@@ -101,6 +107,7 @@ export interface AttentionRow {
 
 export interface BookingRow {
   id: string; slotId: string; time: string; date: string; status: BookingStatus; source: Source;
+  minutes?: number; dakshinaPaise?: number; complimentary?: boolean;
   name: string; phone: string; paid: boolean; question: string | null; hasVoiceNote: boolean;
   /** Set when the team booked and WhatsApp refused the confirmation: the booking stands, call her. */
   notDelivered?: string | null;
@@ -109,6 +116,7 @@ export type BookingAction = 'message' | 'reschedule' | 'cancel' | 'refund' | 'no
 export interface BookingDetail {
   id: string; slotId: string; time: string; date: string; dateLabel: string; status: BookingStatus; source: Source;
   question: string | null; hasVoiceNote: boolean; paidAt: string | null; createdAt: string; rescheduledFromId: string | null;
+  minutes?: number; dakshinaPaise?: number; complimentary?: boolean; sessionTypeId?: string | null;
   devotee: { id: string; name: string | null; phone: string; forWhom: string | null };
   paidWith: { kind: LedgerKind; amountPaise: number; providerRef: string | null } | null;
   ledger: { id: string; kind: LedgerKind; amountPaise: number; providerRef: string | null; expiresAt: string | null; at: string }[];
@@ -129,4 +137,4 @@ export interface CloseDayResult {
   expiredHolds: number; notified: number; notDelivered: string[];
 }
 
-export interface PublicSlots { guru: { slug: string; name: string; dakshinaPaise: number; slotMinutes: number }; slots: { id: string; label: string; startsAt: string }[] }
+export interface PublicSlots { guru: { slug: string; name: string; dakshinaPaise: number; slotMinutes: number }; sessionTypes?: SessionType[]; type?: SessionType; slots: { id: string; label: string; startsAt: string }[] }

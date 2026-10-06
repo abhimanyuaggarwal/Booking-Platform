@@ -116,6 +116,7 @@ export function attentionStrip(rows) {
 function sessionRow(r) {
   return {
     id: r.id, slotId: instantToSlotId(r.slot_start), status: r.status, source: r.source,
+    minutes: r.minutes, dakshinaPaise: r.dakshina_paise, complimentary: !!r.complimentary,
     name: displayName(r), forWhom: r.for_whom, priorVisits: r.prior_visits,
     question: r.question_text, hasVoiceNote: !!r.question_media_id, paid: !!r.paid_at,
   };
@@ -128,7 +129,6 @@ function sessionRow(r) {
  * opened their link, refunds on their way. Each item names the one action the team can take.
  */
 export async function attentionQueue(guru) {
-  const slotMinutes = guru.pattern_json.slotMinutes ?? 30;
   const [expired, paidTooLate, missed, refunds, alone, waited, taken] = await Promise.all([
     query(
       `select b.id, b.slot_start, b.created_at, b.source, b.payment_link_id, d.name, d.phone
@@ -154,8 +154,8 @@ export async function attentionQueue(guru) {
         where b.guru_id = $1 and b.slot_start > now() - interval '7 days'
           and (b.status = 'no_show'
                or (b.status = 'confirmed' and s.devotee_joined_at is null and s.started_at is null
-                   and b.slot_start + make_interval(mins => $2::int) < now()))
-        order by b.slot_start desc`, [guru.id, slotMinutes]),
+                   and b.slot_start + make_interval(mins => b.minutes) < now()))
+        order by b.slot_start desc`, [guru.id]),
     query(
       `select l.id, l.amount_paise, l.created_at, l.provider_ref, b.id as booking_id, b.slot_start, d.name, d.phone
          from ledger_entries l join devotees d on d.id = l.devotee_id left join bookings b on b.id = l.booking_id
@@ -170,8 +170,8 @@ export async function attentionQueue(guru) {
          join sessions s on s.booking_id = b.id
         where b.guru_id = $1 and b.status = 'confirmed'
           and s.devotee_joined_at is not null and s.started_at is null
-          and b.slot_start + make_interval(mins => $2::int) < now() and b.slot_start > now() - interval '7 days'
-        order by b.slot_start desc`, [guru.id, slotMinutes]),
+          and b.slot_start + make_interval(mins => b.minutes) < now() and b.slot_start > now() - interval '7 days'
+        order by b.slot_start desc`, [guru.id]),
     // She waited ten minutes, he did not come, and she chose. Both choices are the team's to settle.
     query(
       `select m.id, m.payload_json, m.created_at, m.booking_id, b.slot_start, b.status, d.name, d.phone
@@ -276,7 +276,7 @@ export async function waitingBoard(guru, presenceFor) {
     now: now.toISOString(),
     running: running ? {
       bookingId: running.booking_id, name: displayName(running), startedAt: running.started_at.toISOString(),
-      slotTime: timeOf(running.slot_start), minutesLate: Math.max(0, Math.round((now - running.slot_start) / 60000) - slotMinutesOf(guru)),
+      slotTime: timeOf(running.slot_start), minutesLate: Math.max(0, Math.round((now - running.slot_start) / 60000) - (running.minutes ?? slotMinutesOf(guru))),
     } : null,
     people,
     suggestions: { laterToday: pick(today), tomorrow: pick(addDays(today, 1)) },
@@ -332,6 +332,7 @@ export async function bookingDetail(guru, id) {
   return {
     id: b.id, slotId: b.slotId, time: timeOf(b.slot_start), date: b.slotId.slice(5, 15), dateLabel: describeDate(b.slotId.slice(5, 15)),
     status: b.status, source: b.source, question: b.question_text, hasVoiceNote: !!b.question_media_id,
+    minutes: b.minutes, dakshinaPaise: b.dakshina_paise, complimentary: !!b.complimentary, sessionTypeId: b.session_type_id,
     paidAt: b.paid_at ? b.paid_at.toISOString() : null, createdAt: b.created_at.toISOString(), rescheduledFromId: b.rescheduled_from_id,
     devotee: { id: b.devotee_id, name: b.devotee_name, phone: b.phone, forWhom: b.for_whom },
     paidWith: paid ? { kind: paid.kind, amountPaise: paid.amount_paise, providerRef: paid.provider_ref } : null,
@@ -363,6 +364,7 @@ export function allowedActions(b) {
 export function bookingRow(b) {
   return {
     id: b.id, slotId: b.slotId, time: timeOf(b.slot_start), date: b.slotId.slice(5, 15), status: b.status, source: b.source,
+    minutes: b.minutes, dakshinaPaise: b.dakshina_paise, complimentary: !!b.complimentary,
     name: b.devotee_name ?? `…${String(b.phone).slice(-4)}`, phone: b.phone, paid: !!b.paid_at, question: b.question_text, hasVoiceNote: !!b.question_media_id,
   };
 }
@@ -435,6 +437,7 @@ export function buildWeek(guru, dates, rows, today) {
 // How a booking is coloured and captioned on the grid. Legend: paid · payment not finished ·
 // came from a live · completed · open · day closed.
 function gridBooking(r, slotId) {
+  const minutes = r.minutes;
   const kind = r.status === 'completed' ? 'done'
     : r.status === 'no_show' ? 'noshow'
     : r.status === 'held' ? 'hold'
@@ -444,7 +447,7 @@ function gridBooking(r, slotId) {
     : kind === 'live' ? 'from the live'
     : r.question_media_id ? 'voice note'
     : r.prior_visits > 0 ? `${ordinal(r.prior_visits + 1)} visit` : 'paid';
-  return { id: r.id, slotId, name: displayName(r), status: r.status, source: r.source, kind, note };
+  return { id: r.id, slotId, name: displayName(r), status: r.status, source: r.source, kind, note, minutes };
 }
 
 // ---- Money ---------------------------------------------------------------------------------------

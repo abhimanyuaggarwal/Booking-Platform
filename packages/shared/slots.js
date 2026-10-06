@@ -62,24 +62,29 @@ export function isoDate(date) {
 }
 
 /**
- * All bookable slots from now until `daysAhead`, minus the ones already taken.
+ * All bookable starts from now until `daysAhead` for a sitting of `minutes` (default: the pattern's
+ * slotMinutes), minus what collides with a held or confirmed booking.
  *
- * Starts are offered every `stepMinutes` (default: one sitting plus the gap, so times run back to
- * back). A guru who wants people to book "any five-minute mark" sets stepMinutes to 5; the starts
- * then overlap, so a start is hidden when a held or confirmed sitting begins nearer to it than one
- * sitting plus the gap, in either direction. With the default step this is the same as "the taken
- * ids disappear", so nothing changes for a guru who never touches the setting.
+ * Starts are offered every `stepMinutes` (default: one sitting plus the gap, back to back). A start is
+ * hidden when the sitting it would begin, plus the gap after it, overlaps a taken sitting plus its
+ * gap — each booking carries its own length, so a ten-minute sitting blocks ten minutes and a
+ * thirty-minute one thirty. A window may be limited to some session types: `[from, to, [typeIds]]`;
+ * pass `typeId` and such a window is skipped unless it names that type.
  * @param {object} availability  gurus.pattern_json plus closedDates (see gurus.js availabilityOf)
- * @param {Set<string>} takenSlotIds  slot ids that are held or confirmed
+ * @param {Set<string>|{id?:string, slotId?:string, minutes?:number}[]} taken  held or confirmed sittings; a Set of ids means sittings of slotMinutes
  * @param {Date} [now]  injectable for tests; defaults to current IST time
+ * @param {{minutes?: number, typeId?: string}} [opts]
  * @returns {{id: string, label: string, startsAt: Date}[]} sorted soonest first
  */
-export function availableSlots(availability, takenSlotIds, now = nowInIst()) {
+export function availableSlots(availability, taken, now = nowInIst(), { minutes, typeId } = {}) {
+  const length = minutes ?? availability.slotMinutes;
+  const gap = availability.gapMinutes;
   const earliestAllowed = new Date(now.getTime() + availability.minimumNoticeMinutes * 60000);
   const stepMinutes = availability.stepMinutes ?? sittingStep(availability);
-  const clearance = sittingStep(availability) * 60000;
-  const takenAt = [...takenSlotIds].map((id) => parseSlotId(id).getTime());
-  const tooClose = (t) => takenAt.some((s) => Math.abs(s - t) < clearance);
+  const busyUntil = (t) => t + (length + gap) * 60000;
+  const intervals = (taken instanceof Set ? [...taken].map((id) => ({ id })) : taken)
+    .map((t) => { const s = parseSlotId(t.id ?? t.slotId).getTime(); return [s, s + ((t.minutes ?? availability.slotMinutes) + gap) * 60000]; });
+  const collides = (t) => { const end = busyUntil(t); return intervals.some(([s, e]) => t < e && s < end); };
   const slots = [];
 
   for (let dayOffset = 0; dayOffset < availability.daysAhead; dayOffset++) {
@@ -87,14 +92,15 @@ export function availableSlots(availability, takenSlotIds, now = nowInIst()) {
     if (availability.closedDates.includes(isoDate(day))) continue;
 
     const windows = availability.weeklyPattern[DAY_KEYS[day.getUTCDay()]] || [];
-    for (const [from, to] of windows) {
+    for (const [from, to, types] of windows) {
+      if (typeId && Array.isArray(types) && !types.includes(typeId)) continue;
       const [fh, fm] = from.split(':').map(Number);
       const [th, tm] = to.split(':').map(Number);
       let cursor = new Date(day.getTime() + (fh * 60 + fm) * 60000);
       const windowEnd = new Date(day.getTime() + (th * 60 + tm) * 60000);
 
-      while (cursor.getTime() + availability.slotMinutes * 60000 <= windowEnd.getTime()) {
-        if (cursor >= earliestAllowed && !tooClose(cursor.getTime())) {
+      while (cursor.getTime() + length * 60000 <= windowEnd.getTime()) {
+        if (cursor >= earliestAllowed && !collides(cursor.getTime())) {
           slots.push({ id: toSlotId(cursor), label: labelFor(cursor, now), startsAt: new Date(cursor) });
         }
         cursor = new Date(cursor.getTime() + stepMinutes * 60000);

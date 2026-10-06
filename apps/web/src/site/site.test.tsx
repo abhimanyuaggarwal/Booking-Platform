@@ -19,8 +19,13 @@ const slots: PublicSlot[] = [
   { id: 'slot:2026-09-16T16:00', label: 'Today 4:00 pm', when: 'Wednesday, 16 September, 4:00 pm' },
   { id: 'slot:2026-09-17T10:00', label: 'Tomorrow 10:00 am', when: 'Thursday, 17 September, 10:00 am' },
 ];
+const types = [
+  { id: 't10', name: 'Quick guidance', minutes: 10, dakshinaPaise: 50000, dakshina: '₹500', active: true },
+  { id: 't30', name: '', minutes: 30, dakshinaPaise: 150000, dakshina: '₹1,500', active: true },
+];
+const defaultType = { id: 't30', name: '', minutes: 30, dakshinaPaise: 50000, dakshina: '₹500', active: true };
 const page: SitePage = {
-  guru, nextSlots: slots, openCount: 8,
+  guru, sessionTypes: [defaultType], nextSlots: slots, openCount: 8,
   events: [{ id: 'e1', title: 'Weekly satsang', kind: 'satsang', startsAt: '2026-09-16T11:30:00Z', when: 'Wednesday, 16 September, 5:00 pm', link: 'https://youtube.com/live', location: null, notes: null }],
 };
 
@@ -148,4 +153,13 @@ test('every other time is offered a day at a time, as chips, so a five-minute st
   expect(html).toContain('>4:05 pm<');
   expect(html).not.toContain('>10:00 am<');   // tomorrow's times wait behind its tab
   expect(html).not.toContain('See other times');
+});
+
+test('with more than one kind of sitting the page asks how long, and the sheet prices the chosen kind', () => {
+  const html = renderToStaticMarkup(<HomeSections page={{ ...page, sessionTypes: types }} slots={slots} showAll={false} onSeeAll={() => {}} onChoose={() => {}} typeId="t10" onChooseType={() => {}} />);
+  expect(html).toContain('How long would you like');
+  expect(html).toContain('10 minutes for ₹500');
+  expect(html).toContain('30 minutes for ₹1,500');
+  const sheet = renderToStaticMarkup(<BookSheetBody slot={slots[0]} guru={guru} minutes={10} dakshinaPaise={50000} />);
+  expect(sheet).toContain('10 minutes with Guruji Vishwanath · dakshina ₹500');
 });

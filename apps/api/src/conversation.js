@@ -59,15 +59,15 @@ export function createConversation(env) {
    * If Razorpay refuses, the hold is released at once — nobody should lose a slot to our outage —
    * and the ProviderError says why.
    */
-  async function startPayment({ guru, devotee, slotId, source, notify = true, team = false }) {
-    await bookings.assertBookable(guru, slotId, { team }); // BookingRuleError carries the sentence
-    const booking = await bookings.holdSlot({ guruId: guru.id, devoteeId: devotee.id, slotId, source });
+  async function startPayment({ guru, devotee, slotId, source, type = null, notify = true, team = false }) {
+    await bookings.assertBookable(guru, slotId, { team, type }); // BookingRuleError carries the sentence
+    const booking = await bookings.holdSlot({ guruId: guru.id, devoteeId: devotee.id, slotId, source, type });
     if (!booking) return null;
-    const dakshina = formatRupees(guru.dakshina_paise);
+    const dakshina = formatRupees(booking.dakshina_paise);
     let order;
     try {
       order = await pay.createOrder({
-        amountPaise: guru.dakshina_paise,
+        amountPaise: booking.dakshina_paise,
         receipt: booking.id,
         notes: { booking_id: booking.id, guru: guru.slug, time: describeSlot(slotId) },
       });
@@ -87,11 +87,11 @@ export function createConversation(env) {
    * go, no Razorpay, and she gets the same confirmation and join link as anyone who paid online.
    * Returns null if the slot was taken.
    */
-  async function bookPaidOutside({ guru, devotee, slotId, source, method }) {
-    await bookings.assertBookable(guru, slotId, { team: true });
-    const held = await bookings.holdSlot({ guruId: guru.id, devoteeId: devotee.id, slotId, source });
+  async function bookPaidOutside({ guru, devotee, slotId, source, method, type = null }) {
+    await bookings.assertBookable(guru, slotId, { team: true, type });
+    const held = await bookings.holdSlot({ guruId: guru.id, devoteeId: devotee.id, slotId, source, type });
     if (!held) return null;
-    const booking = await bookings.confirmOffline({ bookingId: held.id, method, amountPaise: guru.dakshina_paise });
+    const booking = await bookings.confirmOffline({ bookingId: held.id, method });
     // The team's booking stands whether or not WhatsApp reaches her; the refusal is recorded and returned.
     try {
       await sendConfirmation({ guru, devotee, booking });
@@ -166,7 +166,7 @@ export function createConversation(env) {
   async function resendPaymentLink({ guru, devotee, booking }) {
     const W = wordsFor(guru.language);
     const say = speak(guru, devotee, booking.id);
-    await say.link(W.stillToPay({ slotId: booking.slotId, dakshina: formatRupees(guru.dakshina_paise) }), W.payTheDakshina, payLink(booking, guru));
+    await say.link(W.stillToPay({ slotId: booking.slotId, dakshina: formatRupees(booking.dakshina_paise ?? guru.dakshina_paise) }), W.payTheDakshina, payLink(booking, guru));
   }
 
   /** She wrote in just after her session. Say we heard her, and leave it for the team to answer. */

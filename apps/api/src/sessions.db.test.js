@@ -27,6 +27,7 @@ before(async () => {
   await db.migrate();
   ({ rows: [guru] } = await db.query(
     `insert into gurus (slug, name, dakshina_paise, pattern_json) values ('t', 'Test Guru', 50000, '{"slotMinutes":30}') returning *`));
+  await db.query(`insert into session_types (guru_id, minutes, dakshina_paise) values ($1, 30, 50000)`, [guru.id]);
   ({ rows: [devotee] } = await db.query(
     `insert into devotees (guru_id, phone, name) values ($1, '919999000002', 'Test Devotee') returning *`, [guru.id]));
 });
@@ -51,8 +52,8 @@ function dbTest(name, fn) {
  */
 async function confirmedBooking(minutesFromNow = 0) {
   const { rows: [b] } = await db.query(
-    `insert into bookings (guru_id, devotee_id, slot_start, status, source, paid_at)
-     values ($1, $2, now() + make_interval(mins => $3::int), 'confirmed', 'page', now()) returning *`,
+    `insert into bookings (guru_id, devotee_id, slot_start, status, source, paid_at, minutes, dakshina_paise)
+     values ($1, $2, now() + make_interval(mins => $3::int), 'confirmed', 'page', now(), 30, 50000) returning *`,
     [guru.id, devotee.id, minutesFromNow]);
   return b;
 }

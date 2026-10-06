@@ -7,6 +7,7 @@ import { WeekGrid, WeekList } from './Week';
 import { MoneyView, entryText } from './Money';
 import { askedAbout, groupAttention, stateWord } from './words';
 import PatternEditor from './PatternEditor';
+import SessionTypesEditor from './SessionTypesEditor';
 import type { MoneyReport, Settings, TodayReport, WeekReport } from './types';
 
 const today: TodayReport = {
@@ -147,14 +148,26 @@ const settings: Settings = {
     weeklyPattern: { sun: [], mon: [['10:00', '13:00']], tue: [['10:00', '13:00'], ['16:00', '17:30']], wed: [], thu: [], fri: [], sat: [] } },
 };
 
-test('the timings editor shows each day with its sittings, the dakshina in rupees, and closed days', () => {
+test('the timings editor shows each day with its sittings, and closed days', () => {
   const html = renderToStaticMarkup(<StaticRouter location="/console/settings"><PatternEditor settings={settings} onSaved={() => {}} /></StaticRouter>);
   expect(html).toContain('Tuesday');
   expect((html.match(/type="time"/g) ?? []).length).toBe(6); // Monday 1 window + Tuesday 2 windows, two inputs each
   expect(html).toContain('value="17:30"');
-  expect(html).toContain('value="500"');
   expect(html).toContain('2026-09-17');
   expect(html).toContain('no sittings');
+});
+
+test('the kinds of sitting editor shows each kind with its minutes and dakshina in rupees, and which is the default', () => {
+  const withKinds = { ...settings, sessionTypes: [
+    { id: 'a', name: 'Quick guidance', minutes: 10, dakshinaPaise: 50000, active: true },
+    { id: 'b', name: '', minutes: 30, dakshinaPaise: 150000, active: true },
+  ] };
+  const html = renderToStaticMarkup(<StaticRouter location="/console/settings"><SessionTypesEditor settings={withKinds} onSaved={() => {}} /></StaticRouter>);
+  expect(html).toContain('Kinds of sitting');
+  expect(html).toContain('value="500"');
+  expect(html).toContain('value="1500"');
+  expect(html).toContain('Quick guidance');
+  expect(html).toContain('Default');
 });
 
 // ---- Session 3 screens ----

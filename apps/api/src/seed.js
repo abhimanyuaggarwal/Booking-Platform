@@ -144,7 +144,11 @@ async function insertGuru() {
      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::date[]) returning *`,
     [GURU.slug, GURU.domain, GURU.name, GURU.about, JSON.stringify(GURU.marketing), DAKSHINA_PAISE,
       GURU.whatsappNumber, JSON.stringify(withoutClosedDates(pattern)), pattern.closedDates]);
-  return rows[0];
+  // His one kind of sitting, from the pattern and the dakshina; the console adds more.
+  const { rows: [type] } = await query(
+    `insert into session_types (guru_id, name, minutes, dakshina_paise, position) values ($1, '', $2, $3, 0) returning *`,
+    [rows[0].id, pattern.slotMinutes, DAKSHINA_PAISE]);
+  return { ...rows[0], sessionType: type };
 }
 
 function withoutClosedDates({ closedDates, ...rest }) {
@@ -261,10 +265,11 @@ async function writeBooking(guru, p, linkNo) {
   const paid = p.paidAt !== null;
   const { rows: [row] } = await query(
     `insert into bookings (guru_id, devotee_id, slot_start, status, source, question_text, question_media_id,
-                           payment_link_id, rescheduled_from_id, created_at, paid_at)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning id`,
+                           payment_link_id, rescheduled_from_id, created_at, paid_at, session_type_id, minutes, dakshina_paise)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) returning id`,
     [guru.id, p.devotee.id, p.start, p.status, p.source, paid ? p.question : null, paid ? p.media : null,
-      `plink_seed_${String(linkNo).padStart(3, '0')}`, p.rescheduledFrom?.id ?? null, p.createdAt, p.paidAt]);
+      `plink_seed_${String(linkNo).padStart(3, '0')}`, p.rescheduledFrom?.id ?? null, p.createdAt, p.paidAt,
+      guru.sessionType.id, guru.sessionType.minutes, guru.sessionType.dakshina_paise]);
   p.id = row.id;
 
   const ledger = (kind, at, ref, expiresAt = null) => query(

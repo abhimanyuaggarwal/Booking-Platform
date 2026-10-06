@@ -12,13 +12,19 @@ import type { PublicSlot, SitePage } from './types';
 export default function HomePage({ page, call, base }: { page: SitePage; call: ReturnType<typeof siteApi>; base: string }) {
   const [chosen, setChosen] = useState<PublicSlot | null>(null);
   const [showAll, setShowAll] = useState(false);
-  const all = useSite<{ slots: PublicSlot[] }>(call, showAll ? '/slots' : '/');
-  const slots = showAll && all.data && 'slots' in all.data ? all.data.slots : page.nextSlots;
+  const types = page.sessionTypes ?? [];
+  const [typeId, setTypeId] = useState(types[0]?.id ?? '');
+  const type = types.find((t) => t.id === typeId) ?? types[0] ?? null;
+  // The page came with the default kind's nearest times; another kind, or "see other times", asks for its own list.
+  const needsFetch = showAll || (type && type.id !== types[0]?.id);
+  const all = useSite<{ slots: PublicSlot[] }>(call, needsFetch ? `/slots?type=${encodeURIComponent(type?.id ?? '')}` : '/');
+  const fetched = needsFetch && all.data && 'slots' in all.data ? all.data.slots : null;
+  const slots = fetched ? (showAll ? fetched : fetched.slice(0, 3)) : page.nextSlots;
 
   return (
     <main>
-      <HomeSections page={page} slots={slots} showAll={showAll} onSeeAll={() => setShowAll(true)} onChoose={setChosen} />
-      {chosen && <BookSheet slot={chosen} guru={page.guru} call={call} base={base} onClose={() => setChosen(null)} />}
+      <HomeSections page={page} slots={slots} showAll={showAll} onSeeAll={() => setShowAll(true)} onChoose={setChosen} typeId={type?.id} onChooseType={setTypeId} />
+      {chosen && type && <BookSheet slot={chosen} type={type} guru={page.guru} call={call} base={base} onClose={() => setChosen(null)} />}
     </main>
   );
 }
@@ -36,10 +42,13 @@ const GOOD_TO_KNOW = [
   'If guruji cannot sit at your time, the dakshina is returned in full.',
 ];
 
-export function HomeSections({ page, slots, showAll, onSeeAll, onChoose }: {
+export function HomeSections({ page, slots, showAll, onSeeAll, onChoose, typeId, onChooseType }: {
   page: SitePage; slots: PublicSlot[]; showAll: boolean; onSeeAll: () => void; onChoose: (s: PublicSlot) => void;
+  typeId?: string; onChooseType?: (id: string) => void;
 }) {
   const { guru, events } = page;
+  const types = page.sessionTypes ?? [];
+  const type = types.find((t) => t.id === typeId) ?? types[0] ?? null;
   const m = guru.marketing;
   const hero = m?.hero ?? null;
   const facts = m?.facts ?? [];
@@ -61,7 +70,9 @@ export function HomeSections({ page, slots, showAll, onSeeAll, onChoose }: {
           <h1>{guru.name}</h1>
           <p className="lineage">{m?.tagline}</p>
           <p className="about">{guru.about}</p>
-          <p className="terms">One to one · {guru.slotMinutes} minutes · dakshina {formatRupees(guru.dakshinaPaise)}</p>
+          <p className="terms">{types.length > 1
+            ? <>One to one · {types.map((t) => `${t.minutes} minutes for ${formatRupees(t.dakshinaPaise)}`).join(' · ')}</>
+            : <>One to one · {type?.minutes ?? guru.slotMinutes} minutes · dakshina {formatRupees(type?.dakshinaPaise ?? guru.dakshinaPaise)}</>}</p>
           <div className="calls">
             <a className="primary" href="#times">Choose a time</a>
             {nextEvent?.link && <a className="ghost" href={nextEvent.link}>Watch the next {nextEvent.kind === 'meetup' ? 'meetup' : nextEvent.kind === 'live' ? 'live' : 'satsang'} · {nextEvent.when}</a>}
@@ -79,6 +90,18 @@ export function HomeSections({ page, slots, showAll, onSeeAll, onChoose }: {
         )}
 
         <section id="times">
+          {types.length > 1 && (
+            <>
+              <p className="eyebrow">How long would you like</p>
+              <div className="kinds" role="radiogroup">
+                {types.map((t) => (
+                  <button key={t.id} type="button" role="radio" aria-checked={t.id === type?.id} className={t.id === type?.id ? 'kind on' : 'kind'} onClick={() => onChooseType?.(t.id)}>
+                    <b>{t.minutes} minutes</b><span>{formatRupees(t.dakshinaPaise)}</span>{t.name && <i>{t.name}</i>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <p className="eyebrow">Next available</p>
           {slots.length === 0 ? (
             <p className="muted">There are no open times this week. His next satsang is below, and you may write on WhatsApp to be told when times open.</p>

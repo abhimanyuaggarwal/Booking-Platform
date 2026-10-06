@@ -46,6 +46,28 @@ test('a five-minute start is hidden while a sitting plus its gap would overlap a
   assert.ok(ids.includes('slot:2026-09-14T11:00'));
 });
 
+test('a sitting of its own length: twenty minutes fits where thirty would overrun, and blocks only twenty', () => {
+  const fine = { ...availability, stepMinutes: 5, minimumNoticeMinutes: 0 };
+  const twenty = availableSlots(fine, new Set(), mondayMorning, { minutes: 20 }).filter((x) => x.id.includes('2026-09-14')).map((x) => x.id);
+  assert.ok(twenty.includes('slot:2026-09-14T11:10'), 'a 20-minute sitting at 11:10 ends at 11:30');
+  assert.ok(!twenty.includes('slot:2026-09-14T11:15'));
+  // a ten-minute booking at 10:20 (plus the ten-minute gap) frees 10:40 for anyone; a thirty-minute one would not
+  const taken = [{ id: 'slot:2026-09-14T10:20', minutes: 10 }];
+  const ids = availableSlots(fine, taken, mondayMorning).filter((x) => x.id.includes('2026-09-14')).map((x) => x.id);
+  assert.ok(ids.includes('slot:2026-09-14T10:40'));
+  assert.ok(!ids.includes('slot:2026-09-14T10:35'));
+});
+
+test('a window limited to some session types is skipped for the others', () => {
+  const typed = { ...availability, minimumNoticeMinutes: 0,
+    weeklyPattern: { ...availability.weeklyPattern, mon: [['10:00', '11:30', ['short']], ['16:00', '17:00']] } };
+  const short = availableSlots(typed, new Set(), mondayMorning, { typeId: 'short' }).filter((x) => x.id.includes('2026-09-14'));
+  const long = availableSlots(typed, new Set(), mondayMorning, { typeId: 'long' }).filter((x) => x.id.includes('2026-09-14'));
+  assert.ok(short.some((x) => x.id === 'slot:2026-09-14T10:00'));
+  assert.ok(!long.some((x) => x.id === 'slot:2026-09-14T10:00'), 'the morning is for short sittings only');
+  assert.ok(long.some((x) => x.id === 'slot:2026-09-14T16:00'), 'the afternoon window names no types, so it is for all');
+});
+
 test('the sitting step is the sitting plus the gap, and is the default offer step', () => {
   assert.equal(sittingStep(availability), 40);
   const explicit = availableSlots({ ...availability, stepMinutes: 40 }, new Set(), mondayMorning);

@@ -11,6 +11,7 @@ import {
 } from './reports.js';
 import { listEvents, createEvent, updateEvent, deleteEvent, validateEvent } from './events.js';
 import { listQrCodes, createQrCode, QR_SOURCES } from './qr-codes.js';
+import { listSessionTypes, findSessionType, defaultSessionType, validateSessionTypes, replaceSessionTypes, publicType } from './session-types.js';
 import * as bookings from './bookings.js';
 import * as devotees from './devotees.js';
 import * as razorpay from './razorpay.js';
@@ -63,19 +64,31 @@ export function consoleRoutes(env, conversation) {
     res.json(await moneyReport(req.guru, mondayOf(dateParam(req.query.start) ?? todayIst())));
   }));
 
-  router.get('/settings', (req, res) => res.json(settingsView(req.guru)));
+  router.get('/settings', handle(async (req, res) => res.json(await settingsWithTypes(req.guru))));
 
   router.put('/settings/pattern', handle(async (req, res) => {
     const problem = validatePattern(req.body);
     if (problem) return res.status(400).json({ error: problem });
-    res.json(settingsView(await updatePattern(req.guru.id, req.body)));
+    res.json(await settingsWithTypes(await updatePattern(req.guru.id, req.body)));
   }));
 
   router.put('/settings/site', handle(async (req, res) => {
     const problem = validateSite(req.body);
     if (problem) return res.status(400).json({ error: problem });
-    res.json(settingsView(await updateSite(req.guru.id, req.body)));
+    res.json(await settingsWithTypes(await updateSite(req.guru.id, req.body)));
   }));
+
+  // The kinds of sitting he offers: up to three, each a length and a dakshina. The whole list is saved at once.
+  router.put('/settings/session-types', handle(async (req, res) => {
+    const problem = validateSessionTypes(req.body);
+    if (problem) return res.status(400).json({ error: problem });
+    await replaceSessionTypes(req.guru.id, req.body.types);
+    res.json(await settingsWithTypes(await findGuruBySlug(req.guru.slug)));
+  }));
+
+  async function settingsWithTypes(guru) {
+    return { ...settingsView(guru), sessionTypes: (await listSessionTypes(guru.id)).map(publicType) };
+  }
 
   router.get('/events', handle(async (req, res) => res.json(await listEvents(req.guru.id))));
 
@@ -149,18 +162,21 @@ export function consoleRoutes(env, conversation) {
   // She called: the team holds the time for her and she gets the pay link on WhatsApp.
   router.post('/bookings', handle(async (req, res) => {
     const phone = String(req.body?.phone ?? '').replace(/\D/g, '');
-    const { slotId, name, forWhom, question, paidOutside } = req.body ?? {};
+    const { slotId, name, forWhom, question, paidOutside, typeId } = req.body ?? {};
     const source = SOURCES.includes(req.body?.source) ? req.body.source : 'direct';
-    if (paidOutside != null && paidOutside !== '' && !['cash', 'upi'].includes(paidOutside)) return res.status(400).json({ error: 'Paid outside must be cash or upi' });
+    // How she pays: the link we send, cash or UPI already in hand, or nothing — guruji asked for this one to be free.
+    if (paidOutside != null && paidOutside !== '' && !['cash', 'upi', 'complimentary'].includes(paidOutside)) return res.status(400).json({ error: 'Paid outside must be cash, upi or complimentary' });
     if (phone.length < 10 || phone.length > 15) return res.status(400).json({ error: 'Her WhatsApp number, with country code, like 919876543210' });
     if (!SLOT.test(slotId ?? '')) return res.status(400).json({ error: 'Pick a time' });
+    const type = typeId ? await findSessionType(req.guru.id, String(typeId)) : await defaultSessionType(req.guru.id);
+    if (!type) return res.status(400).json({ error: 'Pick a kind of sitting' });
 
     let devotee = await devotees.findOrCreateDevotee(req.guru.id, phone);
     if (name || forWhom) devotee = await devotees.updateDevotee(devotee.id, { name, forWhom });
     // She rang and will pay the link — or the team already has the dakshina in hand and confirms now.
     const booking = paidOutside
-      ? await conversation.bookPaidOutside({ guru: req.guru, devotee, slotId, source, method: paidOutside })
-      : await conversation.startPayment({ guru: req.guru, devotee, slotId, source, team: true });
+      ? await conversation.bookPaidOutside({ guru: req.guru, devotee, slotId, source, method: paidOutside, type })
+      : await conversation.startPayment({ guru: req.guru, devotee, slotId, source, type, team: true });
     if (!booking) return res.status(409).json({ error: 'That time was just taken. Pick another.' });
     if (typeof question === 'string' && question.trim()) await bookings.setQuestion(booking.id, { text: question.trim() });
     res.status(201).json({ ...bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }), notDelivered: booking.notDelivered ?? null });
@@ -223,8 +239,8 @@ export function consoleRoutes(env, conversation) {
   router.post('/bookings/:id/mark-paid', handle(async (req, res) => {
     const b = await ownBooking(req, res); if (!b) return;
     const method = req.body?.method;
-    if (!['cash', 'upi'].includes(method)) return res.status(400).json({ error: 'Say how she paid: cash or upi' });
-    const booking = await bookings.confirmOffline({ bookingId: b.id, method, amountPaise: req.guru.dakshina_paise });
+    if (!['cash', 'upi', 'complimentary'].includes(method)) return res.status(400).json({ error: 'Say how she paid: cash, upi, or complimentary' });
+    const booking = await bookings.confirmOffline({ bookingId: b.id, method });
     const devotee = await devotees.findDevoteeById(b.devotee_id);
     const note = await tell(() => conversation.sendConfirmation({ guru: req.guru, devotee, booking }));
     res.json({ booking: bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }), notified: note.ok, notDelivered: note.reason ?? null });

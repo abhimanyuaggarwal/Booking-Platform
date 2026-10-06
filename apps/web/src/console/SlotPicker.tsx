@@ -5,8 +5,8 @@ import type { PublicSlots } from './types';
 // The open times, from the same list both doors offer: first the day, then the time of that day.
 // Two short lists instead of one long one, so a guru whose doors offer every five-minute mark
 // does not hand the team a select of two thousand rows.
-export default function SlotPicker({ guruSlug, value, onChange, excludeDate, name }: {
-  guruSlug: string; value: string; onChange: (slotId: string) => void; excludeDate?: string; name?: string;
+export default function SlotPicker({ guruSlug, value, onChange, excludeDate, name, typeId }: {
+  guruSlug: string; value: string; onChange: (slotId: string) => void; excludeDate?: string; name?: string; typeId?: string;
 }) {
   const [slots, setSlots] = useState<PublicSlots['slots'] | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -14,12 +14,13 @@ export default function SlotPicker({ guruSlug, value, onChange, excludeDate, nam
 
   useEffect(() => {
     let live = true;
-    fetch(`/api/gurus/${guruSlug}/slots`, { credentials: 'same-origin' })
+    setSlots(null);
+    fetch(`/api/gurus/${guruSlug}/slots${typeId ? `?type=${encodeURIComponent(typeId)}` : ''}`, { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`The api answered ${r.status}`))))
       .then((d: PublicSlots) => { if (live) setSlots(d.slots); })
       .catch((err: Error) => { if (live) setProblem(err.message); });
     return () => { live = false; };
-  }, [guruSlug]);
+  }, [guruSlug, typeId]);
 
   if (problem) return <span className="problem">{problem}</span>;
   if (!slots) return <span className="muted">Loading open times.</span>;
