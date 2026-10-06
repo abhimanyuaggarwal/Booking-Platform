@@ -4,8 +4,10 @@
 
 import express from 'express';
 import { describeSlot } from '@expert-sessions/shared';
-import { consoleAuth } from './console-auth.js';
-import { findGuruBySlug, validatePattern, validateSite, updatePattern, updateSite } from './gurus.js';
+import { consoleAuth, readCookie } from './console-auth.js';
+import { listUsers, validateUser, createUser, deactivateUser, findUser } from './console-users.js';
+import * as whatsapp from './whatsapp.js';
+import { findGuruBySlug, findGuruById, listGurus, validatePattern, validateSite, updatePattern, updateSite } from './gurus.js';
 import {
   todayReport, weekReport, moneyReport, todayIst, mondayOf, attentionQueue, waitingBoard, closeDayPreview, bookingDetail, bookingRow,
   listDevotees, devoteeDetail, setupState,
@@ -27,32 +29,114 @@ const SOURCES = ['live', 'ashram', 'poster', 'page', 'direct'];
 // The one-tap notes follow the guru's language (devotee-words.js).
 
 export function consoleRoutes(env, conversation) {
-  const auth = consoleAuth(env);
+  const wa = whatsapp.client(env);
+  const auth = consoleAuth(env, {
+    // The sign-in code goes out on WhatsApp from the platform's number, in both languages.
+    sendCode: (phone, code) => wa.text(phone, `Samvad: your sign-in code is ${code}. It works for ten minutes.\nसंवाद: आपका साइन-इन कोड ${code} है। यह दस मिनट तक चलेगा।`),
+  });
   const pay = razorpay.client(env);
   const guruSlug = env.CONSOLE_GURU_SLUG || 'guruji';
+  const GURU_COOKIE = 'es_console_guru';   // which guru an admin is looking at
   const router = express.Router();
 
-  router.post('/login', (req, res) => {
-    const token = auth.login(req.body?.username, req.body?.password);
-    if (!token) return res.status(401).json({ error: 'That username and password do not match. They are CONSOLE_USER and CONSOLE_PASSWORD in the api .env.' });
-    auth.setCookie(res, token);
+  // ---- signing in ---------------------------------------------------------------------------
+  // Phone and password for everyone. `username` + `password` is the break-glass admin door from .env.
+  router.post('/login', handle(async (req, res) => {
+    const { username, phone, password } = req.body ?? {};
+    if (username) {
+      const token = auth.login(username, password);
+      if (!token) return res.status(401).json({ error: 'That username and password do not match. They are CONSOLE_USER and CONSOLE_PASSWORD in the api .env.' });
+      auth.setCookie(res, token);
+      return res.status(204).end();
+    }
+    const signed = await auth.signIn(phone, password);
+    if (!signed) return res.status(401).json({ error: 'That number and password do not match. First time here, or forgotten it? Ask for a code.' });
+    auth.setCookie(res, signed.token);
     res.status(204).end();
-  });
+  }));
+
+  // First sign-in and forgotten passwords: a code on WhatsApp, then a new password.
+  router.post('/login/code', handle(async (req, res) => {
+    try {
+      await auth.requestCode(req.body?.phone);
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+      console.error(err.message);
+      return res.status(502).json({ error: 'WhatsApp could not deliver the code to that number just now. Ask a Slike admin to check it is registered, or try again in a minute.' });
+    }
+    res.status(204).end(); // the same answer whether or not the number is anyone's
+  }));
+
+  router.post('/login/password', handle(async (req, res) => {
+    const { phone, code, password } = req.body ?? {};
+    if (String(password ?? '').length < 8) return res.status(400).json({ error: 'Choose a password of at least 8 characters' });
+    if (!(await auth.verifyCode(phone, code))) return res.status(401).json({ error: 'That code does not match, or has run out. Ask for a new one.' });
+    const signed = await auth.setPassword(phone, password);
+    if (!signed) return res.status(401).json({ error: 'That number is not on the team. Ask a Slike admin to add it.' });
+    auth.setCookie(res, signed.token);
+    res.status(204).end();
+  }));
 
   router.post('/logout', (_req, res) => {
     auth.clearCookie(res);
+    res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), `${GURU_COOKIE}=; Path=/; Max-Age=0`]);
     res.status(204).end();
   });
 
-  // Everything below needs the cookie, and works on the one guru this console manages.
+  // Everything below needs the cookie. A team member sees their guru; an admin sees the guru they
+  // chose with /view-as, or the first one.
   router.use(auth.requireConsole);
-  router.use(handle(async (req, _res, next) => {
-    req.guru = await findGuruBySlug(guruSlug);
-    if (!req.guru) throw new Error(`No guru with slug ${guruSlug}. Run pnpm seed, or set CONSOLE_GURU_SLUG in .env.`);
+  router.use(handle(async (req, res, next) => {
+    req.user = await findUser(req.session.userId);
+    if (!req.user || !req.user.active) return res.status(401).json({ error: 'This sign-in is no longer valid. Sign in again.' });
+    if (req.session.role === 'team') {
+      req.guru = await findGuruById(req.session.guruId);
+    } else {
+      const chosen = readCookie(req.headers.cookie, GURU_COOKIE);
+      req.guru = (chosen && await findGuruBySlug(chosen)) || await findGuruBySlug(guruSlug) || (await listGurus())[0];
+    }
+    if (!req.guru) throw new Error(`No guru for this sign-in. Run pnpm seed, or set CONSOLE_GURU_SLUG in .env.`);
     next();
   }));
 
-  router.get('/me', (req, res) => res.json({ user: auth.user, guru: { slug: req.guru.slug, name: req.guru.name } }));
+  router.get('/me', handle(async (req, res) => {
+    const admin = req.session.role === 'admin';
+    res.json({
+      user: { id: req.user.id, name: req.user.name, phone: req.user.phone, role: req.user.role },
+      guru: { slug: req.guru.slug, name: req.guru.name },
+      gurus: admin ? (await listGurus()).map((g) => ({ slug: g.slug, name: g.name })) : undefined,
+    });
+  }));
+
+  // An admin looks at one guru's console at a time; this picks which.
+  router.post('/view-as', auth.requireAdmin, handle(async (req, res) => {
+    const g = await findGuruBySlug(String(req.body?.slug ?? ''));
+    if (!g) return res.status(404).json({ error: 'No such guru' });
+    res.setHeader('Set-Cookie', `${GURU_COOKIE}=${g.slug}; Path=/; SameSite=Lax; Max-Age=${30 * 86400}${env.NODE_ENV === 'production' ? '; Secure' : ''}`);
+    res.json({ guru: { slug: g.slug, name: g.name } });
+  }));
+
+  // ---- who has access (admin only) ------------------------------------------------------------
+  router.get('/admin/users', auth.requireAdmin, handle(async (req, res) => {
+    const forGuru = typeof req.query.guru === 'string' ? await findGuruBySlug(req.query.guru) : null;
+    res.json(await listUsers(forGuru ? { guruId: forGuru.id } : {}));
+  }));
+
+  router.post('/admin/users', auth.requireAdmin, handle(async (req, res) => {
+    const body = { ...req.body, guruId: req.body?.guruSlug ? (await findGuruBySlug(req.body.guruSlug))?.id ?? 'missing' : null };
+    if (body.guruId === 'missing') return res.status(404).json({ error: 'No such guru' });
+    const problem = validateUser(body);
+    if (problem) return res.status(400).json({ error: problem });
+    res.status(201).json(await createUser(body));
+  }));
+
+  router.delete('/admin/users/:id', auth.requireAdmin, handle(async (req, res) => {
+    if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'No such person' });
+    if (req.params.id === req.user.id) return res.status(400).json({ error: 'You cannot remove yourself' });
+    const u = await deactivateUser(req.params.id);
+    if (!u) return res.status(404).json({ error: 'No such person' });
+    res.json(u);
+  }));
 
   router.get('/today', handle(async (req, res) => {
     res.json(await todayReport(req.guru, dateParam(req.query.date) ?? todayIst()));

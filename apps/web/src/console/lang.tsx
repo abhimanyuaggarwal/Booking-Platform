@@ -87,8 +87,20 @@ export const WORDS = {
       kinds: 'Kinds of sitting', kindsLine: 'How long a sitting is and its dakshina. Up to three.', timings: 'His timings', timingsLine: 'Which days and hours he sits, and days he is away.',
       website: 'His website', websiteLine: 'His photo, his words, and the facts about him.', messages: 'Messages and guruji’s phone', messagesLine: 'Hindi or English for every WhatsApp message, and his own number.',
       qr: 'QR codes', qrLine: 'One for the live, one for the poster, one for the ashram.',
+      access: 'Team and access', accessLine: 'Who can open this console: his team, and Slike’s admins.',
     },
-    login: { title: 'Samvad · team console', hint: 'One login for the whole team.', username: 'Username', password: 'Password', signIn: 'Sign in' },
+    access: {
+      title: 'Team and access', team: (guru: string) => `${guru}’s team`, admins: 'Slike admins', add: 'Add a person', name: 'Name', phone: 'WhatsApp number, with country code',
+      role: 'Role', roleTeam: 'Team member', roleAdmin: 'Slike admin', neverSignedIn: 'has not signed in yet', lastSeen: 'last signed in', remove: 'Remove access',
+      hint: 'A new person signs in with their number, asks for a code on WhatsApp, and chooses their password.', removed: 'Access removed.', added: (name: string) => `${name} can sign in now.`,
+      confirmRemove: (name: string) => `Remove ${name}’s access? They can be added again later.`,
+    },
+    login: {
+      title: 'Samvad · team console', hint: 'Sign in with your WhatsApp number and your password.', username: 'Username', password: 'Password', signIn: 'Sign in',
+      phone: 'Your WhatsApp number, with country code', firstTime: 'First time here, or forgotten your password?', sendCode: 'Send me a code on WhatsApp',
+      codeSent: 'A six-digit code is on its way to your WhatsApp. It works for ten minutes.', code: 'The code', newPassword: 'Choose a password, at least 8 characters', setPassword: 'Set the password and sign in',
+      back: 'Back to sign in', adminDoor: 'Slike admin, shared password', phoneDoor: 'Sign in with your number',
+    },
     common: { loading: 'One moment.', call: 'Call' },
   },
   hi: {
@@ -170,8 +182,20 @@ export const WORDS = {
       kinds: 'बैठक के प्रकार', kindsLine: 'बैठक कितनी देर की और दक्षिणा कितनी। ज़्यादा से ज़्यादा तीन।', timings: 'गुरुजी का समय', timingsLine: 'किन दिनों, किस समय बैठते हैं, और छुट्टी के दिन।',
       website: 'वेबसाइट', websiteLine: 'फ़ोटो, परिचय और उनके बारे में तथ्य।', messages: 'संदेश और गुरुजी का फ़ोन', messagesLine: 'हर व्हाट्सऐप संदेश हिंदी में या अंग्रेज़ी में, और उनका अपना नंबर।',
       qr: 'QR कोड', qrLine: 'एक लाइव के लिए, एक पोस्टर के लिए, एक आश्रम के लिए।',
+      access: 'टीम और पहुँच', accessLine: 'यह कंसोल कौन खोल सकता है: उनकी टीम, और Slike के एडमिन।',
     },
-    login: { title: 'संवाद · टीम कंसोल', hint: 'पूरी टीम के लिए एक लॉगिन।', username: 'यूज़रनेम', password: 'पासवर्ड', signIn: 'साइन इन' },
+    access: {
+      title: 'टीम और पहुँच', team: (guru: string) => `${guru} की टीम`, admins: 'Slike एडमिन', add: 'व्यक्ति जोड़ें', name: 'नाम', phone: 'व्हाट्सऐप नंबर, देश कोड के साथ',
+      role: 'भूमिका', roleTeam: 'टीम सदस्य', roleAdmin: 'Slike एडमिन', neverSignedIn: 'अभी साइन इन नहीं किया', lastSeen: 'पिछला साइन इन', remove: 'पहुँच हटाएँ',
+      hint: 'नया व्यक्ति अपने नंबर से साइन इन करता है, व्हाट्सऐप पर कोड माँगता है, और पासवर्ड चुनता है।', removed: 'पहुँच हटा दी गई।', added: (name: string) => `${name} अब साइन इन कर सकते हैं।`,
+      confirmRemove: (name: string) => `${name} की पहुँच हटाएँ? बाद में फिर जोड़ा जा सकता है।`,
+    },
+    login: {
+      title: 'संवाद · टीम कंसोल', hint: 'अपने व्हाट्सऐप नंबर और पासवर्ड से साइन इन करें।', username: 'यूज़रनेम', password: 'पासवर्ड', signIn: 'साइन इन',
+      phone: 'आपका व्हाट्सऐप नंबर, देश कोड के साथ', firstTime: 'पहली बार आए हैं, या पासवर्ड भूल गए?', sendCode: 'व्हाट्सऐप पर कोड भेजें',
+      codeSent: 'छह अंकों का कोड आपके व्हाट्सऐप पर आ रहा है। यह दस मिनट तक चलेगा।', code: 'कोड', newPassword: 'पासवर्ड चुनें, कम से कम 8 अक्षर', setPassword: 'पासवर्ड सेट करें और साइन इन करें',
+      back: 'साइन इन पर वापस', adminDoor: 'Slike एडमिन, साझा पासवर्ड', phoneDoor: 'अपने नंबर से साइन इन करें',
+    },
     common: { loading: 'एक क्षण।', call: 'कॉल' },
   },
 } as const;

@@ -37,9 +37,8 @@ do or look like, that file wins. Static references are in `docs/mockups/`.
 ### Not in v1 — do not build, do not stub, do not "leave a hook for"
 Paid questions on air · ticketed group sessions · more than three session types · simulcast · discovery/directory · reviews or ratings ·
 free-text NLU on WhatsApp · booking by voice or phone call · proxy identities (one optional "who is this
-for" field only) · accounts/passwords · OTP before payment · cards/netbanking (UPI only) · self-serve **cash**
-refunds (cancellation converts the dakshina to a credit; cash refunds stay with the team) · recording · chat/screen-share/files in the room · native apps · roles &
-permissions (one shared console login) · CRM beyond the booking record · analytics beyond pilot numbers.
+for" field only) · OTP before payment · cards/netbanking (UPI only) · self-serve **cash**
+refunds (cancellation converts the dakshina to a credit; cash refunds stay with the team) · recording · chat/screen-share/files in the room · native apps · roles beyond admin and team · CRM beyond the booking record · analytics beyond pilot numbers.
 
 If a task seems to need one of these, stop and say so instead of building it.
 
@@ -62,8 +61,10 @@ If a task seems to need one of these, stop and say so instead of building it.
 - **Realtime:** one Socket.IO namespace on the api: `session:{bookingId}` rooms. Events:
   `waiting.joined`, `waiting.message`, `session.started`, `session.ended`.
 - **Jobs:** `node-cron` inside the api. Hold expiry every minute; reminders hourly (templates later).
-- **Auth:** devotee = phone + OTP (mock OTP `1234` until SMS provider is wired); console = one shared
-  login from `.env`; guru PWA = magic link from `.env` for the pilot. Nothing more.
+- **Auth (changed 2026-10-07, client decision):** devotee = phone + OTP (mock `1234` until an SMS provider is
+  wired); console = **phone + password** for everyone, two roles (`console_users.role`: `admin` at Slike sees every
+  guru and the Setup/Access screens, `team` sees one guru), first password and resets through a six-digit code on
+  WhatsApp; `CONSOLE_USER`/`CONSOLE_PASSWORD` remain the admin's break-glass door; guru PWA = magic link for the pilot.
 - **Time:** everything is IST. See `packages/shared/slots.js` for the convention (IST wall-clock in UTC fields).
 - **Tenancy:** every table has `guru_id`. One guru seeded. The second guru is a row, not a build.
 - **Custom domains:** each guru's site lives on his own domain (`gurus.domain`). The web server resolves

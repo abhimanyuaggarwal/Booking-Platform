@@ -54,7 +54,7 @@ function Shell() {
     <OpenBookingContext.Provider value={openBooking}>
       <BookForCallerContext.Provider value={startBookFor}>
         <div className="console">
-          <TopBar guruName={me.guru.name} onBookForCaller={() => startBookFor()} />
+          <TopBar me={me} onBookForCaller={() => startBookFor()} />
           <div className="console-body">
             <Nav />
             <main className="console-main">
@@ -65,7 +65,7 @@ function Shell() {
                 <Route path="devotees" element={<Devotees />} />
                 <Route path="devotees/:id" element={<DevoteePage />} />
                 <Route path="money" element={<Money />} />
-                <Route path="settings/*" element={<Settings />} />
+                <Route path="settings/*" element={<Settings me={me} />} />
                 {/* The old addresses still work: bookmarks and links in chats survive the rebuild. */}
                 <Route path="week" element={<Navigate to="/console/calendar" replace />} />
                 <Route path="more" element={<Navigate to="/console/settings" replace />} />

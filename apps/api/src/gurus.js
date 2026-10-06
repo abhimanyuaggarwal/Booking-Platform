@@ -17,6 +17,12 @@ export async function findGuruById(id) {
   return rows[0] ?? null;
 }
 
+/** Every guru, oldest first, for the admin's switcher and the Setup area. */
+export async function listGurus() {
+  const { rows } = await query(`select ${COLUMNS} from gurus order by created_at`);
+  return rows;
+}
+
 /** The only guru, for the pilot's single-guru screens. */
 export async function firstGuru() {
   const { rows } = await query(`select ${COLUMNS} from gurus order by created_at limit 1`);

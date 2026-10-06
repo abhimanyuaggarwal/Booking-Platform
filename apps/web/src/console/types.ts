@@ -1,6 +1,12 @@
 // Shapes the api returns under /api/console/* (apps/api/src/reports.js, console-routes.js).
 
-export interface Me { user: string; guru: { slug: string; name: string } }
+export interface Me {
+  user: { id: string; name: string; phone: string | null; role: 'admin' | 'team' };
+  guru: { slug: string; name: string };
+  /** Every guru, for an admin's switcher; absent for a team member. */
+  gurus?: { slug: string; name: string }[];
+}
+export interface ConsoleUser { id: string; name: string; phone: string; role: 'admin' | 'team'; active: boolean; guruId: string | null; guruSlug: string | null; guruName: string | null; hasPassword: boolean; lastLoginAt: string | null }
 
 export type BookingStatus = 'held' | 'confirmed' | 'completed' | 'no_show' | 'rescheduled' | 'cancelled' | 'refunded' | 'expired';
 export type Source = 'live' | 'ashram' | 'poster' | 'page' | 'direct';

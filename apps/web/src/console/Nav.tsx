@@ -7,7 +7,7 @@ import { useOnChange } from './changed';
 import { useOpenBooking } from './open-booking';
 import { useLang, useWords } from './lang';
 import { groupAttention, Initials, stateWord } from './words';
-import type { AttentionRow, BookingRow } from './types';
+import type { AttentionRow, BookingRow, Me } from './types';
 
 // Five places, each named for what the team does there: Today, Calendar, Devotees, Money,
 // Settings. Side rail on a laptop, bottom tabs on a phone. What needs the team shows as a count on Today.
@@ -34,16 +34,23 @@ export default function Nav() {
 
 // Who the console is for, the search that works from anywhere, the one action she takes with a
 // phone to her ear, and the language. Sign out lives here too, because a shared laptop changes hands.
-export function TopBar({ guruName, onBookForCaller }: { guruName: string; onBookForCaller: () => void }) {
+export function TopBar({ me, onBookForCaller }: { me: Me; onBookForCaller: () => void }) {
   const W = useWords();
   const { lang, setLang } = useLang();
   async function signOut() {
     await api('/logout', { method: 'POST' });
     window.location.assign('/console');
   }
+  // An admin looks at one guru at a time and switches here; a team member only ever sees theirs.
+  async function viewAs(slug: string) {
+    await api('/view-as', { method: 'POST', json: { slug } });
+    window.location.assign('/console');
+  }
   return (
     <header className="topbar">
-      <b className="brand">{guruName}<span className="muted"> · {W.product}</span></b>
+      {me.gurus && me.gurus.length > 1
+        ? <select className="brand guru-switch" value={me.guru.slug} onChange={(e) => viewAs(e.target.value)} aria-label="Guru">{me.gurus.map((g) => <option key={g.slug} value={g.slug}>{g.name}</option>)}</select>
+        : <b className="brand">{me.guru.name}<span className="muted"> · {W.product}</span></b>}
       <GlobalSearch />
       <button className="primary" onClick={onBookForCaller}><span className="long">{W.nav.newBooking}</span><span className="short">{W.nav.newBookingShort}</span></button>
       <button className="quiet lang" onClick={() => setLang(lang === 'en' ? 'hi' : 'en')} aria-label="Language">{W.nav.language}</button>

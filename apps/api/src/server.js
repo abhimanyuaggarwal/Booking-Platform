@@ -8,6 +8,7 @@ import express from 'express';
 import { whatsappDoor } from './whatsapp-door.js';
 import { routes } from './routes.js';
 import { consoleRoutes } from './console-routes.js';
+import { ensureFirstAdmin } from './console-users.js';
 import { siteRoutes } from './site-routes.js';
 import { sessionRoutes } from './session-routes.js';
 import { guruRoutes } from './guru-routes.js';
@@ -50,13 +51,16 @@ attachRealtime(server, {
 startJobs({ conversation, pay: razorpay.client(env) });
 
 const port = env.PORT || 3000;
+// With ADMIN_PHONE set and no admin yet, that phone becomes the first Slike admin (console-users.js).
+await ensureFirstAdmin(env);
+
 server.listen(port, () => {
   console.log(`Expert Sessions api listening on port ${port}`);
   console.log(`Webhook:  ${env.APP_BASE_URL}/webhook`);
   console.log(`Razorpay: ${env.APP_BASE_URL}/razorpay/webhook`);
   console.log(`Slots:    http://localhost:${port}/api/gurus/guruji/slots`);
   if (env.WEB_DIST) console.log(`Web app:  served from ${env.WEB_DIST}`);
-  console.log(`Console:  ${env.WEB_ORIGIN || 'http://localhost:5173'}/console (user ${env.CONSOLE_USER || 'team'})`);
+  console.log(`Console:  ${env.WEB_ORIGIN || 'http://localhost:5173'}/console (phone + password; break-glass user ${env.CONSOLE_USER || 'team'})`);
   console.log(`His site: ${env.WEB_ORIGIN || 'http://localhost:5173'}/s/guruji (his own domain in production)`);
   console.log(`Guruji:   ${env.WEB_ORIGIN || 'http://localhost:5173'}/guru?t=${env.GURU_MAGIC_TOKEN ? '<GURU_MAGIC_TOKEN>' : 'set GURU_MAGIC_TOKEN in .env'}`);
 });

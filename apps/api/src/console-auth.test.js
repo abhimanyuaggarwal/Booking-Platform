@@ -34,3 +34,20 @@ test('the cookie is read out of a Cookie header among others', () => {
   assert.equal(readCookie(`theme=dark; ${COOKIE_NAME}=abc.def; other=1`, COOKIE_NAME), 'abc.def');
   assert.equal(readCookie(undefined, COOKIE_NAME), null);
 });
+
+test('a session cookie says who, which role and which guru, and an admin from .env has no guru', () => {
+  const token = auth.tokenFor({ id: 'u1', role: 'team', guruId: 'g1' });
+  assert.deepEqual(auth.sessionFrom(token), { userId: 'u1', role: 'team', guruId: 'g1' });
+  assert.deepEqual(auth.sessionFrom(auth.login('team', 'correct-horse')), { userId: 'env', role: 'admin', guruId: null });
+  const [body] = token.split('.');
+  assert.equal(auth.sessionFrom(`${body}.0000`), null, 'a cookie with the wrong signature is nobody');
+});
+
+test('a password hash checks itself and never stores the password', async () => {
+  const { hashPassword, verifyPassword } = await import('./console-auth.js');
+  const stored = hashPassword('ashram-2026');
+  assert.ok(stored.startsWith('scrypt$') && !stored.includes('ashram-2026'));
+  assert.equal(verifyPassword('ashram-2026', stored), true);
+  assert.equal(verifyPassword('ashram-2027', stored), false);
+  assert.equal(verifyPassword('ashram-2026', 'garbage'), false);
+});

@@ -12,6 +12,7 @@ import { SetupChecklist } from './Today';
 import { DevoteesView } from './Devotees';
 import { DevoteeView } from './DevoteePage';
 import Nav from './Nav';
+import Login from './Login';
 import type { MoneyReport, Settings, TodayReport, WeekReport } from './types';
 
 const today: TodayReport = {
@@ -345,4 +346,13 @@ test('devotees are listed with sittings, last and next, and what they gave; one 
   expect(person).toContain('3 sittings with guruji');
   expect(person).toContain('20 min · ₹1,000');
   expect(person).toContain('Book a time for her');
+});
+
+test('sign-in asks for a WhatsApp number and a password, offers the code for a first visit, and keeps the admin door small', () => {
+  const html = renderToStaticMarkup(<Login onSignedIn={() => {}} />);
+  expect(html).toContain('Your WhatsApp number, with country code');
+  expect(html).toContain('type="password"');
+  expect(html).toContain('First time here, or forgotten your password?');
+  expect(html).toContain('Slike admin, shared password');
+  expect(html).not.toContain('Username');
 });

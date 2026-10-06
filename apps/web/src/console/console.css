@@ -334,3 +334,6 @@
   .console-nav a span:not(.badge) { font-size: 11px; }
   .console-nav a svg { width: 20px; height: 20px; }
 }
+.topbar .guru-switch { font-weight: 600; height: 34px; border-radius: 17px; max-width: 220px; }
+.console .login .links { margin-top: 12px; }
+.console .login .links .plain { background: none; border: 0; padding: 0; height: auto; color: var(--accent); text-decoration: underline; font-size: 13px; cursor: pointer; }
