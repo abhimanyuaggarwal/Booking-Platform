@@ -13,6 +13,9 @@ import { DevoteesView } from './Devotees';
 import { DevoteeView } from './DevoteePage';
 import Nav from './Nav';
 import Login from './Login';
+import { GurusView } from './Gurus';
+import { GuruSetupView } from './GuruSetup';
+import type { GuruDetail } from './types';
 import type { MoneyReport, Settings, TodayReport, WeekReport } from './types';
 
 const today: TodayReport = {
@@ -355,4 +358,36 @@ test('sign-in asks for a WhatsApp number and a password, offers the code for a f
   expect(html).toContain('First time here, or forgotten your password?');
   expect(html).toContain('Slike admin, shared password');
   expect(html).not.toContain('Username');
+});
+
+const draft: GuruDetail = {
+  slug: 'bhagwat', name: 'Bhagwat', language: 'hi', status: 'setting_up', domain: null, subdomain: 'bhagwat.samvad.sli.ke',
+  subscription: { plan: 'Pilot', feePaise: 999900, status: 'trial', nextDueOn: '2026-11-01' }, business: {}, activatedAt: null,
+  readiness: [
+    { key: 'identity', done: true, required: true }, { key: 'address', done: true, required: true, detail: 'subdomain' }, { key: 'team', done: false, required: true },
+    { key: 'sittings', done: true, required: true }, { key: 'payments', done: false, required: false, detail: 'shared' }, { key: 'whatsapp', done: false, required: false, detail: 'shared' },
+    { key: 'distribution', done: false, required: false }, { key: 'business', done: false, required: false }, { key: 'live', done: false, required: false },
+  ], done: 3, total: 9, readyToGoLive: false,
+  about: 'x', tagline: 't', guruPhone: null, team: [], trail: [{ id: 'a1', who: 'Abhimanyu', action: 'guru.created', detail: {}, at: '2026-10-07T10:00:00Z' }],
+};
+const me = { user: { id: 'env', name: 'Slike admin', phone: null, role: 'admin' as const }, guru: { slug: 'bhagwat', name: 'Bhagwat' }, gurus: [{ slug: 'bhagwat', name: 'Bhagwat' }] };
+
+test('the Gurus list shows each guru with status, address, setup progress and subscription', () => {
+  const html = renderToStaticMarkup(<StaticRouter location="/console/gurus"><GurusView rows={[draft]} /></StaticRouter>);
+  expect(html).toContain('Bhagwat');
+  expect(html).toContain('Setting up');
+  expect(html).toContain('bhagwat.samvad.sli.ke');
+  expect(html).toContain('3 of 9 steps done');
+  expect(html).toContain('Pilot · ₹9,999 · Trial');
+});
+
+test('the Setup page lists nine steps with why and a way in, gates Go live on the required ones, and shows the trail', () => {
+  const html = renderToStaticMarkup(<StaticRouter location="/console/gurus/bhagwat"><GuruSetupView g={draft} me={me} onChanged={() => {}} /></StaticRouter>);
+  expect((html.match(/class="step /g) ?? []).length).toBe(9);
+  expect(html).toContain('3. His team');
+  expect(html).toContain('The people who answer the phone and run the day.');
+  expect(html).toContain('Slike’s shared account for now');
+  expect(html).toMatch(/<button class="primary" disabled="" title="Finish the required steps to go live\.">Go live<\/button>/);
+  expect(html).toContain('created');
+  expect(html).toContain('Abhimanyu');
 });

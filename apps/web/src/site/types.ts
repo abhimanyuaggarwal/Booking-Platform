@@ -20,7 +20,7 @@ export interface PublicEvent {
   id: string; title: string; kind: 'satsang' | 'live' | 'meetup';
   startsAt: string; when: string; link: string | null; location: string | null; notes: string | null;
 }
-export interface SitePage { guru: PublicGuru; sessionTypes: PublicSessionType[]; events: PublicEvent[]; nextSlots: PublicSlot[]; openCount: number }
+export interface SitePage { guru: PublicGuru; sessionTypes: PublicSessionType[]; events: PublicEvent[]; nextSlots: PublicSlot[]; openCount: number; /** false while he is being set up or paused */ open?: boolean }
 
 export interface HeldBooking { bookingId: string; payUrl: string; holdMinutes: number }
 /** What /api/pay/:id says about the booking she is about to pay for. */

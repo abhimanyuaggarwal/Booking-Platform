@@ -66,7 +66,8 @@ If a task seems to need one of these, stop and say so instead of building it.
   guru and the Setup/Access screens, `team` sees one guru), first password and resets through a six-digit code on
   WhatsApp; `CONSOLE_USER`/`CONSOLE_PASSWORD` remain the admin's break-glass door; guru PWA = magic link for the pilot.
 - **Time:** everything is IST. See `packages/shared/slots.js` for the convention (IST wall-clock in UTC fields).
-- **Tenancy:** every table has `guru_id`. One guru seeded. The second guru is a row, not a build.
+- **Tenancy:** every table has `guru_id`. A guru is a row with a lifecycle (`status`: draft, setting_up, live, paused), created by a
+  Slike admin from the console's Gurus section; his site answers at `<slug>.<PUBLIC_HOST>` by default and at his own domain when set.
 - **Custom domains:** each guru's site lives on his own domain (`gurus.domain`). The web server resolves
   the tenant from the `Host` header; `/s/:guruSlug` renders the same pages as an internal preview. In
   dev, `?host=guruji.com` or the `/s/` path selects the tenant. TLS is on-demand via Caddy (or

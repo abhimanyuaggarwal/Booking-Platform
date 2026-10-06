@@ -4,14 +4,14 @@
 //   /s/guruji  (preview)    -> ?slug=guruji
 //   ?host=guruji.com        -> pretend to be that domain
 
-import { findGuruBySlug, findGuruByDomain } from './gurus.js';
+import { findGuruBySlug, findGuruByDomain, findGuruBySubdomain } from './gurus.js';
 
 /** The guru whose site this request is for, or null. */
 export async function resolveGuru(req) {
   const slug = typeof req.query.slug === 'string' ? req.query.slug : null;
   if (slug) return findGuruBySlug(slug);
   const host = typeof req.query.host === 'string' ? req.query.host : req.headers.host;
-  return findGuruByDomain(host);
+  return (await findGuruByDomain(host)) ?? findGuruBySubdomain(host);   // his own domain, or <slug>.<PUBLIC_HOST>
 }
 
 /** Express middleware: put the guru on the request, or answer 404 with a sentence. */

@@ -337,3 +337,28 @@
 .topbar .guru-switch { font-weight: 600; height: 34px; border-radius: 17px; max-width: 220px; }
 .console .login .links { margin-top: 12px; }
 .console .login .links .plain { background: none; border: 0; padding: 0; height: auto; color: var(--accent); text-decoration: underline; font-size: 13px; cursor: pointer; }
+
+/* ---- the admin's Gurus and Setup ------------------------------------------------------------- */
+.console-nav a.admin { margin-top: auto; border-top: 1px solid #3A322A; padding-top: 14px; border-radius: 0; }
+.console .status-badge { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .03em; padding: 3px 9px; border-radius: 10px; vertical-align: middle; background: var(--hover); color: var(--ink-2); }
+.console .status-badge.live { background: #E4EFE8; color: var(--ok); }
+.console .status-badge.paused { background: #F7E6E2; color: #8E3120; }
+.console .status-badge.setting_up { background: var(--tint); color: var(--accent); }
+.console .progress { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; }
+.console .progress .bar-track { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.console .progress .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+.console .steps { display: grid; gap: 10px; margin-bottom: 18px; }
+.console .step { display: flex; gap: 14px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.console .step .mark { color: var(--ink-3); padding-top: 2px; }
+.console .step.done .mark { color: var(--ok); }
+.console .step .body { flex: 1; min-width: 0; }
+.console .step h3 { margin: 0 0 2px; font-size: 16px; }
+.console .step h3 .req { color: var(--accent); }
+.console .step p { margin: 0; font-size: 14px; }
+.console .step .do { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.console .step.shared { opacity: .75; }
+.console .step .ok { color: var(--ok); }
+.console .plain-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.console form.settings.narrow { max-width: 620px; }
+.console .progress-text { font-size: 14px; }
+@media (max-width: 900px) { .console .step { flex-wrap: wrap; } .console .step .do { width: 100%; flex-direction: row; justify-content: space-between; } }

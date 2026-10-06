@@ -152,3 +152,19 @@ export interface DevoteeRow {
 }
 export interface DevoteeDetail extends DevoteeRow { bookings: BookingRow[] }
 export interface SetupState { timings: boolean; kinds: boolean; website: boolean; guruPhone: boolean; qr: boolean; firstBooking: boolean }
+
+// ---- The admin's Gurus ----
+export type GuruStatus = 'draft' | 'setting_up' | 'live' | 'paused';
+export type StepKey = 'identity' | 'address' | 'team' | 'sittings' | 'payments' | 'whatsapp' | 'distribution' | 'business' | 'live';
+export interface ReadinessStep { key: StepKey; done: boolean; required: boolean; detail?: string }
+export interface Subscription { plan?: string; feePaise?: number; status?: 'trial' | 'active' | 'overdue' | 'cancelled'; nextDueOn?: string }
+export interface Business { legalName?: string; address?: string; gst?: string; pan?: string }
+export interface GuruSummary {
+  slug: string; name: string; language: 'en' | 'hi'; status: GuruStatus; domain: string | null; subdomain: string | null;
+  subscription: Subscription; business: Business; activatedAt: string | null;
+  readiness: ReadinessStep[]; done: number; total: number; readyToGoLive: boolean;
+}
+export interface GuruDetail extends GuruSummary {
+  about: string; tagline: string; guruPhone: string | null; team: ConsoleUser[];
+  trail: { id: string; who: string; action: string; detail: Record<string, unknown>; at: string }[];
+}

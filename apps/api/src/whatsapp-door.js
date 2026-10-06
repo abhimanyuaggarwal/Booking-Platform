@@ -64,6 +64,8 @@ export function whatsappDoor(env, conversation) {
       const devotee = await devotees.findOrCreateDevotee(guru.id, msg.from, { name: msg.profileName });
       await logMessage({ guruId: guru.id, devoteeId: devotee.id, direction: 'in', kind: msg.kind, payload: msg });
       const say = conversation.speak(guru, devotee);
+      // A guru who is not live yet, or paused: one plain sentence, nothing booked.
+      if (guru.status && guru.status !== 'live') return await say.text(wordsFor(guru.language).notOpen({ guruName: guru.name }));
 
       const tapped = msg.kind === 'button' || msg.kind === 'list';
       // Button ids carry everything the next step needs, so nothing is remembered between taps:

@@ -191,3 +191,4 @@
 .site .pay h1 { font-size: 40px; margin: 4px 0 10px; }
 .site .pay .primary { margin-top: 18px; }
 .site .pay .held { text-align: left; }
+.site .banner-quiet { background: #fff; border: 1px solid #E4DBC9; border-radius: 12px; padding: 14px 16px; color: var(--warm-muted); font-size: 15px; margin: 0 0 12px; }

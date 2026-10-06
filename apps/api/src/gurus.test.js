@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validatePattern, validateSite } from './gurus.js';
+import { validatePattern, validateSite, validateNewGuru, validateSetup, findGuruBySubdomain } from './gurus.js';
 
 const good = {
   pattern: { slotMinutes: 30, gapMinutes: 10, minimumNoticeMinutes: 60, daysAhead: 7,
@@ -51,4 +51,15 @@ test('a timing window may name the kinds of sitting it is for; the dakshina no l
   assert.equal(validatePattern(typed), null);
   assert.equal(validatePattern({ ...good, dakshinaPaise: undefined }), null);
   assert.match(validatePattern({ ...good, pattern: { ...good.pattern, weeklyPattern: { ...good.pattern.weeklyPattern, mon: [['10:00', '13:00', 'short']] } } }), /list of ids/);
+});
+
+test('a new guru needs a name, a short address name and a language; his subdomain is found from the host', async () => {
+  assert.equal(validateNewGuru({ name: 'Bhagwat', slug: 'bhagwat', language: 'hi' }), null);
+  assert.match(validateNewGuru({ name: 'Bhagwat', slug: 'Bhagwat Ji', language: 'hi' }), /lowercase/);
+  assert.match(validateNewGuru({ name: '', slug: 'x1', language: 'en' }), /name/);
+  assert.equal(validateSetup({ subscription: { plan: 'Pilot', feePaise: 999900, status: 'trial', nextDueOn: '2026-11-01' } }), null);
+  assert.match(validateSetup({ subscription: { status: 'free' } }), /trial, active/);
+  assert.equal(await findGuruBySubdomain('samvad.sli.ke', 'samvad.sli.ke'), null, 'the platform host itself is nobody');
+  assert.equal(await findGuruBySubdomain('www.samvad.sli.ke', 'samvad.sli.ke'), null);
+  assert.equal(await findGuruBySubdomain('guruji.com', 'samvad.sli.ke'), null);
 });

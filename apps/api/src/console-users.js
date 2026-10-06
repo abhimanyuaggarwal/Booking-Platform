@@ -31,8 +31,8 @@ export async function createUser({ name, phone, role, guruId = null }) {
   const { rows: [u] } = await query(
     `insert into console_users (name, phone, role, guru_id) values ($1, $2, $3, $4)
      on conflict (phone) do update set name = excluded.name, role = excluded.role, guru_id = excluded.guru_id, active = true
-     returning *`, [name.trim(), digits, role, guruId]);
-  return userRow(u);
+     returning id`, [name.trim(), digits, role, guruId]);
+  return (await listUsers({})).find((row) => row.id === u.id);
 }
 
 /** Access removed, the row kept: the audit of who signed in stays readable. */

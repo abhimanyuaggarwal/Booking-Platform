@@ -34,6 +34,7 @@ export function siteRoutes(env, conversation) {
     const [open, events] = await Promise.all([openSlots(req.guru, types[0]), listEvents(req.guru.id)]);
     res.json({
       guru: publicGuru(req.guru),
+      open: !req.guru.status || req.guru.status === 'live',   // false while he is being set up or paused
       sessionTypes: types.map(publicType),
       events: events.filter((e) => new Date(e.startsAt) > new Date()).map(publicEvent),
       nextSlots: open.slice(0, 3).map(publicSlot),
@@ -54,6 +55,7 @@ export function siteRoutes(env, conversation) {
     const { slotId, question } = req.body ?? {};
     if (!phone) return res.status(400).json({ error: 'Your WhatsApp number, with the country code' });
     if (!SLOT.test(slotId ?? '')) return res.status(400).json({ error: 'Choose a time' });
+    if (req.guru.status && req.guru.status !== 'live') return res.status(409).json({ error: 'Booking is not open just now. Please write to his team on WhatsApp.' });
     const type = await typeFrom(req);
 
     const devotee = await devotees.findOrCreateDevotee(req.guru.id, phone);

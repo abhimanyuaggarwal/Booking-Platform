@@ -10,6 +10,9 @@ import Money from './Money';
 import Settings from './Settings';
 import Devotees from './Devotees';
 import DevoteePage from './DevoteePage';
+import Gurus from './Gurus';
+import GuruNew from './GuruNew';
+import GuruSetup from './GuruSetup';
 import BookingDrawer from './BookingDrawer';
 import BookForCaller from './BookForCaller';
 import { BookForCallerContext, OpenBookingContext } from './open-booking';
@@ -56,7 +59,7 @@ function Shell() {
         <div className="console">
           <TopBar me={me} onBookForCaller={() => startBookFor()} />
           <div className="console-body">
-            <Nav />
+            <Nav me={me} />
             <main className="console-main">
               {notice && <p className="banner ok">{notice}</p>}
               <Routes>
@@ -66,6 +69,9 @@ function Shell() {
                 <Route path="devotees/:id" element={<DevoteePage />} />
                 <Route path="money" element={<Money />} />
                 <Route path="settings/*" element={<Settings me={me} />} />
+                <Route path="gurus" element={<Gurus />} />
+                <Route path="gurus/new" element={<GuruNew />} />
+                <Route path="gurus/:slug" element={<GuruSetup me={me} />} />
                 {/* The old addresses still work: bookmarks and links in chats survive the rebuild. */}
                 <Route path="week" element={<Navigate to="/console/calendar" replace />} />
                 <Route path="more" element={<Navigate to="/console/settings" replace />} />

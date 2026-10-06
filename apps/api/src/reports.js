@@ -574,6 +574,26 @@ export function setupSteps({ guru, sessionTypes, qrCount, bookingCount }) {
   };
 }
 
+/**
+ * Pure. The admin's nine-step readiness for a guru. `required` steps gate "go live"; the rest inform.
+ * Payments and WhatsApp read "shared" until each guru has his own (D3, D4).
+ */
+export function readiness({ guru, sessionTypes, qrCount, teamCount, publicHost }) {
+  const steps = setupSteps({ guru, sessionTypes, qrCount, bookingCount: 0 });
+  const biz = guru.business_json ?? {};
+  return [
+    { key: 'identity', done: Boolean(guru.name?.trim()) && Boolean((guru.about ?? '').trim()) && Boolean(guru.marketing_json?.tagline), required: true },
+    { key: 'address', done: true, required: true, detail: guru.domain ? 'domain' : publicHost ? 'subdomain' : 'preview' },
+    { key: 'team', done: teamCount > 0, required: true },
+    { key: 'sittings', done: steps.kinds && steps.timings, required: true },
+    { key: 'payments', done: false, required: false, detail: 'shared' },
+    { key: 'whatsapp', done: false, required: false, detail: 'shared' },
+    { key: 'distribution', done: steps.qr, required: false },
+    { key: 'business', done: Boolean(biz.legalName), required: false },
+    { key: 'live', done: guru.status === 'live', required: false },
+  ];
+}
+
 export async function setupState(guru) {
   const [types, qr, count] = await Promise.all([
     query('select active from session_types where guru_id = $1', [guru.id]),

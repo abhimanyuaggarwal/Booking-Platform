@@ -7,10 +7,11 @@ import { describeSlot } from '@expert-sessions/shared';
 import { consoleAuth, readCookie } from './console-auth.js';
 import { listUsers, validateUser, createUser, deactivateUser, findUser } from './console-users.js';
 import * as whatsapp from './whatsapp.js';
-import { findGuruBySlug, findGuruById, listGurus, validatePattern, validateSite, updatePattern, updateSite } from './gurus.js';
+import { findGuruBySlug, findGuruById, listGurus, validatePattern, validateSite, updatePattern, updateSite, validateNewGuru, createGuru, validateSetup, updateSetup, setGuruStatus, subdomainOf, GURU_STATUSES } from './gurus.js';
+import { audit, auditTrail } from './audit.js';
 import {
   todayReport, weekReport, moneyReport, todayIst, mondayOf, attentionQueue, waitingBoard, closeDayPreview, bookingDetail, bookingRow,
-  listDevotees, devoteeDetail, setupState,
+  listDevotees, devoteeDetail, setupState, readiness,
 } from './reports.js';
 import { listEvents, createEvent, updateEvent, deleteEvent, validateEvent } from './events.js';
 import { listQrCodes, createQrCode, QR_SOURCES } from './qr-codes.js';
@@ -116,6 +117,65 @@ export function consoleRoutes(env, conversation) {
     res.json({ guru: { slug: g.slug, name: g.name } });
   }));
 
+  // ---- the admin's Gurus: add, set up, go live, pause -----------------------------------------
+  async function guruSummary(g) {
+    const [types, qr, team] = await Promise.all([
+      listSessionTypes(g.id), listQrCodes(g), listUsers({ guruId: g.id }),
+    ]);
+    const steps = readiness({ guru: g, sessionTypes: types, qrCount: qr.length, teamCount: team.filter((u) => u.active).length, publicHost: env.PUBLIC_HOST });
+    return {
+      slug: g.slug, name: g.name, language: g.language, status: g.status, domain: g.domain, subdomain: subdomainOf(g, env.PUBLIC_HOST),
+      subscription: g.subscription_json ?? {}, business: g.business_json ?? {}, activatedAt: g.activated_at ? g.activated_at.toISOString() : null,
+      readiness: steps, done: steps.filter((st) => st.done).length, total: steps.length,
+      readyToGoLive: steps.filter((st) => st.required).every((st) => st.done),
+    };
+  }
+
+  router.get('/admin/gurus', auth.requireAdmin, handle(async (_req, res) => {
+    res.json(await Promise.all((await listGurus()).map(guruSummary)));
+  }));
+
+  router.post('/admin/gurus', auth.requireAdmin, handle(async (req, res) => {
+    const problem = validateNewGuru(req.body);
+    if (problem) return res.status(400).json({ error: problem });
+    if (await findGuruBySlug(req.body.slug)) return res.status(409).json({ error: 'That address name is taken. Choose another.' });
+    const g = await createGuru(req.body);
+    await audit({ guruId: g.id, user: req.user, action: 'guru.created', detail: { slug: g.slug, name: g.name } });
+    res.status(201).json(await guruSummary(g));
+  }));
+
+  router.get('/admin/gurus/:slug', auth.requireAdmin, handle(async (req, res) => {
+    const g = await findGuruBySlug(req.params.slug);
+    if (!g) return res.status(404).json({ error: 'No such guru' });
+    const [summary, team, trail] = await Promise.all([guruSummary(g), listUsers({ guruId: g.id }), auditTrail(g.id)]);
+    res.json({ ...summary, about: g.about, tagline: g.marketing_json?.tagline ?? '', guruPhone: g.guru_phone, team: team.filter((u) => u.active), trail });
+  }));
+
+  router.put('/admin/gurus/:slug', auth.requireAdmin, handle(async (req, res) => {
+    const g = await findGuruBySlug(req.params.slug);
+    if (!g) return res.status(404).json({ error: 'No such guru' });
+    const problem = validateSetup(req.body);
+    if (problem) return res.status(400).json({ error: problem });
+    const updated = await updateSetup(g.id, req.body);
+    await audit({ guruId: g.id, user: req.user, action: 'guru.setup', detail: Object.fromEntries(Object.entries(req.body).filter(([k]) => ['domain', 'subscription', 'business'].includes(k))) });
+    res.json(await guruSummary(updated));
+  }));
+
+  // draft -> setting_up -> live <-> paused. Live needs every required step; pausing needs nothing.
+  router.post('/admin/gurus/:slug/status', auth.requireAdmin, handle(async (req, res) => {
+    const g = await findGuruBySlug(req.params.slug);
+    if (!g) return res.status(404).json({ error: 'No such guru' });
+    const status = req.body?.status;
+    if (!GURU_STATUSES.includes(status)) return res.status(400).json({ error: 'Status must be draft, setting_up, live or paused' });
+    if (status === 'live') {
+      const summary = await guruSummary(g);
+      if (!summary.readyToGoLive) return res.status(409).json({ error: 'Not ready: finish the required steps first, then go live.' });
+    }
+    const updated = await setGuruStatus(g.id, status);
+    await audit({ guruId: g.id, user: req.user, action: `guru.${status}`, detail: {} });
+    res.json(await guruSummary(updated));
+  }));
+
   // ---- who has access (admin only) ------------------------------------------------------------
   router.get('/admin/users', auth.requireAdmin, handle(async (req, res) => {
     const forGuru = typeof req.query.guru === 'string' ? await findGuruBySlug(req.query.guru) : null;
@@ -127,7 +187,9 @@ export function consoleRoutes(env, conversation) {
     if (body.guruId === 'missing') return res.status(404).json({ error: 'No such guru' });
     const problem = validateUser(body);
     if (problem) return res.status(400).json({ error: problem });
-    res.status(201).json(await createUser(body));
+    const made = await createUser(body);
+    await audit({ guruId: body.guruId, user: req.user, action: 'access.added', detail: { name: made.name, role: made.role } });
+    res.status(201).json(made);
   }));
 
   router.delete('/admin/users/:id', auth.requireAdmin, handle(async (req, res) => {
@@ -135,6 +197,7 @@ export function consoleRoutes(env, conversation) {
     if (req.params.id === req.user.id) return res.status(400).json({ error: 'You cannot remove yourself' });
     const u = await deactivateUser(req.params.id);
     if (!u) return res.status(404).json({ error: 'No such person' });
+    await audit({ guruId: u.guruId, user: req.user, action: 'access.removed', detail: { name: u.name } });
     res.json(u);
   }));
 
@@ -155,13 +218,17 @@ export function consoleRoutes(env, conversation) {
   router.put('/settings/pattern', handle(async (req, res) => {
     const problem = validatePattern(req.body);
     if (problem) return res.status(400).json({ error: problem });
-    res.json(await settingsWithTypes(await updatePattern(req.guru.id, req.body)));
+    const g1 = await updatePattern(req.guru.id, req.body);
+    await audit({ guruId: req.guru.id, user: req.user, action: 'settings.timings', detail: {} });
+    res.json(await settingsWithTypes(g1));
   }));
 
   router.put('/settings/site', handle(async (req, res) => {
     const problem = validateSite(req.body);
     if (problem) return res.status(400).json({ error: problem });
-    res.json(await settingsWithTypes(await updateSite(req.guru.id, req.body)));
+    const g2 = await updateSite(req.guru.id, req.body);
+    await audit({ guruId: req.guru.id, user: req.user, action: 'settings.website', detail: {} });
+    res.json(await settingsWithTypes(g2));
   }));
 
   // The kinds of sitting he offers: up to three, each a length and a dakshina. The whole list is saved at once.
@@ -169,6 +236,7 @@ export function consoleRoutes(env, conversation) {
     const problem = validateSessionTypes(req.body);
     if (problem) return res.status(400).json({ error: problem });
     await replaceSessionTypes(req.guru.id, req.body.types);
+    await audit({ guruId: req.guru.id, user: req.user, action: 'settings.kinds', detail: { kinds: req.body.types.length } });
     res.json(await settingsWithTypes(await findGuruBySlug(req.guru.slug)));
   }));
 

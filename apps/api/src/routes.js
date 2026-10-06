@@ -32,7 +32,7 @@ export function routes() {
     try {
       const domain = String(req.query.domain ?? '').toLowerCase();
       if (!domain) return res.status(400).end();
-      if (platformHosts().has(domain) || (await gurus.findGuruByDomain(domain))) return res.status(200).end();
+      if (platformHosts().has(domain) || (await gurus.findGuruByDomain(domain)) || (await gurus.findGuruBySubdomain(domain))) return res.status(200).end();
       res.status(404).end();
     } catch (err) {
       next(err);

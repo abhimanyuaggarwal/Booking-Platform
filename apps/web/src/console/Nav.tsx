@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Sun, CalendarDays, Users, IndianRupee, Settings as SettingsIcon } from 'lucide-react';
+import { Sun, CalendarDays, Users, IndianRupee, Settings as SettingsIcon, Landmark } from 'lucide-react';
 import { describeSlot } from '@expert-sessions/shared';
 import { api } from './api';
 import { useOnChange } from './changed';
@@ -11,7 +11,7 @@ import type { AttentionRow, BookingRow, Me } from './types';
 
 // Five places, each named for what the team does there: Today, Calendar, Devotees, Money,
 // Settings. Side rail on a laptop, bottom tabs on a phone. What needs the team shows as a count on Today.
-export default function Nav() {
+export default function Nav({ me }: { me?: Me }) {
   const W = useWords();
   const [needs, setNeeds] = useState<number>(0);
   const load = () => api<AttentionRow[]>('/attention').then((rows) => setNeeds(groupAttention(rows).toDecide.length)).catch(() => {});
@@ -28,6 +28,7 @@ export default function Nav() {
       <NavLink to="/console/devotees"><Users size={18} aria-hidden="true" /><span>{W.nav.devotees}</span></NavLink>
       <NavLink to="/console/money"><IndianRupee size={18} aria-hidden="true" /><span>{W.nav.money}</span></NavLink>
       <NavLink to="/console/settings"><SettingsIcon size={18} aria-hidden="true" /><span>{W.nav.settings}</span></NavLink>
+      {me?.user.role === 'admin' && <NavLink to="/console/gurus" className="admin"><Landmark size={18} aria-hidden="true" /><span>{W.nav.gurus}</span></NavLink>}
     </nav>
   );
 }

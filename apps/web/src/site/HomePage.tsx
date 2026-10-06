@@ -90,7 +90,8 @@ export function HomeSections({ page, slots, showAll, onSeeAll, onChoose, typeId,
         )}
 
         <section id="times">
-          {types.length > 1 && (
+          {page.open === false && <p className="banner-quiet">Booking is not open just now. Please write to his team on WhatsApp.</p>}
+          {page.open !== false && types.length > 1 && (
             <>
               <p className="eyebrow">How long would you like</p>
               <div className="kinds" role="radiogroup">
@@ -102,8 +103,8 @@ export function HomeSections({ page, slots, showAll, onSeeAll, onChoose, typeId,
               </div>
             </>
           )}
-          <p className="eyebrow">Next available</p>
-          {slots.length === 0 ? (
+          {page.open !== false && <p className="eyebrow">Next available</p>}
+          {page.open === false ? null : slots.length === 0 ? (
             <p className="muted">There are no open times this week. His next satsang is below, and you may write on WhatsApp to be told when times open.</p>
           ) : (
             <>

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { slotIdToInstant } from '@expert-sessions/shared';
-import { mondayOf, addDays, dayRange, settlementStart, rangeLabel, buildWeek, suggestMoves, allowedActions, attentionStrip, setupSteps } from './reports.js';
+import { mondayOf, addDays, dayRange, settlementStart, rangeLabel, buildWeek, suggestMoves, allowedActions, attentionStrip, setupSteps, readiness } from './reports.js';
 
 test('the week starts on Monday, whichever day you ask from', () => {
   assert.equal(mondayOf('2026-09-16'), '2026-09-14'); // a Wednesday
@@ -150,4 +150,13 @@ test('the go-live checklist reads the guru row, his kinds, his QR codes and his 
   assert.equal(ready.kinds, true);
   assert.equal(ready.qr, true);
   assert.equal(ready.firstBooking, true);
+});
+
+test('readiness has nine steps; the required ones gate going live; payments and WhatsApp read shared for now', () => {
+  const steps = readiness({ guru: { ...guru, name: 'Bhagwat', about: 'x', marketing_json: { tagline: 't' }, status: 'setting_up', business_json: {} }, sessionTypes: [{ active: true }], qrCount: 0, teamCount: 1, publicHost: 'samvad.sli.ke' });
+  assert.equal(steps.length, 9);
+  assert.deepEqual(steps.filter((s) => s.required).map((s) => s.key), ['identity', 'address', 'team', 'sittings']);
+  assert.ok(steps.filter((s) => s.required).every((s) => s.done), 'ready to go live');
+  assert.equal(steps.find((s) => s.key === 'payments').detail, 'shared');
+  assert.equal(steps.find((s) => s.key === 'address').detail, 'subdomain');
 });

@@ -3,9 +3,12 @@
 import { DAY_KEYS, sittingStep } from '@expert-sessions/shared';
 import { query } from './db.js';
 
+export const GURU_STATUSES = ['draft', 'setting_up', 'live', 'paused'];
+const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
+
 // closed_dates comes back as 'YYYY-MM-DD' strings, the form availableSlots() compares against.
 const COLUMNS = `id, slug, domain, name, about, marketing_json, dakshina_paise, whatsapp_number, guru_phone, language,
-  pattern_json, closed_dates::text[] as closed_dates, created_at`;
+  pattern_json, closed_dates::text[] as closed_dates, created_at, status, subscription_json, business_json, activated_at`;
 
 export async function findGuruBySlug(slug) {
   const { rows } = await query(`select ${COLUMNS} from gurus where slug = $1`, [slug]);
@@ -153,4 +156,80 @@ function pickHero(hero) {
   if (!hero) return null;
   const clean = { image: hero.image?.trim() || null, portrait: hero.portrait?.trim() || null, credit: hero.credit?.trim() || null };
   return clean.image || clean.portrait ? clean : null;
+}
+
+// ---- Setting a guru up (admin) --------------------------------------------------------------------
+
+/** His site under the platform's own name: <slug>.<PUBLIC_HOST>. One wildcard DNS record serves every guru. */
+export function subdomainOf(guru, publicHost = process.env.PUBLIC_HOST) {
+  return publicHost ? `${guru.slug}.${publicHost}` : null;
+}
+
+/** The guru whose subdomain this host is, or null. "bhagwat.samvad.sli.ke" -> bhagwat. */
+export async function findGuruBySubdomain(host, publicHost = process.env.PUBLIC_HOST) {
+  if (!host || !publicHost) return null;
+  const h = String(host).split(':')[0].toLowerCase();
+  const suffix = `.${publicHost.toLowerCase()}`;
+  if (!h.endsWith(suffix)) return null;
+  const slug = h.slice(0, -suffix.length);
+  if (!SLUG.test(slug) || slug === 'www') return null;
+  return findGuruBySlug(slug);
+}
+
+/** Shape check for "Add a guru". Returns an error sentence or null. */
+export function validateNewGuru(body) {
+  if (typeof body?.name !== 'string' || !body.name.trim() || body.name.length > 80) return 'His name, up to 80 characters';
+  if (!SLUG.test(body?.slug ?? '')) return 'A short address name: lowercase letters, digits and hyphens, like bhagwat';
+  if (!['en', 'hi'].includes(body?.language)) return 'Language must be en or hi';
+  if (body.domain != null && body.domain !== '' && !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(body.domain)) return 'Domain should look like guruji.com';
+  return null;
+}
+
+const EMPTY_PATTERN = { slotMinutes: 30, gapMinutes: 10, minimumNoticeMinutes: 60, daysAhead: 14, stepMinutes: 40,
+  weeklyPattern: { sun: [], mon: [], tue: [], wed: [], thu: [], fri: [], sat: [] } };
+
+/** A new guru: a draft with no timings yet, one kind of sitting (30 minutes, ₹500) his team can change, and his doors shut until he goes live. */
+export async function createGuru({ name, slug, language, domain = null }) {
+  const { rows: [g] } = await query(
+    `insert into gurus (slug, domain, name, about, marketing_json, dakshina_paise, pattern_json, language, status)
+     values ($1, $2, $3, '', '{"tagline":"","blocks":[]}'::jsonb, 50000, $4, $5, 'draft') returning ${COLUMNS}`,
+    [slug, domain || null, name.trim(), JSON.stringify(EMPTY_PATTERN), language]);
+  await query(`insert into session_types (guru_id, name, minutes, dakshina_paise, position) values ($1, '', 30, 50000, 0)`, [g.id]);
+  return g;
+}
+
+export function validateSetup(body) {
+  const sub = body?.subscription;
+  if (sub != null) {
+    if (typeof sub !== 'object') return 'Send the subscription as an object';
+    if (sub.plan != null && (typeof sub.plan !== 'string' || sub.plan.length > 60)) return 'A plan name, up to 60 characters';
+    if (sub.feePaise != null && !(Number.isInteger(sub.feePaise) && sub.feePaise >= 0)) return 'The fee is a whole number of paise';
+    if (sub.status != null && !['trial', 'active', 'overdue', 'cancelled'].includes(sub.status)) return 'Subscription status must be trial, active, overdue or cancelled';
+    if (sub.nextDueOn != null && sub.nextDueOn !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(sub.nextDueOn)) return 'Next due is a date like 2026-11-01';
+  }
+  const biz = body?.business;
+  if (biz != null && (typeof biz !== 'object' || ['legalName', 'address', 'gst', 'pan'].some((k) => biz[k] != null && typeof biz[k] !== 'string'))) return 'Business details are text fields';
+  if (body?.domain != null && body.domain !== '' && !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(body.domain)) return 'Domain should look like guruji.com';
+  return null;
+}
+
+/** The admin's fields: his own domain, the subscription, the business details. Each left out stays as it is. */
+export async function updateSetup(guruId, { domain, subscription, business }) {
+  const current = (await query('select domain, subscription_json, business_json from gurus where id = $1', [guruId])).rows[0];
+  const sub = subscription === undefined ? current.subscription_json : { ...current.subscription_json, ...subscription };
+  const biz = business === undefined ? current.business_json : { ...current.business_json, ...business };
+  const dom = domain === undefined ? current.domain : (domain || null);
+  const { rows } = await query(
+    `update gurus set domain = $2, subscription_json = $3, business_json = $4 where id = $1 returning ${COLUMNS}`,
+    [guruId, dom, JSON.stringify(sub), JSON.stringify(biz)]);
+  return rows[0];
+}
+
+/** draft -> setting_up -> live <-> paused. Going live is the admin's switch; the route checks readiness first. */
+export async function setGuruStatus(guruId, status) {
+  if (!GURU_STATUSES.includes(status)) throw new Error(`Unknown guru status ${status}`);
+  const { rows } = await query(
+    `update gurus set status = $2, activated_at = case when $2 = 'live' and activated_at is null then now() else activated_at end where id = $1 returning ${COLUMNS}`,
+    [guruId, status]);
+  return rows[0];
 }

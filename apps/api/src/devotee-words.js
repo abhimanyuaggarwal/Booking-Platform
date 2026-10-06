@@ -76,6 +76,8 @@ const EN = {
     `Thank you. ${guruName}'s team will read this.\n\nIf you would like another time, send Hi and they will be offered.`,
   noTimes: ({ guruName }) =>
     `Namaste 🙏 ${guruName} has no open times this week. Please send Hi again in a few days.`,
+  notOpen: ({ guruName }) =>
+    `Namaste 🙏 Booking with ${guruName} is not open just now. Please write again in a few days.`,
   slotTaken: () => 'That time was just taken. Here are the next ones:',
   paymentUnavailable: () => 'The payment page could not be opened just now, so nothing is booked. Please send Hi again in a few minutes, or write to his team.',
   refundedByHand: ({ guruName, slotId, dakshina }) =>
@@ -156,6 +158,8 @@ const HI = {
     `धन्यवाद। ${guruName} की टीम इसे पढ़ेगी।\n\nअगर आप दूसरा समय चाहें, तो Hi भेजें।`,
   noTimes: ({ guruName }) =>
     `नमस्ते 🙏 इस सप्ताह ${guruName} का कोई समय खाली नहीं है। कृपया कुछ दिनों बाद फिर Hi भेजें।`,
+  notOpen: ({ guruName }) =>
+    `नमस्ते 🙏 ${guruName} के साथ बुकिंग अभी खुली नहीं है। कृपया कुछ दिनों बाद फिर लिखें।`,
   slotTaken: () => 'वह समय अभी-अभी किसी और ने ले लिया। ये अगले समय हैं:',
   paymentUnavailable: () => 'भुगतान का पेज अभी नहीं खुल सका, इसलिए कुछ बुक नहीं हुआ। कृपया कुछ मिनट बाद फिर Hi भेजें, या उनकी टीम को लिखें।',
   refundedByHand: ({ guruName, slotId, dakshina }) =>
