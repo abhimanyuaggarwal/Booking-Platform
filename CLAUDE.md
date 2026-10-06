@@ -78,8 +78,9 @@ If a task seems to need one of these, stop and say so instead of building it.
 - **Cancellation policy (changed 2026-10-06, decided by the client):** devotee may cancel or reschedule
   once, up to 4 hours before. Cancel → the dakshina is **refunded to her account** (Razorpay refund, or
   the team hands cash back) and she is told in how many days it reaches her. Credits are no longer
-  issued to devotees; the credit ledger kinds stay for old rows. Being built in piece B (WhatsApp cancel /
-  change time).
+  issued to devotees; the credit ledger kinds stay for old rows. `cancellations.cancelAndRefund` is the one
+  place the money moves; WhatsApp, the site and the console all call it. On WhatsApp "Hi" with a time ahead
+  shows Change the time / Cancel / Book another; inside four hours the button becomes "tell the team".
 
 ## Domain model
 
@@ -102,7 +103,7 @@ qr_codes         id, guru_id, source, label, wa_link, created_at
 **Booking state machine** — enforce in one place (`bookings.js`), nowhere else:
 `held --pay--> confirmed --session ends--> completed`
 `held --10 min--> expired` · `confirmed --team/devotee--> rescheduled (new booking row, old marked)` ·
-`confirmed --devotee cancels ≥4h before--> cancelled (credit_issued)` ·
+`confirmed --devotee cancels ≥4h before--> cancelled (refund)` ·
 `confirmed --guru cannot sit--> refunded` · `confirmed --no join--> no_show`
 
 **Invariant:** a slot appears on any calendar only because a `bookings` row exists for it. Calendar and

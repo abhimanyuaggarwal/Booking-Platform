@@ -11,6 +11,7 @@ import {
 } from './reports.js';
 import { listEvents, createEvent, updateEvent, deleteEvent, validateEvent } from './events.js';
 import { listQrCodes, createQrCode, QR_SOURCES } from './qr-codes.js';
+import { cancelAndRefund } from './cancellations.js';
 import { listSessionTypes, findSessionType, defaultSessionType, validateSessionTypes, replaceSessionTypes, publicType } from './session-types.js';
 import * as bookings from './bookings.js';
 import * as devotees from './devotees.js';
@@ -205,15 +206,15 @@ export function consoleRoutes(env, conversation) {
     res.json({ id: updated.id, name: updated.name, forWhom: updated.for_whom, phone: updated.phone });
   }));
 
-  // She asked the team to cancel. Same outcome as her own button — the dakshina kept as a credit
-  // for thirty days — without the four-hour rule, because the team is making a judgement, not
-  // pressing a self-serve button. Cash back stays the separate refund action.
+  // She asked the team to cancel. Same outcome as her own button — the dakshina goes back to her —
+  // without the four-hour rule, because the team is making a judgement, not pressing a self-serve
+  // button. "Return the dakshina" below is for when guruji could not sit.
   router.post('/bookings/:id/cancel', handle(async (req, res) => {
     const b = await ownBooking(req, res); if (!b) return;
-    const { booking, creditPaise } = await bookings.cancelToCredit({ bookingId: b.id });
+    const { booking, amountPaise, how } = await cancelAndRefund({ booking: b, pay, reason: 'cancelled by the team at her request' });
     const devotee = await devotees.findDevoteeById(b.devotee_id);
-    const note = await tell(() => conversation.sendCancelledNote({ guru: req.guru, devotee, booking, amountPaise: creditPaise }));
-    res.json({ booking: bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }), creditPaise, notified: note.ok, notDelivered: note.reason ?? null });
+    const note = await tell(() => conversation.sendCancelledNote({ guru: req.guru, devotee, booking, amountPaise, how }));
+    res.json({ booking: bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }), amountPaise, how, notified: note.ok, notDelivered: note.reason ?? null });
   }));
 
   // Guruji could not sit. Razorpay first; only when the money has moved do we mark the booking.

@@ -129,7 +129,7 @@ function sessionRow(r) {
  * opened their link, refunds on their way. Each item names the one action the team can take.
  */
 export async function attentionQueue(guru) {
-  const [expired, paidTooLate, missed, refunds, alone, waited, taken] = await Promise.all([
+  const [expired, paidTooLate, missed, refunds, alone, waited, asked, taken] = await Promise.all([
     query(
       `select b.id, b.slot_start, b.created_at, b.source, b.payment_link_id, d.name, d.phone
          from bookings b join devotees d on d.id = b.devotee_id
@@ -179,10 +179,23 @@ export async function attentionQueue(guru) {
         where m.guru_id = $1 and m.kind = 'escape.choice' and m.created_at > now() - interval '2 days'
           and b.status = 'confirmed'
         order by m.created_at desc`, [guru.id]),
+    // She asked on WhatsApp to change or cancel inside the four hours, or a second time: the team decides.
+    query(
+      `select m.id, m.created_at, m.booking_id, b.slot_start, d.name, d.phone
+         from messages_log m join bookings b on b.id = m.booking_id join devotees d on d.id = m.devotee_id
+        where m.guru_id = $1 and m.kind = 'asked.team' and m.created_at > now() - interval '2 days'
+          and b.status = 'confirmed' and b.slot_start > now() - interval '1 hour'
+        order by m.created_at desc`, [guru.id]),
     bookings.takenSlotIds(guru.id),
   ]);
 
   return [
+    ...asked.rows.map((r) => ({
+      kind: 'asked_team', bookingId: r.booking_id, name: displayName(r), phone: r.phone,
+      slotId: instantToSlotId(r.slot_start), when: whenLabel(r.slot_start),
+      why: 'Asked on WhatsApp to change or cancel this time, inside the four hours. Call her, then move or cancel it here',
+      action: 'decide',
+    })),
     ...paidTooLate.rows.map((r) => ({
       kind: 'paid_too_late', bookingId: r.id, name: displayName(r), phone: r.phone,
       slotId: instantToSlotId(r.slot_start), when: whenLabel(r.slot_start),
@@ -223,8 +236,10 @@ export async function attentionQueue(guru) {
     ...refunds.rows.map((r) => ({
       kind: 'refund_sent', bookingId: r.booking_id, name: displayName(r), phone: r.phone, slotId: r.slot_start ? instantToSlotId(r.slot_start) : null,
       when: whenLabel(r.created_at), amountPaise: r.amount_paise, providerRef: r.provider_ref,
-      why: `Guruji could not sit${r.slot_start ? ` on ${describeDate(instantToSlotId(r.slot_start).slice(5, 15)).split(',')[0]}` : ''} — ${formatRupees(r.amount_paise)} returned, reaches her within a week`,
-      action: 'done',
+      why: String(r.provider_ref ?? '').startsWith('offline:refund')
+        ? `${formatRupees(r.amount_paise)} to be handed back to her by the team${r.slot_start ? ` for ${describeDate(instantToSlotId(r.slot_start).slice(5, 15)).split(',')[0]}` : ''}`
+        : `${formatRupees(r.amount_paise)} returned${r.slot_start ? ` for ${describeDate(instantToSlotId(r.slot_start).slice(5, 15)).split(',')[0]}` : ''}, reaches her in 5 to 7 working days`,
+      action: String(r.provider_ref ?? '').startsWith('offline:refund') ? 'decide' : 'done',
     })),
   ];
 }

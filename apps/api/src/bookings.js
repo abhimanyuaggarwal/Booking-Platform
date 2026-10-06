@@ -31,7 +31,7 @@ export const SELF_SERVE_HOURS = 4;
 // held --pay--> confirmed --session ends--> completed
 // held --10 min--> expired
 // confirmed --team/devotee--> rescheduled (new booking row, old marked)
-// confirmed --devotee cancels >=4h before--> cancelled (credit_issued)
+// confirmed --devotee cancels >=4h before--> cancelled (refund; cancellations.js)
 // confirmed --guru cannot sit--> refunded
 // confirmed --no join--> no_show
 const TRANSITIONS = {
@@ -476,6 +476,29 @@ export async function cancelToCredit({ bookingId }) {
        values ($1, $2, $3, 'credit_issued', $4, now() + interval '30 days')`,
       [b.guru_id, b.id, b.devotee_id, paid.amount_paise]);
     return { booking: withSlotId({ ...b, status: next }), creditPaise: paid.amount_paise };
+  });
+}
+
+/**
+ * A confirmed time is given up and the dakshina goes back (cancellations.js moves the money first and
+ * passes the provider's reference; nothing paid means no ledger row). The state change and the
+ * refund row are one transaction, so the books never show a cancellation without its refund.
+ * @returns {{booking: object, amountPaise: number}}
+ */
+export async function cancelWithRefund({ bookingId, providerRef = null }) {
+  return transaction(async (q) => {
+    const { rows: [b] } = await q('select * from bookings where id = $1 for update', [bookingId]);
+    if (!b) throw new Error(`Booking ${bookingId} not found`);
+    const next = transition(b.status, 'cancel');
+    const paid = await paymentFor(b.id);
+    await q('update bookings set status = $2 where id = $1', [b.id, next]);
+    if (paid && paid.amount_paise > 0) {
+      await q(
+        `insert into ledger_entries (guru_id, booking_id, devotee_id, kind, amount_paise, provider_ref)
+         values ($1, $2, $3, 'refund', $4, $5)`,
+        [b.guru_id, b.id, b.devotee_id, paid.amount_paise, providerRef]);
+    }
+    return { booking: withSlotId({ ...b, status: next }), amountPaise: paid?.amount_paise ?? 0 };
   });
 }
 

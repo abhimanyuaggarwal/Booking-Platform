@@ -63,7 +63,7 @@ function hue(s: string) {
 // ---- what needs her ------------------------------------------------------------------------------
 
 export const ATTENTION_TONE: Record<AttentionRow['kind'], 'g' | 'o' | 'n' | 'r'> = {
-  hold_expired: 'o', paid_too_late: 'r', did_not_join: 'n', waited_alone: 'r', waited_and_chose: 'r', refund_sent: 'n',
+  hold_expired: 'o', paid_too_late: 'r', did_not_join: 'n', waited_alone: 'r', waited_and_chose: 'r', refund_sent: 'n', asked_team: 'r',
 };
 
 /** Pure. Rows she must act on, and rows that only inform. */

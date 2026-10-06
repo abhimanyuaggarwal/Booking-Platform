@@ -91,9 +91,9 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
               </div>
             )}
             <div className="row">
-              {can('cancel') && <button disabled={busy} onClick={() => { if (window.confirm(`Cancel ${name}'s time? The dakshina is kept as a credit for thirty days and she is told on WhatsApp.`)) act('Cancel', async () => {
-                const r = await api<{ creditPaise: number; notified: boolean }>(`/bookings/${d.id}/cancel`, { method: 'POST' });
-                return `Cancelled. ${formatRupees(r.creditPaise)} is kept as her credit.${r.notified ? '' : ' WhatsApp did not deliver. Call her.'}`;
+              {can('cancel') && <button disabled={busy} onClick={() => { if (window.confirm(`Cancel ${name}'s time? The dakshina goes back to her, Razorpay or by hand, and she is told on WhatsApp.`)) act('Cancel', async () => {
+                const r = await api<{ amountPaise: number; how: 'online' | 'byHand' | 'credit' | 'none'; notified: boolean }>(`/bookings/${d.id}/cancel`, { method: 'POST' });
+                return `Cancelled. ${r.how === 'online' ? `${formatRupees(r.amountPaise)} goes back to her account in 5 to 7 working days.` : r.how === 'byHand' ? `${formatRupees(r.amountPaise)} is to be handed back to her by the team.` : r.how === 'credit' ? `${formatRupees(r.amountPaise)} is back as her credit.` : 'Nothing was paid.'}${r.notified ? '' : ' WhatsApp did not deliver. Call her.'}`;
               }); }}>{W.drawer.cancelKeep}</button>}
               {can('refund') && <button className="danger" disabled={busy} onClick={() => { if (window.confirm(d.paidWith?.providerRef?.startsWith('offline:') ? `Return ${name}'s dakshina? The team hands it back; she is told on WhatsApp. This cannot be undone.` : `Return ${name}'s dakshina? Razorpay sends it back and she is told on WhatsApp. This cannot be undone.`)) act('Refund', async () => {
                 const r = await api<{ amountPaise: number; notified: boolean; viaCredit: boolean; byHand?: boolean }>(`/bookings/${d.id}/refund`, { method: 'POST' });

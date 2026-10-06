@@ -263,7 +263,7 @@ test('a booking opens with who, when, what was paid, what was said, and only the
   expect(html).not.toContain('Did not join');           // slot is in the future
   expect(html).not.toContain('keep as credit');         // only when the api lists 'cancel'
   const cancellable = renderToStaticMarkup(<StaticRouter location="/console/bookings"><BookingDetailView detail={{ ...detail, actions: [...detail.actions, 'cancel'] }} guruSlug="guruji" onChanged={() => {}} /></StaticRouter>);
-  expect(cancellable).toContain('Cancel, keep as credit');
+  expect(cancellable).toContain('Cancel and return the dakshina');
   expect(html).toContain('Hi — from the live');
   expect(html).toContain('Her other times');
   expect(html).toContain('Edit name or who it is for');

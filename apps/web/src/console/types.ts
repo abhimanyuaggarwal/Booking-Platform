@@ -99,7 +99,7 @@ export interface WaitingBoard {
 export interface MessageResult { landed: 'room' | 'whatsapp' | 'failed'; reason?: string; at: string }
 
 export interface AttentionRow {
-  kind: 'hold_expired' | 'paid_too_late' | 'did_not_join' | 'waited_alone' | 'refund_sent' | 'waited_and_chose';
+  kind: 'hold_expired' | 'paid_too_late' | 'did_not_join' | 'waited_alone' | 'refund_sent' | 'waited_and_chose' | 'asked_team';
   bookingId: string | null; name: string; phone: string; slotId: string | null; when: string; why: string;
   action: 'send_link' | 'decide' | 'done' | 'none';
   expiredAt?: string; amountPaise?: number; providerRef?: string | null;

@@ -63,7 +63,7 @@ export function MySessionsView({ sessions: s, base, onAct, onSignOut, slotsFor }
   }
 
   async function cancel(b: MyBooking) {
-    if (!window.confirm(`Cancel ${b.when}? Your dakshina is kept as a credit for thirty days.`)) return;
+    if (!window.confirm(`Cancel ${b.when}? Your dakshina comes back to you.`)) return;
     await act(`/me/bookings/${b.id}/cancel`);
   }
 
@@ -133,14 +133,14 @@ export function MySessionsView({ sessions: s, base, onAct, onSignOut, slotsFor }
           ))}
         </section>
       )}
-      <p className="muted" style={{ fontSize: 14 }}>A time may be moved once, up to four hours before. Nearer than that, write to his team on WhatsApp.</p>
+      <p className="muted" style={{ fontSize: 14 }}>A time may be moved or cancelled once, up to four hours before, here or by writing Hi on WhatsApp. Nearer than that, his team decides.</p>
     </main>
   );
 }
 
 export function earlierWords(status: string) {
   return ({
-    completed: 'completed', cancelled: 'cancelled, dakshina kept as credit', refunded: 'he could not sit, dakshina returned',
+    completed: 'completed', cancelled: 'cancelled, dakshina returned', refunded: 'he could not sit, dakshina returned',
     no_show: 'not joined', rescheduled: 'moved to another time', confirmed: 'past', held: 'not paid', expired: 'not paid in time',
   } as Record<string, string>)[status] ?? status;
 }

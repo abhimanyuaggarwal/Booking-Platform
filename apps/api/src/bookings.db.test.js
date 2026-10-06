@@ -211,3 +211,14 @@ dbTest('slot_start round-trips through slot ids exactly', async () => {
   const b = await heldBooking('slot:2030-03-01T16:40');
   assert.equal(b.slot_start.getTime(), slotIdToInstant('slot:2030-03-01T16:40').getTime());
 });
+
+dbTest('cancelling with a refund marks the booking cancelled and writes one refund row for what was paid', async () => {
+  const paid = await paidBooking('slot:2030-02-01T10:00');
+  const { booking, amountPaise } = await bookings.cancelWithRefund({ bookingId: paid.id, providerRef: 'rfnd_test_1' });
+  assert.equal(booking.status, 'cancelled');
+  assert.equal(amountPaise, 50000);
+  const { rows } = await db.query(`select kind, amount_paise, provider_ref from ledger_entries where booking_id = $1 order by created_at`, [paid.id]);
+  assert.deepEqual(rows.map((r) => [r.kind, r.amount_paise]), [['payment', 50000], ['refund', 50000]]);
+  assert.equal(rows[1].provider_ref, 'rfnd_test_1');
+  await assert.rejects(() => bookings.cancelWithRefund({ bookingId: paid.id }), /cannot cancel/);
+});

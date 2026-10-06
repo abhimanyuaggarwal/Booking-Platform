@@ -100,12 +100,12 @@ export function client(env) {
      * Return a payment in full. Razorpay processes refunds asynchronously; "in flight" for a few days.
      * @returns {{id: string, status: string}}
      */
-    async refundPayment({ paymentId, amountPaise, bookingId }) {
+    async refundPayment({ paymentId, amountPaise, bookingId, reason = 'guruji could not sit' }) {
       try {
         const res = await axios.post(`https://api.razorpay.com/v1/payments/${paymentId}/refund`, {
           amount: amountPaise,
           speed: 'normal',
-          notes: { booking_id: bookingId, reason: 'guruji could not sit' },
+          notes: { booking_id: bookingId, reason },
         }, { auth });
         return { id: res.data.id, status: res.data.status };
       } catch (err) {

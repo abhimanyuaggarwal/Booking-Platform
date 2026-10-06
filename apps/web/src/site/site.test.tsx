@@ -97,7 +97,7 @@ test('my sessions offers Join, Reschedule and Cancel on an upcoming time, and li
   expect(html).toContain('>Reschedule<');
   expect(html).toContain('>Cancel this time<');
   expect(html).toContain('12 August, 11:30 am');
-  expect(html).toContain('moved once, up to four hours before');
+  expect(html).toContain('moved or cancelled once, up to four hours before');
 });
 
 test('too near the time, the buttons are gone and she is told why', () => {
@@ -117,7 +117,7 @@ test('a credit is offered back to her as a time, with its expiry in words', () =
 });
 
 test('every earlier status reads as a sentence, not a code', () => {
-  expect(earlierWords('cancelled')).toBe('cancelled, dakshina kept as credit');
+  expect(earlierWords('cancelled')).toBe('cancelled, dakshina returned');
   expect(earlierWords('refunded')).toBe('he could not sit, dakshina returned');
   expect(earlierWords('no_show')).toBe('not joined');
 });

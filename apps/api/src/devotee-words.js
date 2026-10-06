@@ -26,11 +26,14 @@ export function slotLabel(label, lang = 'en') {
   return `${SHORT_DAYS[day] ?? day} ${rest.join(' ')}`;
 }
 
+const REFUND_DAYS = '5 to 7 working days';
+const REFUND_DAYS_HI = '5 से 7 कार्य दिवसों';
+
 const EN = {
   held: ({ guruName, slotId, dakshina }) =>
     `${describeSlotEn(slotId)} with ${guruName}.\nDakshina ${dakshina}.\n\nThis time is held for you for ${HOLD_MINUTES} minutes.`,
   confirmed: ({ guruName, slotId }) =>
-    `Your time is confirmed.\n${describeSlotEn(slotId)} with ${guruName}.\n\nOpen this link to see your booking, or to change the time. The join link comes here ten minutes before your time.`,
+    `Your time is confirmed.\n${describeSlotEn(slotId)} with ${guruName}.\n\nOpen this link to see your booking. To change or cancel the time, write Hi here. The join link comes here ten minutes before your time.`,
   confirmedSoon: ({ guruName, slotId }) =>
     `Your time is confirmed.\n${describeSlotEn(slotId)} with ${guruName}.\n\nIt begins in a few minutes. Open this link when you are ready.`,
   askQuestion: ({ guruName }) =>
@@ -40,7 +43,31 @@ const EN = {
   refunded: ({ guruName, slotId, dakshina }) =>
     `${guruName} could not sit at ${describeSlotEn(slotId)}. Your dakshina of ${dakshina} is on its way back to you and reaches you within a week.`,
   cancelled: ({ guruName, slotId, dakshina }) =>
-    `Your time with ${guruName} on ${describeSlotEn(slotId)} is cancelled. Your dakshina of ${dakshina} is kept as a credit for thirty days — book any other time with it.`,
+    `Your time with ${guruName} on ${describeSlotEn(slotId)} is cancelled. Your dakshina of ${dakshina} is on its way back and reaches your account in ${REFUND_DAYS}.`,
+  cancelledByHand: ({ guruName, slotId, dakshina }) =>
+    `Your time with ${guruName} on ${describeSlotEn(slotId)} is cancelled. His team will return your dakshina of ${dakshina} to you directly.`,
+  cancelledFree: ({ guruName, slotId }) =>
+    `Your time with ${guruName} on ${describeSlotEn(slotId)} is cancelled. There was no dakshina to return.`,
+  cancelledCredit: ({ guruName, slotId, dakshina }) =>
+    `Your time with ${guruName} on ${describeSlotEn(slotId)} is cancelled. Your credit of ${dakshina} is back with you for thirty days.`,
+  // her booking, when she writes Hi with a time ahead
+  myBooking: ({ guruName, slotId, minutes }) =>
+    `Your time with ${guruName}: ${describeSlotEn(slotId)}, ${minutes} minutes.\n\nWhat would you like to do?`,
+  changeTime: 'Change the time',
+  cancelIt: 'Cancel',
+  newBooking: 'Book another',
+  chooseNewTime: 'Choose the new time. Your dakshina moves with it.',
+  confirmCancel: ({ slotId, dakshina }) =>
+    `Cancel your time on ${describeSlotEn(slotId)}?\n\nYour dakshina of ${dakshina} comes back to your account in ${REFUND_DAYS}.`,
+  confirmCancelByHand: ({ slotId, dakshina }) =>
+    `Cancel your time on ${describeSlotEn(slotId)}?\n\nHis team will return your dakshina of ${dakshina} to you directly.`,
+  confirmCancelFree: ({ slotId }) => `Cancel your time on ${describeSlotEn(slotId)}?`,
+  yesCancel: 'Yes, cancel it',
+  keepIt: 'No, keep it',
+  kept: 'Your time stays as it is.',
+  cannotChange: ({ reason }) => `${reason}\n\nShall we ask his team to call you?`,
+  tellTeam: 'Yes, tell the team',
+  teamWillCall: ({ guruName }) => `Noted. ${guruName}'s team will get in touch with you.`,
   paidTooLate: ({ guruName, slotId, dakshina }) =>
     `Your dakshina of ${dakshina} reached us, but the time you chose — ${describeSlotEn(slotId)} — was released before it arrived, so nothing is booked.\n\n${guruName}'s team will return your dakshina within a week, or find you another time. They will message you.`,
   stillToPay: ({ slotId, dakshina }) =>
@@ -87,7 +114,7 @@ const HI = {
   held: ({ guruName, slotId, dakshina }) =>
     `${describeSlot(slotId, 'hi')} — ${guruName} के साथ।\nदक्षिणा ${dakshina}।\n\nयह समय आपके लिए ${HOLD_MINUTES} मिनट तक रोका गया है।`,
   confirmed: ({ guruName, slotId }) =>
-    `आपका समय पक्का हो गया।\n${describeSlot(slotId, 'hi')} — ${guruName} के साथ।\n\nअपनी बुकिंग देखने या समय बदलने के लिए यह लिंक खोलें। जुड़ने का लिंक आपके समय से दस मिनट पहले यहीं आएगा।`,
+    `आपका समय पक्का हो गया।\n${describeSlot(slotId, 'hi')} — ${guruName} के साथ।\n\nअपनी बुकिंग देखने के लिए यह लिंक खोलें। समय बदलने या रद्द करने के लिए यहीं Hi लिखें। जुड़ने का लिंक आपके समय से दस मिनट पहले यहीं आएगा।`,
   confirmedSoon: ({ guruName, slotId }) =>
     `आपका समय पक्का हो गया।\n${describeSlot(slotId, 'hi')} — ${guruName} के साथ।\n\nयह कुछ ही मिनट में शुरू होगा। तैयार हों तो यह लिंक खोलें।`,
   askQuestion: ({ guruName }) =>
@@ -97,7 +124,30 @@ const HI = {
   refunded: ({ guruName, slotId, dakshina }) =>
     `${guruName} ${describeSlot(slotId, 'hi')} को नहीं बैठ सके। आपकी ${dakshina} की दक्षिणा वापस भेज दी गई है; यह एक सप्ताह में आपके खाते में आ जाएगी।`,
   cancelled: ({ guruName, slotId, dakshina }) =>
-    `${describeSlot(slotId, 'hi')} का ${guruName} के साथ आपका समय रद्द हो गया। आपकी ${dakshina} की दक्षिणा तीस दिन तक जमा रहेगी — इससे कोई भी दूसरा समय बुक कर सकते हैं।`,
+    `${describeSlot(slotId, 'hi')} का ${guruName} के साथ आपका समय रद्द हो गया। आपकी ${dakshina} की दक्षिणा वापस भेज दी गई है; यह ${REFUND_DAYS_HI} में आपके खाते में आ जाएगी।`,
+  cancelledByHand: ({ guruName, slotId, dakshina }) =>
+    `${describeSlot(slotId, 'hi')} का ${guruName} के साथ आपका समय रद्द हो गया। उनकी टीम आपकी ${dakshina} की दक्षिणा सीधे आपको लौटा देगी।`,
+  cancelledFree: ({ guruName, slotId }) =>
+    `${describeSlot(slotId, 'hi')} का ${guruName} के साथ आपका समय रद्द हो गया। कोई दक्षिणा लौटानी नहीं थी।`,
+  cancelledCredit: ({ guruName, slotId, dakshina }) =>
+    `${describeSlot(slotId, 'hi')} का ${guruName} के साथ आपका समय रद्द हो गया। आपकी ${dakshina} की जमा दक्षिणा तीस दिन के लिए फिर आपके पास है।`,
+  myBooking: ({ guruName, slotId, minutes }) =>
+    `${guruName} के साथ आपका समय: ${describeSlot(slotId, 'hi')}, ${minutes} मिनट।\n\nआप क्या करना चाहेंगे?`,
+  changeTime: 'समय बदलें',
+  cancelIt: 'रद्द करें',
+  newBooking: 'नई बुकिंग',
+  chooseNewTime: 'नया समय चुनें। आपकी दक्षिणा उसी के साथ चली जाएगी।',
+  confirmCancel: ({ slotId, dakshina }) =>
+    `${describeSlot(slotId, 'hi')} का समय रद्द करें?\n\nआपकी ${dakshina} की दक्षिणा ${REFUND_DAYS_HI} में आपके खाते में वापस आ जाएगी।`,
+  confirmCancelByHand: ({ slotId, dakshina }) =>
+    `${describeSlot(slotId, 'hi')} का समय रद्द करें?\n\nउनकी टीम आपकी ${dakshina} की दक्षिणा सीधे आपको लौटा देगी।`,
+  confirmCancelFree: ({ slotId }) => `${describeSlot(slotId, 'hi')} का समय रद्द करें?`,
+  yesCancel: 'हाँ, रद्द करें',
+  keepIt: 'नहीं, रहने दें',
+  kept: 'आपका समय वैसा ही है।',
+  cannotChange: ({ reason }) => `${reason}\n\nक्या हम उनकी टीम से आपको कॉल करवाएँ?`,
+  tellTeam: 'हाँ, टीम को बताएँ',
+  teamWillCall: ({ guruName }) => `लिख लिया। ${guruName} की टीम आपसे संपर्क करेगी।`,
   paidTooLate: ({ guruName, slotId, dakshina }) =>
     `आपकी ${dakshina} की दक्षिणा हमें मिली, पर आपका चुना हुआ समय — ${describeSlot(slotId, 'hi')} — उससे पहले ही छूट गया, इसलिए अभी कुछ बुक नहीं है।\n\n${guruName} की टीम एक सप्ताह में दक्षिणा लौटा देगी, या आपको दूसरा समय देगी। वे आपको संदेश करेंगे।`,
   stillToPay: ({ slotId, dakshina }) =>

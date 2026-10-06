@@ -12,7 +12,7 @@ export const WORDS = {
     product: 'Samvad',
     nav: { today: 'Today', week: 'Week', more: 'More', money: 'Money', settings: 'Settings', newBooking: 'New booking', newBookingShort: 'Book', search: 'Find anyone by name or number', signOut: 'Sign out', language: 'हिंदी' },
     state: { confirmed: 'Paid', held: 'Paying', completed: 'Done', no_show: 'Did not join', rescheduled: 'Moved', cancelled: 'Cancelled', refunded: 'Returned', expired: 'Hold expired' },
-    attention: { hold_expired: 'Chose a time, did not pay', paid_too_late: 'Paid after the hold ran out', did_not_join: 'Did not join', waited_alone: 'Waited, guruji did not sit', waited_and_chose: 'Waited, guruji did not sit', refund_sent: 'Dakshina returned' },
+    attention: { hold_expired: 'Chose a time, did not pay', paid_too_late: 'Paid after the hold ran out', did_not_join: 'Did not join', waited_alone: 'Waited, guruji did not sit', waited_and_chose: 'Waited, guruji did not sit', refund_sent: 'Dakshina returned', asked_team: 'Asked to change or cancel, inside four hours' },
     today: {
       title: 'Today', noSittings: 'Guruji has no sittings today.', count: (n: number, open: number) => `${n} ${n === 1 ? 'sitting' : 'sittings'} · ${open} open`,
       nextSitting: 'Next sitting', nowSitting: 'Now', wishes: 'Wishes to speak about', voiceNote: 'has sent a voice note', firstTime: 'First time', visit: (n: number) => `${n}${n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'} visit`,
@@ -64,7 +64,7 @@ export const WORDS = {
     },
     drawer: {
       close: 'Close', opening: 'Opening the booking', booking: 'Booking', note: 'A note to her, in the room or on WhatsApp', send: 'Send', pickTime: 'Pick a time', move: 'Move her',
-      cancelKeep: 'Cancel, keep as credit', refund: 'Return the dakshina', noShow: 'Did not join', sendLink: 'Hold again and send the link', paidCash: 'Paid in cash', paidUpi: 'Paid by UPI to the ashram', tellGuru: 'Tell guruji',
+      cancelKeep: 'Cancel and return the dakshina', refund: 'Return the dakshina', noShow: 'Did not join', sendLink: 'Hold again and send the link', paidCash: 'Paid in cash', paidUpi: 'Paid by UPI to the ashram', tellGuru: 'Tell guruji',
       phone: 'Phone', forWhom: 'For', askedAbout: 'Asked about', dakshina: 'Dakshina', notPaid: 'not paid', voiceNote: 'a voice note, for guruji alone', nothingYet: 'nothing yet',
       openedLink: 'Opened link', moved: 'Moved', fromEarlier: 'from an earlier time', edit: 'Edit name or who it is for', money: 'Money', said: 'What was said', us: 'US', her: 'HER', otherTimes: 'Her other times',
       byCredit: 'by credit', notDelivered: 'NOT DELIVERED', save: 'Save', herName: 'Her name', whoFor: 'Who the time is for',
@@ -78,7 +78,7 @@ export const WORDS = {
     product: 'संवाद',
     nav: { today: 'आज', week: 'सप्ताह', more: 'और', money: 'दक्षिणा का हिसाब', settings: 'सेटिंग', newBooking: 'नई बुकिंग', newBookingShort: 'बुकिंग', search: 'नाम या नंबर से खोजें', signOut: 'साइन आउट', language: 'English' },
     state: { confirmed: 'दक्षिणा मिली', held: 'भुगतान बाकी', completed: 'हो गया', no_show: 'नहीं आए', rescheduled: 'समय बदला', cancelled: 'रद्द', refunded: 'दक्षिणा लौटाई', expired: 'समय छूटा' },
-    attention: { hold_expired: 'समय चुना, भुगतान नहीं किया', paid_too_late: 'समय छूटने के बाद भुगतान किया', did_not_join: 'नहीं आए', waited_alone: 'इंतज़ार किया, गुरुजी नहीं बैठे', waited_and_chose: 'इंतज़ार किया, गुरुजी नहीं बैठे', refund_sent: 'दक्षिणा लौटाई' },
+    attention: { hold_expired: 'समय चुना, भुगतान नहीं किया', paid_too_late: 'समय छूटने के बाद भुगतान किया', did_not_join: 'नहीं आए', waited_alone: 'इंतज़ार किया, गुरुजी नहीं बैठे', waited_and_chose: 'इंतज़ार किया, गुरुजी नहीं बैठे', refund_sent: 'दक्षिणा लौटाई', asked_team: 'चार घंटे के भीतर समय बदलने या रद्द करने को कहा' },
     today: {
       title: 'आज', noSittings: 'आज गुरुजी की कोई बैठक नहीं है।', count: (n: number, open: number) => `${n} बैठकें · ${open} खाली`,
       nextSitting: 'अगली बैठक', nowSitting: 'अभी', wishes: 'बात करना चाहते हैं', voiceNote: 'आवाज़ का संदेश भेजा है', firstTime: 'पहली बार', visit: (n: number) => `${n}वीं बार`,
@@ -130,7 +130,7 @@ export const WORDS = {
     },
     drawer: {
       close: 'बंद करें', opening: 'बुकिंग खुल रही है', booking: 'बुकिंग', note: 'उनके लिए संदेश, कक्ष में या व्हाट्सऐप पर', send: 'भेजें', pickTime: 'समय चुनें', move: 'समय बदलें',
-      cancelKeep: 'रद्द करें, दक्षिणा जमा रहे', refund: 'दक्षिणा लौटाएँ', noShow: 'नहीं आए', sendLink: 'फिर रोकें और लिंक भेजें', paidCash: 'नकद मिला', paidUpi: 'आश्रम को UPI मिला', tellGuru: 'गुरुजी को बताएँ',
+      cancelKeep: 'रद्द करें, दक्षिणा लौटाएँ', refund: 'दक्षिणा लौटाएँ', noShow: 'नहीं आए', sendLink: 'फिर रोकें और लिंक भेजें', paidCash: 'नकद मिला', paidUpi: 'आश्रम को UPI मिला', tellGuru: 'गुरुजी को बताएँ',
       phone: 'फ़ोन', forWhom: 'किसके लिए', askedAbout: 'प्रश्न', dakshina: 'दक्षिणा', notPaid: 'भुगतान नहीं', voiceNote: 'आवाज़ का संदेश, सिर्फ़ गुरुजी के लिए', nothingYet: 'अभी कुछ नहीं',
       openedLink: 'लिंक खोला', moved: 'समय बदला', fromEarlier: 'पहले के समय से', edit: 'नाम या किसके लिए, बदलें', money: 'दक्षिणा', said: 'बातचीत', us: 'हम', her: 'वे', otherTimes: 'उनकी अन्य बैठकें',
       byCredit: 'जमा दक्षिणा से', notDelivered: 'नहीं पहुँचा', save: 'सहेजें', herName: 'उनका नाम', whoFor: 'किसके लिए',

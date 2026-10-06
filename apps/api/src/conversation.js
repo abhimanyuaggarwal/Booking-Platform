@@ -179,8 +179,11 @@ export function createConversation(env) {
     await speak(guru, devotee, booking.id).link(W.moved({ guruName: guru.name, slotId: booking.slotId }), W.seeBooking, bookingLink(booking, guru));
   }
 
-  async function sendCancelledNote({ guru, devotee, booking, amountPaise }) {
-    await speak(guru, devotee, booking.id).text(wordsFor(guru.language).cancelled({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
+  /** `how` is cancellations.js's answer: online (Razorpay returns it), byHand, credit, or none. */
+  async function sendCancelledNote({ guru, devotee, booking, amountPaise, how = 'online' }) {
+    const W = wordsFor(guru.language);
+    const words = how === 'byHand' ? W.cancelledByHand : how === 'credit' ? W.cancelledCredit : how === 'none' ? W.cancelledFree : W.cancelled;
+    await speak(guru, devotee, booking.id).text(words({ guruName: guru.name, slotId: booking.slotId, dakshina: formatRupees(amountPaise) }));
   }
 
   async function sendRefundNote({ guru, devotee, booking, amountPaise, viaCredit = false, byHand = false }) {

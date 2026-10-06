@@ -9,6 +9,8 @@ import { withGuru } from './tenancy.js';
 import { devoteeAuth, normalisePhone } from './devotee-auth.js';
 import { availabilityOf } from './gurus.js';
 import { creditFor } from './credits.js';
+import { cancelAndRefund, REFUND_DAYS } from './cancellations.js';
+import * as razorpay from './razorpay.js';
 import { listSessionTypes, findSessionType, defaultSessionType, publicType } from './session-types.js';
 import { listEvents } from './events.js';
 import { waLink, GREETINGS } from './qr-codes.js';
@@ -21,6 +23,7 @@ const SLOT = /^slot:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
 export function siteRoutes(env, conversation) {
   const auth = devoteeAuth(env);
+  const pay = razorpay.client(env);
   const router = express.Router();
   router.use(withGuru);
 
@@ -106,9 +109,13 @@ export function siteRoutes(env, conversation) {
     const b = await herBooking(req, res); if (!b) return;
     const problem = bookings.whyCannotCancel(b);
     if (problem) return res.status(409).json({ error: problem });
-    const { booking, creditPaise } = await bookings.cancelToCredit({ bookingId: b.id });
-    const note = await tell(() => conversation.sendCancelledNote({ guru: req.guru, devotee: req.devotee, booking, amountPaise: creditPaise }));
-    res.json({ ...(await mySessions(req)), said: `That time is cancelled. Your dakshina of ${formatRupees(creditPaise)} is kept as a credit for thirty days.`, notified: note.ok });
+    const { booking, amountPaise, how } = await cancelAndRefund({ booking: b, pay });
+    const note = await tell(() => conversation.sendCancelledNote({ guru: req.guru, devotee: req.devotee, booking, amountPaise, how }));
+    const said = how === 'online' ? `That time is cancelled. Your dakshina of ${formatRupees(amountPaise)} comes back to your account in ${REFUND_DAYS}.`
+      : how === 'byHand' ? `That time is cancelled. His team will return your dakshina of ${formatRupees(amountPaise)} to you directly.`
+      : how === 'credit' ? `That time is cancelled. Your credit of ${formatRupees(amountPaise)} is back with you for thirty days.`
+      : 'That time is cancelled.';
+    res.json({ ...(await mySessions(req)), said, notified: note.ok });
   }));
 
   router.post('/me/bookings/:id/reschedule', requireDevotee, handle(async (req, res) => {

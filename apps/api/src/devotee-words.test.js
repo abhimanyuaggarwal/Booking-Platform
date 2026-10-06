@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { wordsFor, describeSlot, slotLabel } from './devotee-words.js';
 
-const ctx = { guruName: 'Bhagwat', slotId: 'slot:2026-09-30T16:10', dakshina: '₹500', minutes: 30, devoteeName: 'Meera', time: '4:10 pm', question: 'My mother is unwell' };
+const ctx = { guruName: 'Bhagwat', slotId: 'slot:2026-09-30T16:10', dakshina: '₹500', minutes: 30, devoteeName: 'Meera', time: '4:10 pm', question: 'My mother is unwell', reason: 'Changes are open until 4 hours before.' };
 
 test('every Hindi sentence builds, has no exclamation mark, and says dakshina rather than fee', () => {
   const W = wordsFor('hi');
@@ -35,4 +35,12 @@ test('the English confirmation points at her booking, and the ten-minute reminde
   assert.match(W.confirmed(ctx), /ten minutes before/);
   assert.equal(W.joinNow, 'Join now');
   assert.match(W.soon(ctx), /ten minutes/);
+});
+
+test('a cancellation says when the dakshina reaches her, in both languages, and the confirmation says how to change it', () => {
+  assert.match(wordsFor('en').cancelled(ctx), /5 to 7 working days/);
+  assert.match(wordsFor('hi').cancelled(ctx), /5 से 7 कार्य दिवसों/);
+  assert.match(wordsFor('hi').confirmCancel(ctx), /रद्द करें\?/);
+  assert.match(wordsFor('hi').confirmed(ctx), /Hi लिखें/);
+  assert.ok(wordsFor('hi').changeTime.length <= 20 && wordsFor('hi').yesCancel.length <= 20, 'WhatsApp buttons are twenty characters at most');
 });

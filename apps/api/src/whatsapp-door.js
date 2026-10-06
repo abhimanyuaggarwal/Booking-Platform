@@ -20,9 +20,11 @@ import { listSessionTypes, findSessionType, typeLabel } from './session-types.js
 import { logMessage } from './messages-log.js';
 import { copy } from './conversation.js';
 import { settlePaidLink } from './paid-link.js';
+import { cancelAndRefund } from './cancellations.js';
 
 export function whatsappDoor(env, conversation) {
   const router = express.Router();
+  const pay = razorpay.client(env);
   const pendingSource = new Map(); // phone -> source, remembered until she picks a slot (in memory; lost on restart)
 
   // ---------------------------------------------------------------------------
@@ -71,9 +73,22 @@ export function whatsappDoor(env, conversation) {
       if (tapped && msg.id.startsWith('type:')) return await sendNearestSlots(guru, devotee, say, pendingSource.get(devotee.phone) || 'direct', await typeOrDefault(guru, msg.id.slice(5)));
       if (tapped && msg.id.startsWith('more')) return await sendMoreTimes(guru, say, await typeOrDefault(guru, msg.id.split(':')[1]));
       if (tapped && /^(t:[^|]+\|)?slot:/.test(msg.id)) return await holdAndAskForPayment(guru, devotee, say, msg.id);
+      //   move:<bookingId>            -> the open times for that sitting's kind
+      //   mv:<bookingId>|slot:<slot>  -> moved
+      //   cancel:<bookingId>          -> "are you sure", with what happens to the dakshina
+      //   cancel-yes:<bookingId>      -> cancelled and refunded
+      //   keep / new / tell:<bookingId>
+      if (tapped && msg.id.startsWith('move:')) return await offerNewTimes(guru, devotee, say, msg.id.slice(5));
+      if (tapped && msg.id.startsWith('mv:')) return await moveBooking(guru, devotee, say, msg.id);
+      if (tapped && msg.id.startsWith('cancel-yes:')) return await cancelBooking(guru, devotee, say, msg.id.slice(11));
+      if (tapped && msg.id.startsWith('cancel:')) return await askBeforeCancel(guru, devotee, say, msg.id.slice(7));
+      if (tapped && msg.id === 'keep') return await say.text(wordsFor(guru.language).kept);
+      if (tapped && msg.id.startsWith('tell:')) return await tellTheTeam(guru, devotee, say, msg.id.slice(5));
+      if (tapped && msg.id === 'new') return await sendNearestSlots(guru, devotee, say, 'direct');
       if (msg.kind === 'audio') return await attachVoiceNote(guru, devotee, say, msg.mediaId);
       if (msg.kind === 'text' && !isGreeting(msg.text) && await answerFromWhereSheStands(guru, devotee, say, msg.text)) return;
-      // "Hi", or a message from someone with nothing in flight: she wants a time.
+      // "Hi" with a time ahead: her booking, and what she may do with it. Otherwise she wants a time.
+      if (await sendBookingOptions(guru, devotee, say)) return;
       await sendNearestSlots(guru, devotee, say, sourceFromText(msg.text));
     } catch (err) {
       console.error(err.message);
@@ -208,6 +223,103 @@ export function whatsappDoor(env, conversation) {
       return true;
     }
     return false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 5. Her own booking: change the time or cancel, two taps each (policy: once, up to four hours
+  //    before; inside that, the team decides, so the button becomes "tell the team").
+  // ---------------------------------------------------------------------------
+  async function sendBookingOptions(guru, devotee, say) {
+    const { kind, booking } = await bookings.whereSheStands(guru.id, devotee.id);
+    if (kind !== 'awaiting_session' || new Date(booking.slot_start) <= new Date()) return false;
+    const W = wordsFor(guru.language);
+    await say.buttons(W.myBooking({ guruName: guru.name, slotId: booking.slotId, minutes: booking.minutes }), [
+      { id: `move:${booking.id}`, title: W.changeTime },
+      { id: `cancel:${booking.id}`, title: W.cancelIt },
+      { id: 'new', title: W.newBooking },
+    ]);
+    return true;
+  }
+
+  async function herBooking(guru, devotee, bookingId) {
+    const b = await bookings.findById(bookingId);
+    return b && b.guru_id === guru.id && b.devotee_id === devotee.id ? b : null;
+  }
+
+  async function offerNewTimes(guru, devotee, say, bookingId) {
+    const b = await herBooking(guru, devotee, bookingId);
+    if (!b) return sendNearestSlots(guru, devotee, say, 'direct');
+    const W = wordsFor(guru.language);
+    const problem = bookings.whyCannotReschedule(b);
+    if (problem) return say.buttons(W.cannotChange({ reason: problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
+    const type = { id: b.session_type_id, minutes: b.minutes };
+    const open = openFor(guru, type, await bookings.takenIntervals(guru.id)).slice(0, 10);
+    if (open.length === 0) return say.text(W.noTimes({ guruName: guru.name }));
+    const byDay = new Map();
+    for (const s of open) {
+      const day = slotLabel(s.label.split(' ')[0], guru.language);
+      if (!byDay.has(day)) byDay.set(day, []);
+      byDay.get(day).push({ id: `mv:${b.id}|${s.id}`, title: s.label.split(' ').slice(1).join(' ') });
+    }
+    await say.list(W.chooseNewTime, W.seeTimes, [...byDay].map(([title, rows]) => ({ title, rows })));
+  }
+
+  async function moveBooking(guru, devotee, say, tappedId) {
+    const [, bookingId, slotId] = tappedId.match(/^mv:([^|]+)\|(slot:.+)$/) ?? [];
+    const b = bookingId && await herBooking(guru, devotee, bookingId);
+    if (!b) return sendNearestSlots(guru, devotee, say, 'direct');
+    const W = wordsFor(guru.language);
+    const problem = bookings.whyCannotReschedule(b);
+    if (problem) return say.buttons(W.cannotChange({ reason: problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
+    try {
+      await bookings.assertBookable(guru, slotId, { type: { id: b.session_type_id, minutes: b.minutes } });
+    } catch (err) {
+      if (!(err instanceof BookingRuleError)) throw err;
+      await say.text(W.slotTaken());
+      return offerNewTimes(guru, devotee, say, b.id);
+    }
+    const moved = await bookings.rescheduleBooking({ bookingId: b.id, slotId });
+    if (!moved) { await say.text(W.slotTaken()); return offerNewTimes(guru, devotee, say, b.id); }
+    await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: moved.id, direction: 'in', kind: 'devotee.moved', payload: { from: b.slotId, to: moved.slotId } });
+    await conversation.sendNewTime({ guru, devotee, booking: moved });
+  }
+
+  async function askBeforeCancel(guru, devotee, say, bookingId) {
+    const b = await herBooking(guru, devotee, bookingId);
+    if (!b) return sendNearestSlots(guru, devotee, say, 'direct');
+    const W = wordsFor(guru.language);
+    const problem = bookings.whyCannotCancel(b);
+    if (problem) return say.buttons(W.cannotChange({ reason: problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
+    const paid = await bookings.paymentFor(b.id);
+    const dakshina = formatRupees(paid?.amount_paise ?? 0);
+    const words = !paid || paid.amount_paise === 0 ? W.confirmCancelFree
+      : String(paid.provider_ref ?? '').startsWith('offline:') ? W.confirmCancelByHand : W.confirmCancel;
+    await say.buttons(words({ slotId: b.slotId, dakshina }), [{ id: `cancel-yes:${b.id}`, title: W.yesCancel }, { id: 'keep', title: W.keepIt }]);
+  }
+
+  async function cancelBooking(guru, devotee, say, bookingId) {
+    const b = await herBooking(guru, devotee, bookingId);
+    if (!b) return sendNearestSlots(guru, devotee, say, 'direct');
+    const W = wordsFor(guru.language);
+    const problem = bookings.whyCannotCancel(b);
+    if (problem) return say.buttons(W.cannotChange({ reason: problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
+    let result;
+    try {
+      result = await cancelAndRefund({ booking: b, pay });
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+      console.error(err.message);
+      return say.buttons(W.cannotChange({ reason: W.paymentUnavailable() }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
+    }
+    await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: b.id, direction: 'in', kind: 'devotee.cancelled', payload: { amountPaise: result.amountPaise, how: result.how } });
+    await conversation.sendCancelledNote({ guru, devotee, booking: result.booking, amountPaise: result.amountPaise, how: result.how });
+  }
+
+  /** Inside the four hours, or moved once already: the team decides. The ask lands on Today under Needs you. */
+  async function tellTheTeam(guru, devotee, say, bookingId) {
+    const b = await herBooking(guru, devotee, bookingId);
+    if (b) await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: b.id, direction: 'in', kind: 'asked.team', payload: { text: 'Asked on WhatsApp to change or cancel this time' } });
+    await say.text(wordsFor(guru.language).teamWillCall({ guruName: guru.name }));
   }
 
   // "Hi" always means she wants a time, whatever else is in flight.

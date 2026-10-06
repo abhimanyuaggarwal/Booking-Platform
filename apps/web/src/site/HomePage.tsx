@@ -37,7 +37,7 @@ const STEPS = [
 ];
 
 const GOOD_TO_KNOW = [
-  'You may move or cancel your time once, up to four hours before it. A cancelled dakshina stays with you as a credit for thirty days.',
+  'You may move or cancel your time once, up to four hours before it. A cancelled dakshina comes back to your account in 5 to 7 working days.',
   'Nothing is recorded. What you write or say before your time, only guruji reads.',
   'If guruji cannot sit at your time, the dakshina is returned in full.',
 ];
