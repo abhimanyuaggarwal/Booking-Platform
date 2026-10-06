@@ -8,6 +8,10 @@ import { MoneyView, entryText } from './Money';
 import { askedAbout, groupAttention, stateWord } from './words';
 import PatternEditor from './PatternEditor';
 import SessionTypesEditor from './SessionTypesEditor';
+import { SetupChecklist } from './Today';
+import { DevoteesView } from './Devotees';
+import { DevoteeView } from './DevoteePage';
+import Nav from './Nav';
 import type { MoneyReport, Settings, TodayReport, WeekReport } from './types';
 
 const today: TodayReport = {
@@ -308,4 +312,37 @@ test('money the team took by hand is named by where it went, and stays out of th
   expect(paymentWords('offline:cash:abc')).toBe('Paid in cash at the ashram');
   expect(paymentWords('offline:upi:abc')).toBe('Paid by UPI to the ashram');
   expect(paymentWords(null)).toBe('Paid by UPI');
+});
+
+test('the rail names five places, each with an icon, and nothing is hidden under a more', () => {
+  const html = renderToStaticMarkup(<StaticRouter location="/console"><Nav /></StaticRouter>);
+  for (const word of ['Today', 'Calendar', 'Devotees', 'Money', 'Settings']) expect(html).toContain(`<span>${word}</span>`);
+  expect(html).not.toContain('More');
+  expect((html.match(/<svg/g) ?? []).length).toBe(5);
+});
+
+test('the go-live checklist ticks what is set and links what is not', () => {
+  const html = renderToStaticMarkup(<StaticRouter location="/console"><SetupChecklist setup={{ timings: true, kinds: true, website: false, guruPhone: false, qr: false, firstBooking: false }} /></StaticRouter>);
+  expect(html).toContain('Going live: five things to set');
+  expect((html.match(/class="done"/g) ?? []).length).toBe(2);
+  expect(html).toContain('/console/settings/qr');
+});
+
+test('devotees are listed with sittings, last and next, and what they gave; one person shows every time', () => {
+  const rows = [
+    { id: 'd1', name: 'Kavita J', phone: '919829022334', forWhom: null, visits: 3, givenPaise: 150000, lastSitting: 'slot:2026-09-16T11:00', nextSitting: 'slot:2026-10-08T10:00' },
+    { id: 'd2', name: 'Ramesh K', phone: '919829012345', forWhom: 'his son', visits: 0, givenPaise: 0, lastSitting: null, nextSitting: null },
+  ];
+  const html = renderToStaticMarkup(<StaticRouter location="/console/devotees"><DevoteesView rows={rows} searching={false} /></StaticRouter>);
+  expect(html).toContain('Kavita J');
+  expect(html).toContain('₹1,500');
+  expect(html).toContain('Thursday, 8 October, 10:00 am');
+  expect(html).toContain('nothing booked');
+  expect(html).toContain('his son');
+  const empty = renderToStaticMarkup(<StaticRouter location="/console/devotees"><DevoteesView rows={[]} searching={false} /></StaticRouter>);
+  expect(empty).toContain('Nobody has booked yet');
+  const person = renderToStaticMarkup(<StaticRouter location="/console/devotees/d1"><DevoteeView d={{ ...rows[0], bookings: [{ id: 'b1', slotId: 'slot:2026-09-16T11:00', time: '11:00 am', date: '2026-09-16', status: 'completed', source: 'live', minutes: 20, dakshinaPaise: 100000, name: 'Kavita J', phone: '919829022334', paid: true, question: null, hasVoiceNote: false }] }} /></StaticRouter>);
+  expect(person).toContain('3 sittings with guruji');
+  expect(person).toContain('20 min · ₹1,000');
+  expect(person).toContain('Book a time for her');
 });

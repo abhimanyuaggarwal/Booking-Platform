@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { slotIdToInstant } from '@expert-sessions/shared';
-import { mondayOf, addDays, dayRange, settlementStart, rangeLabel, buildWeek, suggestMoves, allowedActions, attentionStrip } from './reports.js';
+import { mondayOf, addDays, dayRange, settlementStart, rangeLabel, buildWeek, suggestMoves, allowedActions, attentionStrip, setupSteps } from './reports.js';
 
 test('the week starts on Monday, whichever day you ask from', () => {
   assert.equal(mondayOf('2026-09-16'), '2026-09-14'); // a Wednesday
@@ -140,4 +140,14 @@ test('a held time can be confirmed by hand, and a coming sitting can be told to 
   assert.deepEqual(allowedActions({ status: 'held', slot_start: soon }), ['mark_paid']);
   assert.ok(allowedActions({ status: 'confirmed', slot_start: soon }).includes('tell_guru'));
   assert.ok(!allowedActions({ status: 'confirmed', slot_start: new Date(Date.now() - 3600000) }).includes('tell_guru'));
+});
+
+test('the go-live checklist reads the guru row, his kinds, his QR codes and his bookings', () => {
+  const fresh = setupSteps({ guru: { pattern_json: { weeklyPattern: { mon: [] } }, about: '', marketing_json: {}, guru_phone: null }, sessionTypes: [], qrCount: 0, bookingCount: 0 });
+  assert.deepEqual(fresh, { timings: false, kinds: false, website: false, guruPhone: false, qr: false, firstBooking: false });
+  const ready = setupSteps({ guru, sessionTypes: [{ active: true }], qrCount: 2, bookingCount: 5 });
+  assert.equal(ready.timings, true);
+  assert.equal(ready.kinds, true);
+  assert.equal(ready.qr, true);
+  assert.equal(ready.firstBooking, true);
 });

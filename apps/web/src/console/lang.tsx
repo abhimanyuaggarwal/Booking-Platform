@@ -10,7 +10,7 @@ const KEY = 'samvad-console-lang';
 export const WORDS = {
   en: {
     product: 'Samvad',
-    nav: { today: 'Today', week: 'Week', more: 'More', money: 'Money', settings: 'Settings', newBooking: 'New booking', newBookingShort: 'Book', search: 'Find anyone by name or number', signOut: 'Sign out', language: 'हिंदी' },
+    nav: { today: 'Today', week: 'Week', calendar: 'Calendar', devotees: 'Devotees', more: 'More', money: 'Money', settings: 'Settings', newBooking: 'New booking', newBookingShort: 'Book', search: 'Find anyone by name or number', signOut: 'Sign out', language: 'हिंदी' },
     state: { confirmed: 'Paid', held: 'Paying', completed: 'Done', no_show: 'Did not join', rescheduled: 'Moved', cancelled: 'Cancelled', refunded: 'Returned', expired: 'Hold expired' },
     attention: { hold_expired: 'Chose a time, did not pay', paid_too_late: 'Paid after the hold ran out', did_not_join: 'Did not join', waited_alone: 'Waited, guruji did not sit', waited_and_chose: 'Waited, guruji did not sit', refund_sent: 'Dakshina returned', asked_team: 'Asked to change or cancel, inside four hours' },
     today: {
@@ -71,12 +71,29 @@ export const WORDS = {
       sitting: 'Sitting', complimentary: 'complimentary', paidFree: 'Complimentary', minutes: (n: number) => `${n} min`,
     },
     more: { title: 'More', moneyTitle: 'Money', moneyLine: 'Dakshina collected, returned, and what settles on Friday.', settingsTitle: 'Settings', settingsLine: 'His timings, his website, QR codes.' },
+    now: { next: 'Next sitting', none: 'No more sittings today', needs: 'Needs you', nothing: 'nothing', sittings: 'Sittings today', of: (n: number, open: number) => `${n} booked · ${open} open`, inMinutes: (m: number) => (m <= 0 ? 'now' : m < 60 ? `in ${m} min` : `at`) },
+    devotees: {
+      title: 'Devotees', line: 'Everyone who has booked with guruji, and what they gave.', search: 'Find by name or number', none: 'Nobody has booked yet. The first booking from the live or the phone appears here.',
+      noMatch: 'Nobody matches that.', name: 'Name', visits: 'Sittings', last: 'Last sitting', next: 'Next sitting', given: 'Dakshina given', never: 'none yet', nothingAhead: 'nothing booked',
+      history: 'Every time', book: 'Book a time for her', back: 'All devotees', phone: 'Phone', forWhom: 'For', visitsOf: (n: number) => `${n} ${n === 1 ? 'sitting' : 'sittings'} with guruji`,
+    },
+    setup: {
+      title: 'Going live: five things to set', done: 'done', todo: 'to do',
+      timings: 'His timings', kinds: 'Kinds of sitting and dakshina', website: 'His website: about and tagline', guruPhone: 'Guruji’s WhatsApp number, for the ten-minute note', qr: 'A QR code for the live or a poster',
+      foot: 'Once these are set, bookings from the live, the website and the phone land on this screen.',
+    },
+    settingsPage: {
+      title: 'Settings', line: 'Set once, changed rarely.',
+      kinds: 'Kinds of sitting', kindsLine: 'How long a sitting is and its dakshina. Up to three.', timings: 'His timings', timingsLine: 'Which days and hours he sits, and days he is away.',
+      website: 'His website', websiteLine: 'His photo, his words, and the facts about him.', messages: 'Messages and guruji’s phone', messagesLine: 'Hindi or English for every WhatsApp message, and his own number.',
+      qr: 'QR codes', qrLine: 'One for the live, one for the poster, one for the ashram.',
+    },
     login: { title: 'Samvad · team console', hint: 'One login for the whole team.', username: 'Username', password: 'Password', signIn: 'Sign in' },
     common: { loading: 'One moment.', call: 'Call' },
   },
   hi: {
     product: 'संवाद',
-    nav: { today: 'आज', week: 'सप्ताह', more: 'और', money: 'दक्षिणा का हिसाब', settings: 'सेटिंग', newBooking: 'नई बुकिंग', newBookingShort: 'बुकिंग', search: 'नाम या नंबर से खोजें', signOut: 'साइन आउट', language: 'English' },
+    nav: { today: 'आज', week: 'सप्ताह', calendar: 'कैलेंडर', devotees: 'भक्त', more: 'और', money: 'दक्षिणा', settings: 'सेटिंग', newBooking: 'नई बुकिंग', newBookingShort: 'बुकिंग', search: 'नाम या नंबर से खोजें', signOut: 'साइन आउट', language: 'English' },
     state: { confirmed: 'दक्षिणा मिली', held: 'भुगतान बाकी', completed: 'हो गया', no_show: 'नहीं आए', rescheduled: 'समय बदला', cancelled: 'रद्द', refunded: 'दक्षिणा लौटाई', expired: 'समय छूटा' },
     attention: { hold_expired: 'समय चुना, भुगतान नहीं किया', paid_too_late: 'समय छूटने के बाद भुगतान किया', did_not_join: 'नहीं आए', waited_alone: 'इंतज़ार किया, गुरुजी नहीं बैठे', waited_and_chose: 'इंतज़ार किया, गुरुजी नहीं बैठे', refund_sent: 'दक्षिणा लौटाई', asked_team: 'चार घंटे के भीतर समय बदलने या रद्द करने को कहा' },
     today: {
@@ -137,6 +154,23 @@ export const WORDS = {
       sitting: 'बैठक', complimentary: 'निःशुल्क', paidFree: 'निःशुल्क', minutes: (n: number) => `${n} मिनट`,
     },
     more: { title: 'और', moneyTitle: 'दक्षिणा का हिसाब', moneyLine: 'कितनी दक्षिणा आई, कितनी लौटाई, शुक्रवार को क्या आएगा।', settingsTitle: 'सेटिंग', settingsLine: 'गुरुजी का समय, वेबसाइट, QR कोड।' },
+    now: { next: 'अगली बैठक', none: 'आज और बैठकें नहीं', needs: 'आपका ध्यान', nothing: 'कुछ नहीं', sittings: 'आज की बैठकें', of: (n: number, open: number) => `${n} बुक · ${open} खाली`, inMinutes: (m: number) => (m <= 0 ? 'अभी' : m < 60 ? `${m} मिनट में` : '') },
+    devotees: {
+      title: 'भक्त', line: 'जिन्होंने गुरुजी के साथ समय बुक किया, और क्या दक्षिणा दी।', search: 'नाम या नंबर से खोजें', none: 'अभी तक किसी ने बुक नहीं किया। लाइव या फ़ोन से पहली बुकिंग यहाँ दिखेगी।',
+      noMatch: 'ऐसा कोई नहीं मिला।', name: 'नाम', visits: 'बैठकें', last: 'पिछली बैठक', next: 'अगली बैठक', given: 'दी गई दक्षिणा', never: 'अभी नहीं', nothingAhead: 'कुछ बुक नहीं',
+      history: 'हर बैठक', book: 'इनके लिए समय बुक करें', back: 'सभी भक्त', phone: 'फ़ोन', forWhom: 'किसके लिए', visitsOf: (n: number) => `गुरुजी के साथ ${n} बैठकें`,
+    },
+    setup: {
+      title: 'शुरू करने के लिए पाँच बातें', done: 'हो गया', todo: 'बाकी',
+      timings: 'गुरुजी का समय', kinds: 'बैठक के प्रकार और दक्षिणा', website: 'वेबसाइट: परिचय और टैगलाइन', guruPhone: 'गुरुजी का व्हाट्सऐप नंबर, दस मिनट पहले की सूचना के लिए', qr: 'लाइव या पोस्टर के लिए QR कोड',
+      foot: 'ये सेट होते ही लाइव, वेबसाइट और फ़ोन से आई बुकिंग इसी स्क्रीन पर दिखेंगी।',
+    },
+    settingsPage: {
+      title: 'सेटिंग', line: 'एक बार सेट करें, कभी-कभार बदलें।',
+      kinds: 'बैठक के प्रकार', kindsLine: 'बैठक कितनी देर की और दक्षिणा कितनी। ज़्यादा से ज़्यादा तीन।', timings: 'गुरुजी का समय', timingsLine: 'किन दिनों, किस समय बैठते हैं, और छुट्टी के दिन।',
+      website: 'वेबसाइट', websiteLine: 'फ़ोटो, परिचय और उनके बारे में तथ्य।', messages: 'संदेश और गुरुजी का फ़ोन', messagesLine: 'हर व्हाट्सऐप संदेश हिंदी में या अंग्रेज़ी में, और उनका अपना नंबर।',
+      qr: 'QR कोड', qrLine: 'एक लाइव के लिए, एक पोस्टर के लिए, एक आश्रम के लिए।',
+    },
     login: { title: 'संवाद · टीम कंसोल', hint: 'पूरी टीम के लिए एक लॉगिन।', username: 'यूज़रनेम', password: 'पासवर्ड', signIn: 'साइन इन' },
     common: { loading: 'एक क्षण।', call: 'कॉल' },
   },

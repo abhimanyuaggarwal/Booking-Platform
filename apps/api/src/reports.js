@@ -511,3 +511,74 @@ async function moneyKpis(guruId, { today, monday }) {
     dueToSettlePaise: k.due_to_settle, settlesOn: 'Friday', settlesOnDate: addDays(settlementStart(today), 7),
   };
 }
+
+// ---- Devotees ------------------------------------------------------------------------------------
+
+/**
+ * Everyone who ever booked with this guru, with the three things the team asks about a name: how
+ * many times she has sat with him, when last, when next, and what she has given. Search by name or
+ * number; empty lists everyone, most recent first.
+ */
+export async function listDevotees(guru, q = '', limit = 200) {
+  const text = q.trim();
+  const digits = text.replace(/\D/g, '');
+  const { rows } = await query(
+    `select d.id, d.name, d.phone, d.for_whom,
+            count(b.id) filter (where b.status = 'completed') as visits,
+            max(b.slot_start) filter (where b.status = 'completed') as last_sitting,
+            min(b.slot_start) filter (where b.status = 'confirmed' and b.slot_start > now()) as next_sitting,
+            max(b.slot_start) as latest,
+            coalesce((select sum(l.amount_paise) from ledger_entries l where l.devotee_id = d.id and l.kind = 'payment'), 0)
+              - coalesce((select sum(l.amount_paise) from ledger_entries l where l.devotee_id = d.id and l.kind = 'refund'), 0) as given_paise
+       from devotees d left join bookings b on b.devotee_id = d.id
+      where d.guru_id = $1
+        and ($2 = '' or d.name ilike '%' || $2 || '%' or ($3 <> '' and d.phone like '%' || $3 || '%'))
+      group by d.id
+      order by latest desc nulls last, d.name
+      limit $4`, [guru.id, text, digits, limit]);
+  return rows.map(devoteeRow);
+}
+
+/** One person: who she is, every time she booked, and what she has given. */
+export async function devoteeDetail(guru, id) {
+  const { rows: [d] } = await query('select * from devotees where id = $1 and guru_id = $2', [id, guru.id]);
+  if (!d) return null;
+  const [list, history] = await Promise.all([listDevotees(guru, d.phone, 1), bookings.listForDevotee(d.id)]);
+  return {
+    ...(list[0] ?? devoteeRow({ ...d, visits: 0, given_paise: 0 })),
+    bookings: history.map((b) => bookingRow({ ...b, phone: d.phone, devotee_name: d.name })),
+  };
+}
+
+function devoteeRow(r) {
+  return {
+    id: r.id, name: r.name ?? `…${String(r.phone).slice(-4)}`, phone: r.phone, forWhom: r.for_whom ?? null,
+    visits: Number(r.visits ?? 0), givenPaise: Number(r.given_paise ?? 0),
+    lastSitting: r.last_sitting ? instantToSlotId(r.last_sitting) : null,
+    nextSitting: r.next_sitting ? instantToSlotId(r.next_sitting) : null,
+  };
+}
+
+// ---- Going live: the few things a new guru's team must set --------------------------------------
+
+/** Pure. Which of the go-live steps are done, from the guru row, his kinds, his QR codes and his bookings. */
+export function setupSteps({ guru, sessionTypes, qrCount, bookingCount }) {
+  const windows = Object.values(guru.pattern_json?.weeklyPattern ?? {}).flat();
+  return {
+    timings: windows.length > 0,
+    kinds: sessionTypes.some((t) => t.active),
+    website: Boolean((guru.about ?? '').trim()) && Boolean(guru.marketing_json?.tagline),
+    guruPhone: Boolean(guru.guru_phone),
+    qr: qrCount > 0,
+    firstBooking: bookingCount > 0,
+  };
+}
+
+export async function setupState(guru) {
+  const [types, qr, count] = await Promise.all([
+    query('select active from session_types where guru_id = $1', [guru.id]),
+    query('select count(*)::int as n from qr_codes where guru_id = $1', [guru.id]),
+    query('select count(*)::int as n from bookings where guru_id = $1', [guru.id]),
+  ]);
+  return setupSteps({ guru, sessionTypes: types.rows, qrCount: qr.rows[0].n, bookingCount: count.rows[0].n });
+}

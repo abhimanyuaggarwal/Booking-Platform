@@ -138,3 +138,11 @@ export interface CloseDayResult {
 }
 
 export interface PublicSlots { guru: { slug: string; name: string; dakshinaPaise: number; slotMinutes: number }; sessionTypes?: SessionType[]; type?: SessionType; slots: { id: string; label: string; startsAt: string }[] }
+
+// ---- Devotees and the go-live checklist ----
+export interface DevoteeRow {
+  id: string; name: string; phone: string; forWhom: string | null;
+  visits: number; givenPaise: number; lastSitting: string | null; nextSitting: string | null;
+}
+export interface DevoteeDetail extends DevoteeRow { bookings: BookingRow[] }
+export interface SetupState { timings: boolean; kinds: boolean; website: boolean; guruPhone: boolean; qr: boolean; firstBooking: boolean }

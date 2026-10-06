@@ -2,7 +2,7 @@
    not redefined here. Calm and readable for someone at an ashram: one type scale, generous space,
    people shown as initials in a circle, a state as a dot and a word, one action per row. No icons. */
 
-.console { min-height: 100vh; background: var(--console-paper); color: var(--console-nav); font-family: var(--sans); font-size: 14px; line-height: 1.5;
+.console { min-height: 100vh; background: var(--console-paper); color: var(--console-nav); font-family: var(--sans); font-size: 15px; line-height: 1.5;
   --line: #E3DED3; --line-soft: #EFEBE2; --ink-2: #6D6659; --ink-3: #8F887B; --hover: #F7F4EE; --card: #FFFFFF; --tint: #FBF7F1; --radius: 10px; --radius-s: 8px; }
 .console * { box-sizing: border-box; }
 .console h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
@@ -32,7 +32,8 @@
 
 .console-body { display: flex; min-height: calc(100vh - 58px); }
 .console-nav { width: 216px; flex: none; background: var(--console-nav); color: #B4AC9C; padding: 18px 12px; display: flex; flex-direction: column; gap: 2px; }
-.console-nav a { color: inherit; text-decoration: none; padding: 11px 14px; border-radius: var(--radius-s); font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.console-nav a { color: inherit; text-decoration: none; padding: 11px 14px; border-radius: var(--radius-s); font-size: 15px; display: flex; align-items: center; gap: 10px; }
+.console-nav a svg { flex: none; opacity: .85; }
 .console-nav a:hover { background: #2E2822; color: #fff; }
 .console-nav a.active { background: #332C25; color: #fff; font-weight: 600; }
 .console-nav .badge { margin-left: auto; background: #B23B2A; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; min-width: 20px; text-align: center; }
@@ -292,3 +293,44 @@
 .console label.check input { width: auto; height: auto; }
 .console .kinds-in-window { display: flex; gap: 10px; align-items: center; }
 .console label.check.small { font-size: 12px; }
+
+/* ---- the redesign: page headers, the now strip, cards, the checklist, people -------------------- */
+.console .bar.page { align-items: flex-start; margin-bottom: 20px; }
+.console .bar.page h1 { margin: 0; font-size: 26px; }
+.console .page-line { margin: 2px 0 0; color: var(--ink-3); font-size: 14px; }
+.console .searchbox { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 0 12px; height: 36px; color: var(--ink-3); }
+.console .searchbox input { border: 0; height: 34px; padding: 0; background: transparent; min-width: 220px; }
+.console .searchbox input:focus { outline: none; }
+.console .now { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.console .now .tile { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; color: var(--ink-3); min-width: 0; }
+.console .now .tile svg { flex: none; }
+.console .now .tile div { display: grid; min-width: 0; }
+.console .now .tile b { color: var(--console-nav); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.console .now .tile.warm { background: var(--tint); border-color: #EADFCF; color: var(--accent); }
+.console .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.console .card-link { display: grid; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; color: inherit; text-decoration: none; }
+.console .card-link:hover { border-color: var(--accent); }
+.console .card-link svg { color: var(--accent); }
+.console .card-link b { font-size: 16px; }
+.console .checklist ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.console .checklist li { display: flex; align-items: center; gap: 10px; }
+.console .checklist li svg { color: var(--ink-3); flex: none; }
+.console .checklist li.done svg { color: var(--ok); }
+.console .checklist li.done a { color: var(--ink-3); text-decoration: line-through; }
+.console .checklist a { color: var(--console-nav); font-weight: 600; text-decoration: none; }
+.console .crumb { margin: 0 0 12px; font-size: 14px; }
+.console .crumb a { color: var(--ink-3); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.console .person-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.console .person-head .who { flex: 1; min-width: 200px; }
+.console .person-head h1 { margin: 0; font-size: 24px; }
+.console table.people td a { color: inherit; text-decoration: none; }
+.console table.people td a:hover { color: var(--accent); }
+@media (max-width: 900px) {
+  .console .now { grid-template-columns: 1fr; gap: 8px; }
+  .console .now .tile { padding: 10px 12px; }
+  .console .cards { grid-template-columns: 1fr; }
+  .console .searchbox { width: 100%; }
+  .console .searchbox input { min-width: 0; width: 100%; }
+  .console-nav a span:not(.badge) { font-size: 11px; }
+  .console-nav a svg { width: 20px; height: 20px; }
+}

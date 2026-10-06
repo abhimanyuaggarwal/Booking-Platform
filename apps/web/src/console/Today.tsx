@@ -7,8 +7,10 @@ import { useBookForCaller, useOpenBooking } from './open-booking';
 import { useWords } from './lang';
 import WaitingPanel from './WaitingPanel';
 import CloseDay from './CloseDay';
+import { Link } from 'react-router-dom';
+import { CalendarClock, Users, AlertCircle, Check, Circle } from 'lucide-react';
 import { ATTENTION_TONE, groupAttention, Initials, StateTag } from './words';
-import type { AttentionRow, SessionRow, TodayReport } from './types';
+import type { AttentionRow, SessionRow, SetupState, TodayReport } from './types';
 
 // The operating screen, and nothing else. In the team's order: the next sitting, large; what needs
 // a decision, only if anything does; who is waiting, only when someone is; then the day as a list.
@@ -17,6 +19,7 @@ export default function Today() {
   const W = useWords();
   const today = useApi<TodayReport>('/today');
   const attention = useApi<AttentionRow[]>('/attention');
+  const setup = useApi<SetupState>('/setup');
   const [note, setNote] = useState<{ text: string; tone: 'ok' | 'problem' } | null>(null);
   const [closing, setClosing] = useState(false);
   const reloadToday = today.reload;
@@ -50,13 +53,13 @@ export default function Today() {
     <>
       {note && <p className={`banner ${note.tone}`}>{note.text}</p>}
       {closing && <CloseDay initialDate={todayYmd()} onDone={(r) => { setClosing(false); setNote({ text: W.closeDay.done({ date: r.date, moved: r.moved.filter((m) => m.ok).length, notified: r.notified, notDelivered: r.notDelivered.length, failed: r.moved.filter((m) => !m.ok).length, expiredHolds: r.expiredHolds }), tone: 'ok' }); reloadToday(); reloadAttention(); }} onCancel={() => setClosing(false)} />}
-      <TodayView report={today.data} attention={attention.data ?? []} onSendLink={sendLink} onTellGuru={tellGuru} onCannotSit={() => setClosing(true)} waitingPanel={<WaitingPanel />} />
+      <TodayView report={today.data} attention={attention.data ?? []} setup={setup.data ?? undefined} onSendLink={sendLink} onTellGuru={tellGuru} onCannotSit={() => setClosing(true)} waitingPanel={<WaitingPanel />} />
     </>
   );
 }
 
-export function TodayView({ report: r, attention, onSendLink, onTellGuru, onCannotSit, waitingPanel, now = toSlotId(nowInIst()) }: {
-  report: TodayReport; attention: AttentionRow[]; onSendLink?: (row: AttentionRow) => void; onTellGuru?: (b: SessionRow) => void; onCannotSit?: () => void; waitingPanel?: React.ReactNode; now?: string;
+export function TodayView({ report: r, attention, setup, onSendLink, onTellGuru, onCannotSit, waitingPanel, now = toSlotId(nowInIst()) }: {
+  report: TodayReport; attention: AttentionRow[]; setup?: SetupState; onSendLink?: (row: AttentionRow) => void; onTellGuru?: (b: SessionRow) => void; onCannotSit?: () => void; waitingPanel?: React.ReactNode; now?: string;
 }) {
   const W = useWords();
   const open = useOpenBooking();
@@ -69,13 +72,19 @@ export function TodayView({ report: r, attention, onSendLink, onTellGuru, onCann
 
   return (
     <>
-      <header className="bar">
-        <h1>{W.today.title}</h1>
-        <span className="muted">{r.dateLabel}</span>
+      <header className="bar page">
+        <div><h1>{W.today.title}</h1><p className="page-line">{r.dateLabel}</p></div>
         <span className="spacer" />
-        <span className="muted long">{sittings === 0 ? W.today.noSittings : W.today.count(sittings, openSlots)}</span>
         {onCannotSit && sittings > 0 && <button className="quiet" onClick={onCannotSit}>{W.today.cannotSit}</button>}
       </header>
+
+      <section className="now" aria-label={W.now.next}>
+        <div className="tile"><CalendarClock size={18} aria-hidden="true" /><div><span className="muted small">{W.now.next}</span><b>{next?.booking ? `${next.time} · ${next.booking.name}` : W.now.none}</b></div></div>
+        <div className={`tile ${toDecide.length ? 'warm' : ''}`}><AlertCircle size={18} aria-hidden="true" /><div><span className="muted small">{W.now.needs}</span><b>{toDecide.length || W.now.nothing}</b></div></div>
+        <div className="tile"><Users size={18} aria-hidden="true" /><div><span className="muted small">{W.now.sittings}</span><b>{W.now.of(sittings, openSlots)}</b></div></div>
+      </section>
+
+      {setup && Object.entries(setup).some(([k, v]) => k !== 'firstBooking' && !v) && <SetupChecklist setup={setup} />}
 
       {next?.booking && (
         <section className="nextcard" aria-label={W.today.nextSitting}>
@@ -146,6 +155,30 @@ export function NeedsYou({ rows, onSendLink, onDecide }: { rows: AttentionRow[];
           </div>
         </div>
       ))}
+    </section>
+  );
+}
+
+/** The five things a new guru's team sets before the first live. Shown on Today until all are done. */
+export function SetupChecklist({ setup }: { setup: SetupState }) {
+  const W = useWords();
+  const steps: { key: keyof SetupState; to: string }[] = [
+    { key: 'kinds', to: '/console/settings/kinds' }, { key: 'timings', to: '/console/settings/timings' },
+    { key: 'website', to: '/console/settings/website' }, { key: 'guruPhone', to: '/console/settings/messages' }, { key: 'qr', to: '/console/settings/qr' },
+  ];
+  return (
+    <section className="panel checklist" aria-label={W.setup.title}>
+      <h2>{W.setup.title}</h2>
+      <ul>
+        {steps.map(({ key, to }) => (
+          <li key={key} className={setup[key] ? 'done' : ''}>
+            {setup[key] ? <Check size={16} aria-hidden="true" /> : <Circle size={16} aria-hidden="true" />}
+            <Link to={to}>{W.setup[key as 'kinds' | 'timings' | 'website' | 'guruPhone' | 'qr']}</Link>
+            <span className="muted small">{setup[key] ? W.setup.done : W.setup.todo}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="muted small">{W.setup.foot}</p>
     </section>
   );
 }

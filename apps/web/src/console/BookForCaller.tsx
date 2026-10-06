@@ -7,11 +7,11 @@ import type { BookingRow, Settings, Source } from './types';
 // She rang, or walked in. The team books the time; she pays the link on WhatsApp, or the team
 // already has the dakshina in hand and the time is confirmed at once. Opens over any screen, with
 // the slot already chosen when she came from an open slot.
-export default function BookForCaller({ guruSlug, initialSlotId, onDone, onCancel }: {
-  guruSlug: string; initialSlotId?: string; onDone: (b: BookingRow) => void; onCancel: () => void;
+export default function BookForCaller({ guruSlug, initialSlotId, initialPhone, onDone, onCancel }: {
+  guruSlug: string; initialSlotId?: string; initialPhone?: string; onDone: (b: BookingRow) => void; onCancel: () => void;
 }) {
   const W = useWords();
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(initialPhone ?? '');
   const [name, setName] = useState('');
   const [forWhom, setForWhom] = useState('');
   const [slotId, setSlotId] = useState(initialSlotId ?? '');

@@ -8,6 +8,7 @@ import { consoleAuth } from './console-auth.js';
 import { findGuruBySlug, validatePattern, validateSite, updatePattern, updateSite } from './gurus.js';
 import {
   todayReport, weekReport, moneyReport, todayIst, mondayOf, attentionQueue, waitingBoard, closeDayPreview, bookingDetail, bookingRow,
+  listDevotees, devoteeDetail, setupState,
 } from './reports.js';
 import { listEvents, createEvent, updateEvent, deleteEvent, validateEvent } from './events.js';
 import { listQrCodes, createQrCode, QR_SOURCES } from './qr-codes.js';
@@ -193,6 +194,22 @@ export function consoleRoutes(env, conversation) {
     const note = await tell(() => conversation.sendNewTime({ guru: req.guru, devotee, booking: moved }));
     res.json({ booking: bookingRow({ ...moved, phone: devotee.phone, devotee_name: devotee.name }), notified: note.ok, notDelivered: note.reason ?? null });
   }));
+
+  // Everyone who has booked, and one person's whole history. The team's "who are our regulars".
+  router.get('/devotees', handle(async (req, res) => {
+    const q = typeof req.query.q === 'string' ? req.query.q.slice(0, 80) : '';
+    res.json(await listDevotees(req.guru, q));
+  }));
+
+  router.get('/devotees/:id', handle(async (req, res) => {
+    if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'No such devotee' });
+    const detail = await devoteeDetail(req.guru, req.params.id);
+    if (!detail) return res.status(404).json({ error: 'No such devotee' });
+    res.json(detail);
+  }));
+
+  // The go-live checklist a new guru's team sees on Today until everything is set.
+  router.get('/setup', handle(async (req, res) => res.json(await setupState(req.guru))));
 
   // Her WhatsApp name is a start, not a record. The team corrects it, or notes who the time is for.
   router.put('/devotees/:id', handle(async (req, res) => {

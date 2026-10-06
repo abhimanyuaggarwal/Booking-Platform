@@ -8,7 +8,8 @@ import Today from './Today';
 import Week from './Week';
 import Money from './Money';
 import Settings from './Settings';
-import More from './More';
+import Devotees from './Devotees';
+import DevoteePage from './DevoteePage';
 import BookingDrawer from './BookingDrawer';
 import BookForCaller from './BookForCaller';
 import { BookForCallerContext, OpenBookingContext } from './open-booking';
@@ -16,8 +17,8 @@ import { announceChange } from './changed';
 import { LangProvider, useWords } from './lang';
 import './console.css';
 
-// The team's working tool. One shared login; the api says who the guru is. Two screens for every
-// day (Today, Week) and More for what is weekly or set once (Money, Settings), in English or Hindi.
+// The team's working tool. One shared login; the api says who the guru is. Five named places —
+// Today, Calendar, Devotees, Money, Settings — in English or Hindi, nothing hidden under a "more".
 // The two things she does while someone is on the phone — find a person, book a time — live in the
 // top bar and work from every screen; the one booking drawer opens over whatever she was looking at.
 export default function ConsoleShell() {
@@ -28,7 +29,7 @@ function Shell() {
   const W = useWords();
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [params, setParams] = useSearchParams();
-  const [bookFor, setBookFor] = useState<{ open: boolean; slotId?: string }>({ open: false });
+  const [bookFor, setBookFor] = useState<{ open: boolean; slotId?: string; phone?: string }>({ open: false });
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => { api<Me>('/me').then(setMe).catch(() => setMe(null)); }, []);
   useEffect(() => {
@@ -43,7 +44,7 @@ function Shell() {
   const closeBooking = useCallback(() => {
     setParams((p) => { p.delete('booking'); return p; });
   }, [setParams]);
-  const startBookFor = useCallback((slotId?: string) => setBookFor({ open: true, slotId }), []);
+  const startBookFor = useCallback((slotId?: string, phone?: string) => setBookFor({ open: true, slotId, phone }), []);
   const openId = params.get('booking');
 
   if (me === undefined) return <div className="console"><main className="console-main"><p className="muted">{W.common.loading}</p></main></div>;
@@ -60,13 +61,15 @@ function Shell() {
               {notice && <p className="banner ok">{notice}</p>}
               <Routes>
                 <Route index element={<Today />} />
-                <Route path="week" element={<Week />} />
-                <Route path="more" element={<More />} />
+                <Route path="calendar" element={<Week />} />
+                <Route path="devotees" element={<Devotees />} />
+                <Route path="devotees/:id" element={<DevoteePage />} />
                 <Route path="money" element={<Money />} />
                 <Route path="settings/*" element={<Settings />} />
                 {/* The old addresses still work: bookmarks and links in chats survive the rebuild. */}
-                <Route path="calendar" element={<Navigate to="/console/week" replace />} />
-                <Route path="bookings" element={<Navigate to="/console/week" replace />} />
+                <Route path="week" element={<Navigate to="/console/calendar" replace />} />
+                <Route path="more" element={<Navigate to="/console/settings" replace />} />
+                <Route path="bookings" element={<Navigate to="/console/calendar" replace />} />
                 <Route path="attention" element={<Navigate to="/console" replace />} />
                 <Route path="*" element={<Navigate to="/console" replace />} />
               </Routes>
@@ -77,6 +80,7 @@ function Shell() {
             <BookForCaller
               guruSlug={me.guru.slug}
               initialSlotId={bookFor.slotId}
+              initialPhone={bookFor.phone}
               onCancel={() => setBookFor({ open: false })}
               onDone={(b) => {
                 setBookFor({ open: false });

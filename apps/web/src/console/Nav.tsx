@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import { Sun, CalendarDays, Users, IndianRupee, Settings as SettingsIcon } from 'lucide-react';
 import { describeSlot } from '@expert-sessions/shared';
 import { api } from './api';
 import { useOnChange } from './changed';
@@ -8,11 +9,10 @@ import { useLang, useWords } from './lang';
 import { groupAttention, Initials, stateWord } from './words';
 import type { AttentionRow, BookingRow } from './types';
 
-// Three places for every day: Today, Week, and More (Money and Settings, set once). Side rail on a
-// laptop, bottom tabs on a phone. Anything that needs the team shows as a count on Today.
+// Five places, each named for what the team does there: Today, Calendar, Devotees, Money,
+// Settings. Side rail on a laptop, bottom tabs on a phone. What needs the team shows as a count on Today.
 export default function Nav() {
   const W = useWords();
-  const { pathname } = useLocation();
   const [needs, setNeeds] = useState<number>(0);
   const load = () => api<AttentionRow[]>('/attention').then((rows) => setNeeds(groupAttention(rows).toDecide.length)).catch(() => {});
   useEffect(() => {
@@ -21,12 +21,13 @@ export default function Nav() {
     return () => clearInterval(t);
   }, []);
   useOnChange(load);
-  const onMore = /^\/console\/(more|money|settings)/.test(pathname);
   return (
     <nav className="console-nav" aria-label="Console">
-      <NavLink to="/console" end>{W.nav.today}{needs ? <span className="badge">{needs}</span> : null}</NavLink>
-      <NavLink to="/console/week">{W.nav.week}</NavLink>
-      <NavLink to="/console/more" className={onMore ? 'active' : undefined}>{W.nav.more}</NavLink>
+      <NavLink to="/console" end><Sun size={18} aria-hidden="true" /><span>{W.nav.today}</span>{needs ? <span className="badge">{needs}</span> : null}</NavLink>
+      <NavLink to="/console/calendar"><CalendarDays size={18} aria-hidden="true" /><span>{W.nav.calendar}</span></NavLink>
+      <NavLink to="/console/devotees"><Users size={18} aria-hidden="true" /><span>{W.nav.devotees}</span></NavLink>
+      <NavLink to="/console/money"><IndianRupee size={18} aria-hidden="true" /><span>{W.nav.money}</span></NavLink>
+      <NavLink to="/console/settings"><SettingsIcon size={18} aria-hidden="true" /><span>{W.nav.settings}</span></NavLink>
     </nav>
   );
 }

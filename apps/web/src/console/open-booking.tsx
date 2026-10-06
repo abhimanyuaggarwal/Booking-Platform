@@ -11,7 +11,7 @@ export function useOpenBooking() {
 
 // The other thing she does while someone is on the phone: hold a time for them. Any open slot on
 // any screen can start it with that slot already chosen.
-export type BookForCaller = (slotId?: string) => void;
+export type BookForCaller = (slotId?: string, phone?: string) => void;
 export const BookForCallerContext = createContext<BookForCaller>(() => {});
 export function useBookForCaller() {
   return useContext(BookForCallerContext);
