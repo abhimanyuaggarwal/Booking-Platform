@@ -418,3 +418,11 @@ test('the WhatsApp card walks the number in: add with a display name, then the c
   expect(html2).toContain('devotees write to +919876543210');
   expect(html2).toContain('Back to the shared number');
 });
+
+test('a stretch of five-minute open times reads as one line on Today, not a row per time', () => {
+  const opens = ['16:00', '16:05', '16:10', '16:15'].map((t) => ({ slotId: `slot:2026-09-16T${t}`, time: `${Number(t.slice(0, 2)) - 12}:${t.slice(3)} pm`, kind: 'open' as const, booking: null }));
+  const report = { ...today, timeline: [...today.timeline.filter((t) => t.booking), ...opens] };
+  const html = renderToStaticMarkup(<TodayView report={report} attention={[]} now="slot:2026-09-16T10:30" />);
+  expect(html).toContain('4 open times, 4:00 pm to 4:15 pm');
+  expect(html.split('open times').length).toBe(2);
+});

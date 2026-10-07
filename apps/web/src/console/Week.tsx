@@ -6,16 +6,21 @@ import { useBookForCaller, useOpenBooking } from './open-booking';
 import CloseDay from './CloseDay';
 import Meetups from './Meetups';
 import { useWords } from './lang';
+import { collapseOpen } from './runs';
 import { askedAbout, chipClass, StateTag } from './words';
 import type { CloseDayResult, GridDay, WeekEvent, WeekReport } from './types';
 
 // His week is one picture: every sitting, every open time, and his satsangs, lives and meetups in
 // the same seven columns. Every name opens its booking; every open time can be held for a caller.
-// The same week as a list, grouped by day, for scanning or a phone.
+// The week as a list by day, which is how the team reads it on a laptop; the grid is a click away.
+const VIEW_KEY = 'es_week_view';
+function storedView(): 'grid' | 'list' { try { return localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'list'; } catch { return 'list'; } }
+
 export default function Week() {
   const W = useWords();
   const [start, setStart] = useState(todayYmd());
-  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [view, setViewState] = useState<'grid' | 'list'>(storedView);
+  const setView = (v: 'grid' | 'list') => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* private window: the choice lasts the session */ } };
   const [closing, setClosing] = useState(false);
   const [schedule, setSchedule] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -38,8 +43,8 @@ export default function Week() {
         <span className="muted">{data ? `${data.label} · ${W.week.filled(data.filled, data.total)}` : ''}</span>
         <span className="spacer" />
         <div className="segmented long" role="tablist">
-          <button role="tab" aria-selected={view === 'grid'} className={view === 'grid' ? 'on' : undefined} onClick={() => setView('grid')}>{W.week.grid}</button>
           <button role="tab" aria-selected={view === 'list'} className={view === 'list' ? 'on' : undefined} onClick={() => setView('list')}>{W.week.list}</button>
+          <button role="tab" aria-selected={view === 'grid'} className={view === 'grid' ? 'on' : undefined} onClick={() => setView('grid')}>{W.week.grid}</button>
         </div>
         {!closing && <button onClick={() => { setClosing(true); setDone(null); }}>{W.week.cannotSit}</button>}
         <div className="segmented">
@@ -149,13 +154,13 @@ function DayCard({ day: d, index, times, events, onOpen, onBook }: { day: GridDa
       <h2>{W.week.days[index]} {d.dayOfMonth} <i>{d.closed ? W.week[d.closed === 'closed' ? 'closed' : 'noSittings'] : `${d.filled} / ${d.total}`}</i></h2>
       {events.map((e) => <p key={e.id} className="muted small dayevent">{W.week[e.kind]} · {e.title} · {e.time}</p>)}
       {d.closed && <p className="muted">{d.closed === 'closed' ? W.week.closedNobody : W.week.noSittingsLine}</p>}
-      {!d.closed && slots.map((s) => s.booking ? (
-        <button key={s.slotId} className={`line ev ${chipClass(s.booking.status)}`} onClick={() => onOpen(s.booking!.id)}>
-          <span className="time">{shortTime(s.slotId.slice(16))}</span><b>{s.booking.name}</b>{s.booking.minutes ? <span className="muted small">{s.booking.minutes} min</span> : null}<StateTag status={s.booking.status} />
+      {!d.closed && collapseOpen(slots).map((g) => g.kind === 'one' ? (
+        <button key={g.item.slotId} className={`line ev ${chipClass(g.item.booking!.status)}`} onClick={() => onOpen(g.item.booking!.id)}>
+          <span className="time">{shortTime(g.item.slotId.slice(16))}</span><b>{g.item.booking!.name}</b>{g.item.booking!.minutes ? <span className="muted small">{g.item.booking!.minutes} min</span> : null}<StateTag status={g.item.booking!.status} />
         </button>
       ) : (
-        <button key={s.slotId} className="line open" onClick={() => onBook(s.slotId)}>
-          <span className="time">{shortTime(s.slotId.slice(16))}</span><span className="muted">{W.week.bookIt}</span>
+        <button key={g.items[0].slotId} className="line open" onClick={() => onBook(g.items[0].slotId)}>
+          <span className="time">{shortTime(g.items[0].slotId.slice(16))}</span><span className="muted">{g.items.length > 1 ? `${W.week.openRun(shortTime(g.items[g.items.length - 1].slotId.slice(16)), g.items.length)} · ` : ''}{W.week.bookIt}</span>
         </button>
       ))}
       {d.extra.map((b) => (

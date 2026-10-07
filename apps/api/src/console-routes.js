@@ -304,7 +304,10 @@ export function consoleRoutes(env, conversation) {
   }).catch(next));
 
   router.delete('/admin/gurus/:slug/whatsapp', auth.requireAdmin, (req, res, next) => numberStep(req, res, async (g) => {
-    await updateWhatsappSetup(g.id, { whatsapp_phone_number_id: null, whatsapp_display_name: null, whatsapp_number_pending: null, whatsapp_status: 'none', whatsapp_pin_enc: null, whatsapp_last_error: null, whatsapp_number: env.WHATSAPP_DISPLAY_NUMBER ?? null });
+    const back = { whatsapp_phone_number_id: null, whatsapp_display_name: null, whatsapp_number_pending: null, whatsapp_status: 'none', whatsapp_pin_enc: null, whatsapp_last_error: null };
+    // Devotees write to the shared number again. Without it on record, his number stays as it was rather than becoming nothing.
+    if (env.WHATSAPP_DISPLAY_NUMBER) back.whatsapp_number = env.WHATSAPP_DISPLAY_NUMBER;
+    await updateWhatsappSetup(g.id, back);
     await audit({ guruId: g.id, user: req.user, action: 'whatsapp.disconnected', detail: {} });
   }).catch(next));
 

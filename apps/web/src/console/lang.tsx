@@ -18,7 +18,7 @@ export const WORDS = {
       nextSitting: 'Next sitting', nowSitting: 'Now', wishes: 'Wishes to speak about', voiceNote: 'has sent a voice note', firstTime: 'First time', visit: (n: number) => `${n}${n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'} visit`,
       tellGuru: 'Tell guruji', told: 'Guruji has a note on his WhatsApp.', open: 'Open', nothingNeeds: 'Nothing to do right now.',
       needsOne: 'One thing to do', needsMany: (n: number) => `${n} things to do`, sendLinkAgain: 'Send the link again', decide: 'Decide',
-      cannotSit: 'Guruji cannot sit today', sittings: "Today's sittings", time: 'Time', who: 'Who', state: 'State', openSlot: 'open', bookIt: 'book',
+      cannotSit: 'Guruji cannot sit today', sittings: "Today's sittings", time: 'Time', who: 'Who', state: 'State', openSlot: 'open', bookIt: 'book', openRun: (from: string, to: string, n: number) => `${n} open times, ${from} to ${to}`,
       linkSent: (name: string) => `${name} has the pay link again; the time is held for ten minutes.`,
     },
     waiting: {
@@ -34,7 +34,7 @@ export const WORDS = {
     },
     week: {
       title: 'Week', grid: 'Grid', list: 'List', thisWeek: 'This week', cannotSit: 'Guruji cannot sit on a day', filled: (a: number, b: number) => `${a} of ${b} filled`,
-      days: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'], his: 'his', rest: 'afternoon — rest', closed: 'closed', noSittings: 'no sittings', open: 'open', bookIt: 'open · book',
+      days: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'], his: 'his', rest: 'afternoon — rest', closed: 'closed', noSittings: 'no sittings', open: 'open', bookIt: 'open · book', openRun: (to: string, n: number) => `${n} open times until ${to}`,
       legend: { paid: 'paid', hold: 'paying', done: 'done', noshow: 'did not join', open: 'open', shut: 'day closed' },
       outside: 'Also booked outside his current timings:', schedule: 'His schedule', thisWeekCount: (n: number) => `${n} this week`,
       scheduleHint: 'Satsangs, lives and meetups appear on his website and, in the week above, on their day.', addEvent: 'Add or change a satsang, live or meetup', hide: 'Hide',
@@ -165,7 +165,7 @@ export const WORDS = {
       nextSitting: 'अगली बैठक', nowSitting: 'अभी', wishes: 'बात करना चाहते हैं', voiceNote: 'आवाज़ का संदेश भेजा है', firstTime: 'पहली बार', visit: (n: number) => `${n}वीं बार`,
       tellGuru: 'गुरुजी को बताएँ', told: 'गुरुजी के व्हाट्सऐप पर संदेश चला गया।', open: 'खोलें', nothingNeeds: 'अभी कुछ करने को नहीं है।',
       needsOne: 'एक काम बाकी', needsMany: (n: number) => `${n} काम बाकी`, sendLinkAgain: 'लिंक फिर भेजें', decide: 'तय करें',
-      cannotSit: 'आज गुरुजी नहीं बैठेंगे', sittings: 'आज की बैठकें', time: 'समय', who: 'कौन', state: 'स्थिति', openSlot: 'खाली', bookIt: 'बुक करें',
+      cannotSit: 'आज गुरुजी नहीं बैठेंगे', sittings: 'आज की बैठकें', time: 'समय', who: 'कौन', state: 'स्थिति', openSlot: 'खाली', bookIt: 'बुक करें', openRun: (from: string, to: string, n: number) => `${from} से ${to} तक ${n} खाली समय`,
       linkSent: (name: string) => `${name} को भुगतान लिंक फिर भेजा; समय दस मिनट के लिए रोका है।`,
     },
     waiting: {
@@ -181,7 +181,7 @@ export const WORDS = {
     },
     week: {
       title: 'सप्ताह', grid: 'तालिका', list: 'सूची', thisWeek: 'यह सप्ताह', cannotSit: 'किसी दिन गुरुजी नहीं बैठेंगे', filled: (a: number, b: number) => `${b} में से ${a} भरे`,
-      days: ['सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'], his: 'गुरुजी', rest: 'दोपहर — विश्राम', closed: 'बंद', noSittings: 'बैठक नहीं', open: 'खाली', bookIt: 'खाली · बुक करें',
+      days: ['सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'], his: 'गुरुजी', rest: 'दोपहर — विश्राम', closed: 'बंद', noSittings: 'बैठक नहीं', open: 'खाली', bookIt: 'खाली · बुक करें', openRun: (to: string, n: number) => `${to} तक ${n} खाली समय`,
       legend: { paid: 'दक्षिणा मिली', hold: 'भुगतान बाकी', done: 'हो गया', noshow: 'नहीं आए', open: 'खाली', shut: 'दिन बंद' },
       outside: 'तय समय के बाहर भी बुक:', schedule: 'गुरुजी का कार्यक्रम', thisWeekCount: (n: number) => `इस सप्ताह ${n}`,
       scheduleHint: 'सत्संग, लाइव और मिलन गुरुजी की वेबसाइट पर और ऊपर सप्ताह में उनके दिन पर दिखते हैं।', addEvent: 'सत्संग, लाइव या मिलन जोड़ें या बदलें', hide: 'छिपाएँ',

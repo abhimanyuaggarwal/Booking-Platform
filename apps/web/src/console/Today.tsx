@@ -5,6 +5,7 @@ import { todayYmd } from './format';
 import { useOnChange } from './changed';
 import { useBookForCaller, useOpenBooking } from './open-booking';
 import { useWords } from './lang';
+import { collapseOpen } from './runs';
 import WaitingPanel from './WaitingPanel';
 import CloseDay from './CloseDay';
 import { Link } from 'react-router-dom';
@@ -116,16 +117,16 @@ export function TodayView({ report: r, attention, setup, onSendLink, onTellGuru,
           <table className="rows">
             <thead><tr><th>{W.today.time}</th><th>{W.today.who}</th><th>{W.today.state}</th></tr></thead>
             <tbody>
-              {r.timeline.map((t) => t.booking ? (
-                <tr key={t.slotId} className={`clickable ${t.booking.id === nextId ? 'next' : ''}`} onClick={() => open(t.booking!.id)}>
-                  <td className="time">{t.time}</td>
-                  <td className="person-cell"><Initials name={t.booking.name} size="s" /><span><b>{t.booking.name}</b>{t.booking.forWhom && <span className="muted"> · {t.booking.forWhom}</span>}{t.booking.minutes ? <span className="muted"> · {W.drawer.minutes(t.booking.minutes)}</span> : null}</span></td>
-                  <td><StateTag status={t.booking.status} /></td>
+              {collapseOpen(r.timeline).map((g) => g.kind === 'one' ? (
+                <tr key={g.item.slotId} className={`clickable ${g.item.booking!.id === nextId ? 'next' : ''}`} onClick={() => open(g.item.booking!.id)}>
+                  <td className="time">{g.item.time}</td>
+                  <td className="person-cell"><Initials name={g.item.booking!.name} size="s" /><span><b>{g.item.booking!.name}</b>{g.item.booking!.forWhom && <span className="muted"> · {g.item.booking!.forWhom}</span>}{g.item.booking!.minutes ? <span className="muted"> · {W.drawer.minutes(g.item.booking!.minutes)}</span> : null}</span></td>
+                  <td><StateTag status={g.item.booking!.status} /></td>
                 </tr>
               ) : (
-                <tr key={t.slotId} className="clickable open" onClick={() => bookFor(t.slotId)}>
-                  <td className="time">{t.time}</td>
-                  <td className="muted" colSpan={2}>{W.today.openSlot} · {W.today.bookIt}</td>
+                <tr key={g.items[0].slotId} className="clickable open" onClick={() => bookFor(g.items[0].slotId)}>
+                  <td className="time">{g.items[0].time}</td>
+                  <td className="muted" colSpan={2}>{g.items.length === 1 ? W.today.openSlot : W.today.openRun(g.items[0].time, g.items[g.items.length - 1].time, g.items.length)} · {W.today.bookIt}</td>
                 </tr>
               ))}
             </tbody>
