@@ -51,7 +51,10 @@ If a task seems to need one of these, stop and say so instead of building it.
 - **Postgres via `pg` with plain SQL migrations** in `apps/api/db/migrations/*.sql`. No ORM. One
   `db.js` module exports a pool and a `migrate()` that runs files in order.
 - **WhatsApp:** Meta Cloud API directly (`apps/api/src/whatsapp.js`). Interactive reply buttons
-  (max 3) and list messages (max 10 rows). No BSP SDK.
+  (max 3) and list messages (max 10 rows). No BSP SDK. **Per guru since 2026-10-07:** each guru gets his own
+  number, registered under Slike's one WhatsApp Business Account from the console's Setup area and switched on
+  by guruji's approval on WhatsApp (`whatsapp.clientFor(guru, env)`); the shared number serves him until then.
+  His calendar app's manifest is made per guru, so the installed app carries his name.
 - **Payments (per guru since 2026-10-07):** each guru's own Razorpay keys, stored encrypted (`SECRETS_KEY`), connected by a
   Slike admin and approved by guruji on WhatsApp; Slike's keys serve a guru who has none yet. Razorpay Orders + Checkout on our own page `/pay/:bookingId` (UPI first); confirmed by the
   `order.paid` webhook and by the signed Checkout result, idempotently. Payment Links were retired on

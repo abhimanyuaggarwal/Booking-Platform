@@ -106,6 +106,7 @@ const EN = {
   // to guruji
   // to guruji: his Yes to a change
   approvalAsk: ({ summary, by }) => `${by} at Samvad asks to connect ${summary} as the account your dakshina lands in. Nothing changes until you approve.`,
+  numberAsk: ({ summary, by }) => `${by} at Samvad asks to make ${summary} the WhatsApp number your devotees write to. Nothing changes until you approve.`,
   approve: 'Approve', decline: 'Decline',
   approvalThanks: () => 'Approved. The change is made.',
   approvalDeclined: () => 'Declined. Nothing was changed.',
@@ -189,6 +190,7 @@ const HI = {
   soon: ({ guruName }) =>
     `${guruName} के साथ आपका समय लगभग दस मिनट में शुरू होगा। तैयार हों तो यह लिंक खोलें।`,
   approvalAsk: ({ summary, by }) => `संवाद से ${by} ${summary} को उस खाते के रूप में जोड़ना चाहते हैं जिसमें आपकी दक्षिणा आएगी। आपकी मंज़ूरी के बिना कुछ नहीं बदलेगा।`,
+  numberAsk: ({ summary, by }) => `संवाद से ${by} ${summary} को वह व्हाट्सऐप नंबर बनाना चाहते हैं जिस पर आपके भक्त लिखेंगे। आपकी मंज़ूरी के बिना कुछ नहीं बदलेगा।`,
   approve: 'मंज़ूर', decline: 'नामंज़ूर',
   approvalThanks: () => 'मंज़ूर। बदलाव कर दिया गया।',
   approvalDeclined: () => 'नामंज़ूर। कुछ नहीं बदला।',

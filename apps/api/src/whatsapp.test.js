@@ -1,7 +1,8 @@
 // Reading Meta's webhook body. The shapes are from the Cloud API docs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseInbound } from './whatsapp.js';
+import { parseInbound, clientFor, numbers } from './whatsapp.js';
+import { ProviderError } from './errors.js';
 
 function inbound(message, contacts = [{ profile: { name: 'Priya Nair' }, wa_id: '919829012345' }]) {
   return { entry: [{ changes: [{ value: {
@@ -41,4 +42,16 @@ test('delivery and read receipts are ignored', () => {
   const statusUpdate = { entry: [{ changes: [{ value: { statuses: [{ status: 'delivered' }] } }] }] };
   assert.equal(parseInbound(statusUpdate), null);
   assert.equal(parseInbound({}), null);
+});
+
+test('a guru speaks from his own number only once it is live; before that every note comes from the shared number', () => {
+  const env = { WHATSAPP_PHONE_NUMBER_ID: 'shared-id', WHATSAPP_TOKEN: 't' };
+  assert.equal(clientFor({ whatsapp_status: 'registered', whatsapp_phone_number_id: 'his-id' }, env).phoneNumberId, 'shared-id');
+  assert.equal(clientFor({ whatsapp_status: 'live', whatsapp_phone_number_id: 'his-id' }, env).phoneNumberId, 'his-id');
+  assert.equal(clientFor(null, env).phoneNumberId, 'shared-id');
+});
+
+test('adding a number needs the business account id in .env, and the error says where it comes from', () => {
+  assert.throws(() => numbers({ WHATSAPP_TOKEN: 't' }).add({ countryCode: '91', nationalNumber: '9876543210', displayName: 'Samvad · Bhagwat' }),
+    (err) => err instanceof ProviderError && /WHATSAPP_BUSINESS_ACCOUNT_ID/.test(err.message));
 });

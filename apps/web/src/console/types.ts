@@ -163,9 +163,14 @@ export interface PaymentsState {
   connected: boolean; keyId: string; mode: 'test' | 'live' | null; connectedAt: string | null; verifiedAt: string | null;
   webhookUrl: string; pending: { id: string; summary: string; requestedBy: string | null; createdAt: string } | null; canApprove: boolean; secretsReady: boolean;
 }
+export type NumberStatus = 'none' | 'added' | 'code_sent' | 'verified' | 'registered' | 'live' | 'failed';
+export interface WhatsappState {
+  status: NumberStatus; displayName: string | null; number: string | null; phoneNumberId: boolean; connectedAt: string | null; lastError: string | null;
+  pending: { id: string; summary: string; requestedBy: string | null; createdAt: string } | null; canApprove: boolean; sharedNumber: string | null; wabaReady: boolean;
+}
 export interface GuruSummary {
   slug: string; name: string; language: 'en' | 'hi'; status: GuruStatus; domain: string | null; subdomain: string | null;
-  payments: PaymentsState;
+  payments: PaymentsState; whatsapp: WhatsappState;
   subscription: Subscription; business: Business; activatedAt: string | null;
   readiness: ReadinessStep[]; done: number; total: number; readyToGoLive: boolean;
 }

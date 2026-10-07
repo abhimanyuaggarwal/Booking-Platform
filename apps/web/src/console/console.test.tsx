@@ -364,6 +364,7 @@ const draft: GuruDetail = {
   slug: 'bhagwat', name: 'Bhagwat', language: 'hi', status: 'setting_up', domain: null, subdomain: 'bhagwat.samvad.sli.ke',
   subscription: { plan: 'Pilot', feePaise: 999900, status: 'trial', nextDueOn: '2026-11-01' }, business: {}, activatedAt: null,
   payments: { connected: false, keyId: '', mode: null, connectedAt: null, verifiedAt: null, webhookUrl: 'https://samvad.sli.ke/razorpay/webhook/bhagwat', pending: null, canApprove: true, secretsReady: true },
+  whatsapp: { status: 'none', displayName: null, number: null, phoneNumberId: false, connectedAt: null, lastError: null, pending: null, canApprove: true, sharedNumber: '15551626471', wabaReady: true },
   readiness: [
     { key: 'identity', done: true, required: true }, { key: 'address', done: true, required: true, detail: 'subdomain' }, { key: 'team', done: false, required: true },
     { key: 'sittings', done: true, required: true }, { key: 'payments', done: false, required: false, detail: 'shared' }, { key: 'whatsapp', done: false, required: false, detail: 'shared' },
@@ -404,4 +405,16 @@ test('the Payments card asks for the three Razorpay secrets and shows the webhoo
   expect(html2).toContain('rzp_live_…1234');
   expect(html2).toContain('Check the connection');
   expect(html2).not.toContain('placeholder="rzp_live_…"');
+});
+
+test('the WhatsApp card walks the number in: add with a display name, then the code, then guruji; live, it says which number', () => {
+  const html = renderToStaticMarkup(<StaticRouter location="/console/gurus/bhagwat"><GuruSetupView g={draft} me={me} onChanged={() => {}} /></StaticRouter>);
+  expect(html).toContain('His WhatsApp number');
+  expect(html).toContain('value="Samvad · Bhagwat"');
+  expect(html).toContain('Add the number to Slike’s account');
+  expect(html).toContain('Already registered in Meta’s WhatsApp Manager?');
+  const live = { ...draft, whatsapp: { ...draft.whatsapp, status: 'live' as const, displayName: 'Samvad · Bhagwat', number: '919876543210', phoneNumberId: true, connectedAt: '2026-10-07T10:00:00Z' } };
+  const html2 = renderToStaticMarkup(<StaticRouter location="/console/gurus/bhagwat"><GuruSetupView g={live} me={me} onChanged={() => {}} /></StaticRouter>);
+  expect(html2).toContain('devotees write to +919876543210');
+  expect(html2).toContain('Back to the shared number');
 });

@@ -27,7 +27,6 @@ import { audit } from './audit.js';
 
 export function whatsappDoor(env, conversation) {
   const router = express.Router();
-  const wa = whatsapp.client(env);
   const pendingSource = new Map(); // phone -> source, remembered until she picks a slot (in memory; lost on restart)
 
   // ---------------------------------------------------------------------------
@@ -342,10 +341,12 @@ export function whatsappDoor(env, conversation) {
     if (!guru.guru_phone || from !== String(guru.guru_phone).replace(/\D/g, '')) return;
     const decision = await approvals.decide({ id, approved: verb === 'approve', key: secretsKey(env) });
     const W = wordsFor(guru.language);
-    if (!decision) return wa.text(from, W.approvalGone());
+    const reply = whatsapp.clientFor(guru, env);
+    if (!decision) return reply.text(from, W.approvalGone());
     if (decision.approved && decision.kind === 'payments') await gurus.connectRazorpay(guru.id, decision.payload);
+    if (decision.approved && decision.kind === 'whatsapp') await gurus.goLiveOnNumber(guru.id, decision.payload);
     await audit({ guruId: guru.id, user: { id: 'guruji', name: guru.name }, action: decision.approved ? `${decision.kind}.approved` : `${decision.kind}.rejected`, detail: {} });
-    await wa.text(from, decision.approved ? W.approvalThanks() : W.approvalDeclined());
+    await reply.text(from, decision.approved ? W.approvalThanks() : W.approvalDeclined());
   }
 
   // "Hi" always means she wants a time, whatever else is in flight.

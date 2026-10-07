@@ -7,7 +7,7 @@ import { describeSlot } from '@expert-sessions/shared';
 import { consoleAuth, readCookie } from './console-auth.js';
 import { listUsers, validateUser, createUser, deactivateUser, findUser } from './console-users.js';
 import * as whatsapp from './whatsapp.js';
-import { findGuruBySlug, findGuruById, listGurus, validatePattern, validateSite, updatePattern, updateSite, validateNewGuru, createGuru, validateSetup, updateSetup, setGuruStatus, subdomainOf, GURU_STATUSES, validateRazorpayKeys, connectRazorpay, markRazorpayVerified, disconnectRazorpay } from './gurus.js';
+import { findGuruBySlug, findGuruById, listGurus, validatePattern, validateSite, updatePattern, updateSite, validateNewGuru, createGuru, validateSetup, updateSetup, setGuruStatus, subdomainOf, GURU_STATUSES, validateRazorpayKeys, connectRazorpay, markRazorpayVerified, disconnectRazorpay, validateNumberRequest, updateWhatsappSetup } from './gurus.js';
 import { encrypt, secretsKey, maskKey } from './secrets.js';
 import { requestApproval, pendingApproval } from './approvals.js';
 import { audit, auditTrail } from './audit.js';
@@ -124,8 +124,14 @@ export function consoleRoutes(env, conversation) {
       listSessionTypes(g.id), listQrCodes(g), listUsers({ guruId: g.id }),
     ]);
     const steps = readiness({ guru: g, sessionTypes: types, qrCount: qr.length, teamCount: team.filter((u) => u.active).length, publicHost: env.PUBLIC_HOST });
-    const pending = await pendingApproval(g.id, 'payments');
+    const [pending, pendingNumber] = await Promise.all([pendingApproval(g.id, 'payments'), pendingApproval(g.id, 'whatsapp')]);
     return {
+      whatsapp: {
+        status: g.whatsapp_status ?? 'none', displayName: g.whatsapp_display_name, number: g.whatsapp_status === 'live' ? g.whatsapp_number : g.whatsapp_number_pending,
+        phoneNumberId: Boolean(g.whatsapp_phone_number_id), connectedAt: g.whatsapp_connected_at ? g.whatsapp_connected_at.toISOString() : null,
+        lastError: g.whatsapp_last_error, pending: pendingNumber, canApprove: Boolean(g.guru_phone), sharedNumber: env.WHATSAPP_DISPLAY_NUMBER ?? null,
+        wabaReady: Boolean(env.WHATSAPP_BUSINESS_ACCOUNT_ID),
+      },
       payments: {
         connected: Boolean(g.razorpay_connected_at), keyId: maskKey(g.razorpay_key_id), mode: g.razorpay_mode,
         connectedAt: g.razorpay_connected_at ? g.razorpay_connected_at.toISOString() : null, verifiedAt: g.razorpay_verified_at ? g.razorpay_verified_at.toISOString() : null,
@@ -228,6 +234,79 @@ export function consoleRoutes(env, conversation) {
     await audit({ guruId: g.id, user: req.user, action: 'payments.disconnected', detail: {} });
     res.json(await guruSummary(await findGuruBySlug(g.slug)));
   }));
+
+  // ---- his WhatsApp number, under Slike's business account (admin only) ------------------------
+  const numbers = whatsapp.numbers(env);
+  async function numberStep(req, res, work) {
+    const g = await findGuruBySlug(req.params.slug);
+    if (!g) return res.status(404).json({ error: 'No such guru' });
+    try {
+      await work(g);
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+      await updateWhatsappSetup(g.id, { whatsapp_status: 'failed', whatsapp_last_error: err.message });
+      return res.status(502).json({ error: err.message, ...(await guruSummary(await findGuruBySlug(g.slug))) });
+    }
+    res.json(await guruSummary(await findGuruBySlug(g.slug)));
+  }
+
+  // 1. Add the number to Slike's account with his display name. Meta answers with its id for the number.
+  router.post('/admin/gurus/:slug/whatsapp', auth.requireAdmin, (req, res, next) => numberStep(req, res, async (g) => {
+    const problem = validateNumberRequest(req.body);
+    if (problem) throw Object.assign(new BookingRuleError(problem), { status: 400 });
+    const digits = String(req.body.phone).replace(/\D/g, '');
+    const cc = digits.startsWith('91') && digits.length === 12 ? '91' : digits.slice(0, digits.length - 10);
+    const added = await numbers.add({ countryCode: cc, nationalNumber: digits.slice(cc.length), displayName: req.body.displayName.trim() });
+    await updateWhatsappSetup(g.id, { whatsapp_phone_number_id: added.id, whatsapp_display_name: req.body.displayName.trim(), whatsapp_number_pending: digits, whatsapp_status: 'added', whatsapp_last_error: null });
+    await audit({ guruId: g.id, user: req.user, action: 'whatsapp.added', detail: { displayName: req.body.displayName.trim() } });
+  }).catch(next));
+
+  // 1b. A number already registered in Meta's dashboard: paste its id and skip to the approval.
+  router.post('/admin/gurus/:slug/whatsapp/manual', auth.requireAdmin, (req, res, next) => numberStep(req, res, async (g) => {
+    const problem = validateNumberRequest(req.body);
+    if (problem) throw Object.assign(new BookingRuleError(problem), { status: 400 });
+    if (!/^\d{6,}$/.test(String(req.body.phoneNumberId ?? ''))) throw Object.assign(new BookingRuleError('The phone number id is the long number Meta shows under the number in WhatsApp Manager'), { status: 400 });
+    await updateWhatsappSetup(g.id, { whatsapp_phone_number_id: String(req.body.phoneNumberId), whatsapp_display_name: req.body.displayName.trim(), whatsapp_number_pending: String(req.body.phone).replace(/\D/g, ''), whatsapp_status: 'registered', whatsapp_last_error: null });
+    await audit({ guruId: g.id, user: req.user, action: 'whatsapp.manual', detail: {} });
+  }).catch(next));
+
+  // 2. Meta sends a code to the SIM, by SMS or a call.
+  router.post('/admin/gurus/:slug/whatsapp/code', auth.requireAdmin, (req, res, next) => numberStep(req, res, async (g) => {
+    if (!g.whatsapp_phone_number_id) throw Object.assign(new BookingRuleError('Add the number first'), { status: 409 });
+    await numbers.requestCode({ phoneNumberId: g.whatsapp_phone_number_id, method: req.body?.method === 'VOICE' ? 'VOICE' : 'SMS' });
+    await updateWhatsappSetup(g.id, { whatsapp_status: 'code_sent', whatsapp_last_error: null });
+  }).catch(next));
+
+  // 3. The code from the SIM, then registration with a two-step PIN we keep encrypted.
+  router.post('/admin/gurus/:slug/whatsapp/verify', auth.requireAdmin, (req, res, next) => numberStep(req, res, async (g) => {
+    if (!g.whatsapp_phone_number_id) throw Object.assign(new BookingRuleError('Add the number first'), { status: 409 });
+    if (!/^\d{6}$/.test(String(req.body?.code ?? ''))) throw Object.assign(new BookingRuleError('The code is six digits'), { status: 400 });
+    await numbers.verifyCode({ phoneNumberId: g.whatsapp_phone_number_id, code: String(req.body.code) });
+    const pin = String(Math.floor(100000 + Math.random() * 900000));
+    await numbers.register({ phoneNumberId: g.whatsapp_phone_number_id, pin });
+    const key = secretsKey(env);
+    await updateWhatsappSetup(g.id, { whatsapp_status: 'registered', whatsapp_pin_enc: key ? encrypt(pin, key) : null, whatsapp_last_error: null });
+    await audit({ guruId: g.id, user: req.user, action: 'whatsapp.registered', detail: {} });
+  }).catch(next));
+
+  // 4. Guruji's Yes: from then on devotees write to his number and every message comes from it.
+  router.post('/admin/gurus/:slug/whatsapp/go-live', auth.requireAdmin, (req, res, next) => numberStep(req, res, async (g) => {
+    if (g.whatsapp_status !== 'registered') throw Object.assign(new BookingRuleError('The number must be registered first'), { status: 409 });
+    if (!g.guru_phone) throw Object.assign(new BookingRuleError('Guruji has no WhatsApp number yet, so he cannot approve this. Add it under Settings, Messages, first.'), { status: 409 });
+    const number = g.whatsapp_number_pending ?? '';
+    if (!/^\d{10,15}$/.test(number)) throw Object.assign(new BookingRuleError('The number itself is missing; go back to the shared number and add it again'), { status: 409 });
+    const key = secretsKey(env);
+    if (!key) throw Object.assign(new BookingRuleError('SECRETS_KEY is not set on the server'), { status: 503 });
+    const summary = `+${number} (${g.whatsapp_display_name})`;
+    const approval = await requestApproval({ guru: g, kind: 'whatsapp', payload: { phoneNumberId: g.whatsapp_phone_number_id, number, displayName: g.whatsapp_display_name }, summary, requestedBy: req.user.name, key });
+    await conversation.askGuru({ guru: g, text: conversation.wordsFor(g.language).numberAsk({ summary, by: req.user.name || 'Slike' }), approvalId: approval.id });
+    await audit({ guruId: g.id, user: req.user, action: 'whatsapp.requested', detail: { summary } });
+  }).catch(next));
+
+  router.delete('/admin/gurus/:slug/whatsapp', auth.requireAdmin, (req, res, next) => numberStep(req, res, async (g) => {
+    await updateWhatsappSetup(g.id, { whatsapp_phone_number_id: null, whatsapp_display_name: null, whatsapp_number_pending: null, whatsapp_status: 'none', whatsapp_pin_enc: null, whatsapp_last_error: null, whatsapp_number: env.WHATSAPP_DISPLAY_NUMBER ?? null });
+    await audit({ guruId: g.id, user: req.user, action: 'whatsapp.disconnected', detail: {} });
+  }).catch(next));
 
   // ---- who has access (admin only) ------------------------------------------------------------
   router.get('/admin/users', auth.requireAdmin, handle(async (req, res) => {
@@ -517,7 +596,7 @@ export function consoleRoutes(env, conversation) {
 
   // A rule said no, or a provider did: a sentence, not a 500.
   router.use((err, _req, res, next) => {
-    if (err instanceof BookingRuleError) return res.status(409).json({ error: err.message });
+    if (err instanceof BookingRuleError) return res.status(err.status ?? 409).json({ error: err.message });
     if (err instanceof ProviderError) return res.status(502).json({ error: err.message });
     next(err);
   });

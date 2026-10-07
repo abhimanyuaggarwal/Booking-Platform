@@ -7,6 +7,17 @@ import { ProviderError } from './errors.js';
 
 const GRAPH_URL = 'https://graph.facebook.com/v21.0';
 
+/**
+ * The client that speaks as this guru: his own number when it is live, the platform's number
+ * otherwise. Every number lives under Slike's WhatsApp Business Account, so the token is one.
+ */
+export function clientFor(guru, env) {
+  if (guru?.whatsapp_status === 'live' && guru.whatsapp_phone_number_id) {
+    return client({ ...env, WHATSAPP_PHONE_NUMBER_ID: guru.whatsapp_phone_number_id });
+  }
+  return client(env);
+}
+
 export function client(env) {
   const url = `${GRAPH_URL}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
   const headers = { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` };
@@ -22,6 +33,7 @@ export function client(env) {
   }
 
   return {
+    phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,   // which number speaks, for tests and the console
     text(to, body) {
       return send({ to, type: 'text', text: { body } });
     },
@@ -60,6 +72,42 @@ export function client(env) {
           action: { name: 'cta_url', parameters: { display_text: buttonLabel, url: href } },
         },
       });
+    },
+  };
+}
+
+/**
+ * Putting a new number under Slike's WhatsApp Business Account, the way Meta's dashboard does it,
+ * step by step: add the number with its display name, have Meta send a code to the SIM, verify it,
+ * then register the number with a two-step PIN. Each call answers with Meta's own error text when it
+ * fails, so the panel can show the admin what to fix. Needs WHATSAPP_BUSINESS_ACCOUNT_ID in .env.
+ * Docs: https://developers.facebook.com/docs/whatsapp/cloud-api/reference/phone-numbers
+ */
+export function numbers(env) {
+  const headers = { Authorization: `Bearer ${env.WHATSAPP_TOKEN}` };
+  async function call(path, body) {
+    try {
+      const res = await axios.post(`${GRAPH_URL}/${path}`, body, { headers });
+      return res.data;
+    } catch (err) {
+      const detail = err.response ? JSON.stringify(err.response.data) : err.message;
+      throw new ProviderError(`Meta refused ${path}: ${detail}`);
+    }
+  }
+  return {
+    /** @returns {{id: string}} Meta's id for the number */
+    add({ countryCode, nationalNumber, displayName }) {
+      if (!env.WHATSAPP_BUSINESS_ACCOUNT_ID) throw new ProviderError('WHATSAPP_BUSINESS_ACCOUNT_ID is not set in .env; it is the WhatsApp Business Account id in Meta Business Manager');
+      return call(`${env.WHATSAPP_BUSINESS_ACCOUNT_ID}/phone_numbers`, { cc: countryCode, phone_number: nationalNumber, verified_name: displayName });
+    },
+    requestCode({ phoneNumberId, method = 'SMS', language = 'en_US' }) {
+      return call(`${phoneNumberId}/request_code`, { code_method: method, language });
+    },
+    verifyCode({ phoneNumberId, code }) {
+      return call(`${phoneNumberId}/verify_code`, { code });
+    },
+    register({ phoneNumberId, pin }) {
+      return call(`${phoneNumberId}/register`, { messaging_product: 'whatsapp', pin });
     },
   };
 }

@@ -19,7 +19,7 @@ import { wordsFor } from './devotee-words.js';
 export const copy = wordsFor('en');
 
 export function createConversation(env) {
-  const wa = whatsapp.client(env);
+  const waFor = (guru) => whatsapp.clientFor(guru, env);   // his own number once it is live, the platform's until then
 
   /**
    * Talk to one devotee and keep the record: every message becomes a messages_log row, delivered or
@@ -28,6 +28,7 @@ export function createConversation(env) {
    */
   function speak(guru, devotee, bookingId = null) {
     const to = devotee.phone;
+    const wa = waFor(guru);
     const record = (kind, payload) =>
       logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId, direction: 'out', kind, payload });
 
@@ -111,7 +112,7 @@ export function createConversation(env) {
     if (!guru.guru_phone) throw new BookingRuleError('Guruji has no WhatsApp number yet. Add it in Settings, His website, and try again.');
     const payload = { body: text, to: 'guru' };
     try {
-      await wa.text(guru.guru_phone, text);
+      await waFor(guru).text(guru.guru_phone, text);
     } catch (err) {
       if (!(err instanceof ProviderError)) throw err;
       await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: booking.id, direction: 'out', kind, payload: { ...payload, delivered: false, reason: err.message } });
@@ -125,7 +126,7 @@ export function createConversation(env) {
     if (!guru.guru_phone) throw new BookingRuleError('Guruji has no WhatsApp number yet. Add it in Settings, Messages, and try again.');
     const W = wordsFor(guru.language);
     try {
-      await wa.buttons(guru.guru_phone, text, [{ id: `approve:${approvalId}`, title: W.approve }, { id: `reject:${approvalId}`, title: W.decline }]);
+      await waFor(guru).buttons(guru.guru_phone, text, [{ id: `approve:${approvalId}`, title: W.approve }, { id: `reject:${approvalId}`, title: W.decline }]);
     } catch (err) {
       if (!(err instanceof ProviderError)) throw err;
       await logMessage({ guruId: guru.id, devoteeId: null, bookingId: null, direction: 'out', kind: 'approval.guru', payload: { body: text, to: 'guru', delivered: false, reason: err.message } }).catch(() => {});
@@ -218,7 +219,7 @@ export function createConversation(env) {
       result = { landed: 'room', at };
     } else {
       try {
-        await wa.text(devotee.phone, text);
+        await waFor(guru).text(devotee.phone, text);
         result = { landed: 'whatsapp', at };
       } catch (err) {
         if (!(err instanceof ProviderError)) throw err;

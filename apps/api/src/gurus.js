@@ -9,7 +9,8 @@ const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
 // closed_dates comes back as 'YYYY-MM-DD' strings, the form availableSlots() compares against.
 const COLUMNS = `id, slug, domain, name, about, marketing_json, dakshina_paise, whatsapp_number, guru_phone, language,
   pattern_json, closed_dates::text[] as closed_dates, created_at, status, subscription_json, business_json, activated_at,
-  razorpay_key_id, razorpay_secret_enc, razorpay_webhook_secret_enc, razorpay_mode, razorpay_connected_at, razorpay_verified_at`;
+  razorpay_key_id, razorpay_secret_enc, razorpay_webhook_secret_enc, razorpay_mode, razorpay_connected_at, razorpay_verified_at,
+  whatsapp_phone_number_id, whatsapp_display_name, whatsapp_number_pending, whatsapp_status, whatsapp_pin_enc, whatsapp_connected_at, whatsapp_last_error`;
 
 export async function findGuruBySlug(slug) {
   const { rows } = await query(`select ${COLUMNS} from gurus where slug = $1`, [slug]);
@@ -264,5 +265,32 @@ export async function disconnectRazorpay(guruId) {
   const { rows } = await query(
     `update gurus set razorpay_key_id = null, razorpay_secret_enc = null, razorpay_webhook_secret_enc = null, razorpay_mode = null,
             razorpay_connected_at = null, razorpay_verified_at = null where id = $1 returning ${COLUMNS}`, [guruId]);
+  return rows[0];
+}
+
+// ---- His own WhatsApp number ----------------------------------------------------------------------
+
+export function validateNumberRequest(body) {
+  const name = String(body?.displayName ?? '').trim();
+  if (name.length < 2 || name.length > 40) return 'A display name of 2 to 40 characters, as devotees will see it';
+  if (!/^\d{10,15}$/.test(String(body?.phone ?? '').replace(/\D/g, ''))) return 'The number with its country code, like 919876543210, from a SIM that has never been on WhatsApp';
+  return null;
+}
+
+/** Where the number's setup stands. `patch` carries only what changed. */
+export async function updateWhatsappSetup(guruId, patch) {
+  const allowed = ['whatsapp_phone_number_id', 'whatsapp_display_name', 'whatsapp_number_pending', 'whatsapp_status', 'whatsapp_pin_enc', 'whatsapp_last_error', 'whatsapp_number'];
+  const keys = Object.keys(patch).filter((k) => allowed.includes(k));
+  const sets = keys.map((k, i) => `${k} = $${i + 2}`);
+  const { rows } = await query(`update gurus set ${sets.join(', ')} where id = $1 returning ${COLUMNS}`, [guruId, ...keys.map((k) => patch[k])]);
+  return rows[0];
+}
+
+/** Guruji approved: devotees now write to this number, and every message to them comes from it. */
+export async function goLiveOnNumber(guruId, { phoneNumberId, number, displayName }) {
+  const { rows } = await query(
+    `update gurus set whatsapp_phone_number_id = $2, whatsapp_number = $3, whatsapp_display_name = $4, whatsapp_status = 'live',
+            whatsapp_number_pending = null, whatsapp_connected_at = now(), whatsapp_last_error = null where id = $1 returning ${COLUMNS}`,
+    [guruId, phoneNumberId, number, displayName]);
   return rows[0];
 }

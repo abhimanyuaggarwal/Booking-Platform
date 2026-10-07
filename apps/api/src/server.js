@@ -6,7 +6,7 @@ import 'dotenv/config';
 import http from 'node:http';
 import express from 'express';
 import { whatsappDoor } from './whatsapp-door.js';
-import { routes } from './routes.js';
+import { routes, manifestRoute } from './routes.js';
 import { consoleRoutes } from './console-routes.js';
 import { ensureFirstAdmin } from './console-users.js';
 import { findGuruById } from './gurus.js';
@@ -37,6 +37,7 @@ app.use(payRoutes(env, conversation));
 app.use(sessionRoutes(env, conversation));
 // Production: the same process serves the built web app, so /join/:id, /console and /guru are
 // pages here rather than the dev-only redirect in routes.js. Mounted before routes() on purpose.
+app.use(manifestRoute());      // his app's manifest is made per guru, so it answers before the files on disk
 if (env.WEB_DIST) app.use(serveWeb(env.WEB_DIST));
 app.use(routes());
 app.use((err, _req, res, _next) => {

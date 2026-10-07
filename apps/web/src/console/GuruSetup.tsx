@@ -69,6 +69,7 @@ export function GuruSetupView({ g, me, justCreated = false, onChanged }: { g: Gu
       </div>
       <DomainCard g={g} onChanged={onChanged} />
       <PaymentsCard g={g} onChanged={onChanged} />
+      <WhatsappCard g={g} onChanged={onChanged} />
 
       <section className="panel">
         <h2>{W.gurus.steps.team.title} <i>{W.gurus.teamOf(g.team.length)}</i></h2>
@@ -101,13 +102,14 @@ function Step({ n, step: st, g, onOpen, onGoLive }: { n: number; step: Readiness
         <h3>{n}. {words.title} <span className={`muted small ${st.required ? 'req' : ''}`}>{st.required ? W.gurus.required : W.gurus.optional}</span></h3>
         <p className="muted">{words.why}</p>
         {st.key === 'address' && <p className="small">{g.domain ?? g.subdomain ?? `/s/${g.slug}`}</p>}
-        {shared && <p className="small muted">{W.gurus.shared}{st.key === 'whatsapp' ? ` · ${W.gurus.soon}` : ''}</p>}
+        {shared && <p className="small muted">{W.gurus.shared}</p>}
       </div>
       <div className="do">
         {link && <button onClick={() => onOpen(link)}>{words.action}</button>}
         {st.key === 'address' && <a href="#domain" className="btn">{words.action}</a>}
         {st.key === 'business' && <a href="#business" className="btn">{words.action}</a>}
         {st.key === 'payments' && <a href="#payments" className="btn">{words.action}</a>}
+        {st.key === 'whatsapp' && <a href="#whatsapp" className="btn">{words.action}</a>}
         {st.key === 'live' && !st.done && <button className="primary" disabled={!g.readyToGoLive} onClick={onGoLive}>{words.action}</button>}
         <span className={`muted small ${st.done ? 'ok' : ''}`}>{st.done ? W.gurus.done : W.gurus.todo}</span>
       </div>
@@ -234,6 +236,88 @@ function PaymentsCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }
             <p className="mono"><code>{pay.webhookUrl}</code></p>
             <div className="row"><button className="primary" disabled={busy || !pay.canApprove || !pay.secretsReady}>{P.send}</button></div>
           </form>
+        </>
+      )}
+    </section>
+  );
+}
+
+function WhatsappCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }) {
+  const W = useWords();
+  const N = W.gurus.whatsapp;
+  const wa = g.whatsapp;
+  const [displayName, setDisplayName] = useState(wa.displayName ?? `Samvad · ${g.name}`);
+  const [phone, setPhone] = useState('');
+  const [phoneNumberId, setPhoneNumberId] = useState('');
+  const [code, setCode] = useState('');
+  const [note, setNote] = useState<{ text: string; tone: 'ok' | 'problem' } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  async function act(work: () => Promise<string>) {
+    setBusy(true); setNote(null);
+    try { setNote({ text: await work(), tone: 'ok' }); onChanged(); } catch (err) { setNote({ text: (err as Error).message, tone: 'problem' }); onChanged(); } finally { setBusy(false); }
+  }
+  const post = (path: string, json?: unknown) => api(`/admin/gurus/${g.slug}/whatsapp${path}`, { method: 'POST', json });
+  const stage = wa.status;
+
+  return (
+    <section className="panel" id="whatsapp">
+      <h2>{N.title} <i>{N.statusWords[stage]}</i></h2>
+      {note && <p className={`banner ${note.tone}`}>{note.text}</p>}
+      {wa.lastError && stage === 'failed' && <p className="banner problem">{N.failed(wa.lastError)}</p>}
+      {stage === 'live' ? (
+        <>
+          <p className="ok-line"><Check size={16} aria-hidden="true" /> {N.live(wa.displayName ?? '', wa.number ?? '', when(wa.connectedAt!))}</p>
+          <div className="row"><button className="quiet" disabled={busy} onClick={() => { if (window.confirm(N.confirmDisconnect)) act(async () => { await api(`/admin/gurus/${g.slug}/whatsapp`, { method: 'DELETE' }); return W.gurus.saved; }); }}>{N.disconnect}</button></div>
+        </>
+      ) : wa.pending ? (
+        <p className="banner ok">{N.pending(wa.pending.summary, wa.pending.requestedBy ?? 'Slike', when(wa.pending.createdAt))}</p>
+      ) : (
+        <>
+          <p className="muted">{N.shared(wa.sharedNumber ?? '')}</p>
+          {(stage === 'none' || stage === 'failed') && (
+            <>
+              <p className="muted small">{N.rule}</p>
+              {!wa.wabaReady && <p className="banner problem">{N.noWaba}</p>}
+              <form onSubmit={(e) => { e.preventDefault(); act(async () => { await post('', { displayName, phone }); return N.added; }); }}>
+                <div className="row">
+                  <label>{N.displayName}<input value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} required /></label>
+                  <label>{N.phone}<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="91 98765 43210" required /></label>
+                </div>
+                <p className="muted small">{N.displayNameNote}</p>
+                <div className="row"><button className="primary" disabled={busy || !wa.wabaReady}>{N.add}</button></div>
+              </form>
+              <h3 style={{ marginTop: 18 }}>{N.manualTitle}</h3>
+              <p className="muted small">{N.manualLine}</p>
+              <form onSubmit={(e) => { e.preventDefault(); act(async () => { await post('/manual', { displayName, phone, phoneNumberId }); return N.registered; }); }}>
+                <div className="row">
+                  <label>{N.displayName}<input value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} required /></label>
+                  <label>{N.phone}<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" required /></label>
+                  <label>{N.phoneNumberId}<input value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} inputMode="numeric" required /></label>
+                </div>
+                <div className="row"><button disabled={busy}>{N.useManual}</button></div>
+              </form>
+            </>
+          )}
+          {stage === 'added' && (
+            <div className="row"><button className="primary" disabled={busy} onClick={() => act(async () => { await post('/code', { method: 'SMS' }); return N.codeSent; })}>{N.sendSms}</button><button disabled={busy} onClick={() => act(async () => { await post('/code', { method: 'VOICE' }); return N.codeSent; })}>{N.sendCall}</button></div>
+          )}
+          {(stage === 'code_sent' || stage === 'verified') && (
+            <form onSubmit={(e) => { e.preventDefault(); act(async () => { await post('/verify', { code }); return N.registered; }); }}>
+              <div className="row"><label>{N.code}<input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} required /></label></div>
+              <div className="row"><button className="primary" disabled={busy}>{N.verify}</button><button type="button" className="quiet" disabled={busy} onClick={() => act(async () => { await post('/code', { method: 'SMS' }); return N.codeSent; })}>{N.sendSms}</button></div>
+            </form>
+          )}
+          {stage === 'registered' && (
+            <>
+              <p className="muted">{N.registered}</p>
+              <form onSubmit={(e) => { e.preventDefault(); act(async () => { await post('/go-live', { phone }); return N.sentToGuru; }); }}>
+                <div className="row"><label>{N.phone}<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="91 98765 43210" required /></label></div>
+                <div className="row"><button className="primary" disabled={busy || !wa.canApprove}>{N.goLive}</button><button type="button" className="quiet" disabled={busy} onClick={() => { if (window.confirm(N.confirmDisconnect)) act(async () => { await api(`/admin/gurus/${g.slug}/whatsapp`, { method: 'DELETE' }); return W.gurus.saved; }); }}>{N.disconnect}</button></div>
+                {!wa.canApprove && <p className="banner problem">{W.gurus.payments.noPhone}</p>}
+              </form>
+            </>
+          )}
         </>
       )}
     </section>

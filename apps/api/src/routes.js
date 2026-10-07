@@ -6,6 +6,7 @@ import { availableSlots, describeSlot, slotIdToInstant } from '@expert-sessions/
 import * as bookings from './bookings.js';
 import { listSessionTypes, publicType } from './session-types.js';
 import * as gurus from './gurus.js';
+import { resolveGuru } from './tenancy.js';
 import { query } from './db.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -93,4 +94,29 @@ export function routes() {
 export function platformHosts() {
   const list = [process.env.PUBLIC_HOST ?? '', ...(process.env.EXTRA_HOSTS ?? '').split(',')];
   return new Set(list.map((h) => h.trim().toLowerCase()).filter(Boolean));
+}
+
+/** His installable screen's manifest, named for the guru whose address this is. Mounted before the static files. */
+export function manifestRoute() {
+  const router = express.Router();
+  // His installable screen is named for him on his own address: the manifest says his name and uses
+  // his portrait as the icon when his website has one. On the platform's own host it stays generic.
+  router.get('/guru.webmanifest', async (req, res, next) => {
+    try {
+      const guru = await resolveGuru(req).catch(() => null);
+      const portrait = guru?.marketing_json?.hero?.portrait || null;
+      const icons = portrait
+        ? [{ src: portrait, sizes: '512x512', type: 'image/jpeg', purpose: 'any' }, { src: '/guru-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }]
+        : [{ src: '/guru-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' }, { src: '/guru-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }, { src: '/guru-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }];
+      res.type('application/manifest+json').json({
+        name: guru ? `${guru.name} · Samvad` : "Guruji's day", short_name: guru ? guru.name.slice(0, 12) : 'His day',
+        description: 'The times he is sitting today, and one tap to join each one.',
+        start_url: '/guru', scope: '/guru', display: 'standalone', orientation: 'portrait', background_color: '#F4F1EA', theme_color: '#231F19', icons,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  return router;
 }
