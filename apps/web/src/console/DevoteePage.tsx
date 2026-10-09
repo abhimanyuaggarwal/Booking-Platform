@@ -1,3 +1,4 @@
+import { rowKeys } from './a11y';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { describeSlot, formatRupees } from '@expert-sessions/shared';
@@ -40,7 +41,7 @@ export function DevoteeView({ d }: { d: DevoteeDetail }) {
           <table className="rows">
             <tbody>
               {d.bookings.map((b) => (
-                <tr key={b.id} className="clickable" onClick={() => open(b.id)}>
+                <tr key={b.id} className="clickable" onClick={() => open(b.id)} {...rowKeys(() => open(b.id))}>
                   <td className="time">{describeSlot(b.slotId)}</td>
                   <td className="muted">{b.minutes ? W.drawer.minutes(b.minutes) : ''}{b.complimentary ? ` · ${W.drawer.complimentary}` : b.dakshinaPaise != null ? ` · ${formatRupees(b.dakshinaPaise)}` : ''}</td>
                   <td><StateTag status={b.status} /></td>

@@ -1,5 +1,5 @@
 // Run with: pnpm test   (node --test picks up every *.test.js)
-import { test } from 'node:test';
+import { isValidSlotId, isValidYmd, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { availableSlots, sittingStep, describeSlot, describeDate, slotIdToInstant, instantToSlotId } from './slots.js';
 
@@ -101,4 +101,14 @@ test('instant -> slot id -> instant round-trips, so bookings.slot_start and slot
 
 test('a date reads as a full day name for console headers', () => {
   assert.equal(describeDate('2026-09-16'), 'Wednesday, 16 September');
+});
+
+test('a slot id or a date must exist on the calendar, not merely look right', () => {
+  assert.equal(isValidSlotId('slot:2026-09-17T10:30'), true);
+  assert.equal(isValidSlotId('slot:2026-13-45T99:99'), false);
+  assert.equal(isValidSlotId('slot:2026-02-30T10:00'), false);
+  assert.equal(isValidSlotId('2026-09-17T10:30'), false);
+  assert.equal(isValidYmd('2026-09-17'), true);
+  assert.equal(isValidYmd('2026-13-01'), false);
+  assert.equal(isValidYmd('2026-99-99'), false);
 });

@@ -1,3 +1,4 @@
+import { formatRupees } from '@expert-sessions/shared';
 import { FormEvent, useState } from 'react';
 import { api, useApi } from './api';
 import SlotPicker from './SlotPicker';
@@ -47,13 +48,13 @@ export default function BookForCaller({ guruSlug, initialSlotId, initialPhone, o
         <div className="fields">
           <label>{W.booking.phone}<input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="91 98765 43210" inputMode="tel" required autoFocus /></label>
           <div className="two">
-            <label>{W.booking.name}<input value={name} onChange={(e) => setName(e.target.value)} /></label>
-            <label>{W.booking.forWhom}<input value={forWhom} onChange={(e) => setForWhom(e.target.value)} /></label>
+            <label>{W.booking.name}<input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} /></label>
+            <label>{W.booking.forWhom}<input value={forWhom} onChange={(e) => setForWhom(e.target.value)} maxLength={80} /></label>
           </div>
           {kinds.length > 1 && (
             <label>{W.booking.kind}
               <select value={kind?.id ?? ''} onChange={(e) => { setTypeId(e.target.value); setSlotId(''); }}>
-                {kinds.map((t) => <option key={t.id} value={t.id}>{t.minutes} min · ₹{Math.round(t.dakshinaPaise / 100)}{t.name ? ` · ${t.name}` : ''}</option>)}
+                {kinds.map((t) => <option key={t.id} value={t.id}>{t.minutes} min · {formatRupees(t.dakshinaPaise)}{t.name ? ` · ${t.name}` : ''}</option>)}
               </select>
             </label>
           )}

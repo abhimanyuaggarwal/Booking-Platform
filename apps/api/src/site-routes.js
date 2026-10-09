@@ -4,7 +4,7 @@
 // change to a booking through bookings.js, exactly as on the other doors.
 
 import express from 'express';
-import { availableSlots, describeSlot, instantToSlotId, slotIdToInstant, formatRupees } from '@expert-sessions/shared';
+import { availableSlots, describeSlot, instantToSlotId, slotIdToInstant, formatRupees, isValidSlotId } from '@expert-sessions/shared';
 import { withGuru } from './tenancy.js';
 import { devoteeAuth, normalisePhone } from './devotee-auth.js';
 import { availabilityOf } from './gurus.js';
@@ -17,12 +17,17 @@ import { waLink, GREETINGS } from './qr-codes.js';
 import * as bookings from './bookings.js';
 import * as devotees from './devotees.js';
 import { BookingRuleError, ProviderError } from './errors.js';
+import * as whatsapp from './whatsapp.js';
+import { wordsFor } from './devotee-words.js';
+import { limiter, TOO_MANY } from './rate-limit.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const SLOT = /^slot:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
-
 export function siteRoutes(env, conversation) {
-  const auth = devoteeAuth(env);
+  // The code rides WhatsApp, from the guru's own number when it is live (whatsapp.clientFor).
+  const auth = devoteeAuth(env, { sendCode: (guru, phone, code) => whatsapp.clientFor(guru, env).text(phone, wordsFor(guru.language).signInCode({ code, guruName: guru.name })) });
+  const codesPerPhone = limiter({ max: 3, windowMs: 10 * 60000 });
+  const codesPerAddress = limiter({ max: 20, windowMs: 10 * 60000 });
+  const triesPerPhone = limiter({ max: 10, windowMs: 10 * 60000 });
   const router = express.Router();
   router.use(withGuru);
 
@@ -53,7 +58,7 @@ export function siteRoutes(env, conversation) {
     const phone = normalisePhone(req.body?.phone);
     const { slotId, question } = req.body ?? {};
     if (!phone) return res.status(400).json({ error: 'Your WhatsApp number, with the country code' });
-    if (!SLOT.test(slotId ?? '')) return res.status(400).json({ error: 'Choose a time' });
+    if (!isValidSlotId(slotId ?? '')) return res.status(400).json({ error: 'Choose a time' });
     if (req.guru.status && req.guru.status !== 'live') return res.status(409).json({ error: 'Booking is not open just now. Please write to his team on WhatsApp.' });
     const type = await typeFrom(req);
 
@@ -76,6 +81,8 @@ export function siteRoutes(env, conversation) {
       id: b.id, slotId: b.slotId, when: describeSlot(b.slotId), status: b.status,
       minutes: b.minutes, dakshinaPaise: b.dakshina_paise, guruName: req.guru.name,
       joinUrl: b.status === 'confirmed' ? conversation.joinLink(b, req.guru) : null,
+      payUrl: b.status === 'held' ? conversation.payLink(b, req.guru) : null,
+      refundDays: REFUND_DAYS,
     });
   }));
 
@@ -84,13 +91,22 @@ export function siteRoutes(env, conversation) {
   router.post('/otp/request', handle(async (req, res) => {
     const phone = normalisePhone(req.body?.phone);
     if (!phone) return res.status(400).json({ error: 'Your WhatsApp number, with the country code' });
-    res.json(auth.requestCode(req.guru.id, phone));
+    if (!codesPerAddress(req.ip) || !codesPerPhone(`${req.guru.id}:${phone}`)) return res.status(429).json({ error: TOO_MANY });
+    try {
+      res.json(await auth.requestCode(req.guru, phone));
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+      // Meta will not carry a first message to a number that has never written to us. Writing Hi opens that door.
+      const number = req.guru.whatsapp_number ? `+${String(req.guru.whatsapp_number).replace(/\D/g, '')}` : 'his WhatsApp number';
+      res.status(502).json({ error: `We could not send the code on WhatsApp. Write Hi to ${number} on WhatsApp first, then ask for the code again.` });
+    }
   }));
 
   router.post('/otp/verify', handle(async (req, res) => {
     const phone = normalisePhone(req.body?.phone);
     if (!phone) return res.status(400).json({ error: 'Your WhatsApp number, with the country code' });
-    if (!auth.verifyCode(req.guru.id, phone, req.body?.code)) {
+    if (!triesPerPhone(`${req.guru.id}:${phone}`)) return res.status(429).json({ error: TOO_MANY });
+    if (!auth.verifyCode(req.guru, phone, req.body?.code)) {
       return res.status(401).json({ error: 'That code does not match. Ask for another.' });
     }
     // Signing in creates her row if she has never booked, so "my sessions" opens either way.
@@ -108,7 +124,7 @@ export function siteRoutes(env, conversation) {
 
   router.post('/me/bookings/:id/cancel', requireDevotee, handle(async (req, res) => {
     const b = await herBooking(req, res); if (!b) return;
-    const problem = bookings.whyCannotCancel(b);
+    const problem = bookings.ruleSentence(bookings.whyCannotCancel(b));
     if (problem) return res.status(409).json({ error: problem });
     const { booking, amountPaise, how } = await cancelAndRefund({ booking: b, pay: razorpay.clientFor(req.guru, env) });
     const note = await tell(() => conversation.sendCancelledNote({ guru: req.guru, devotee: req.devotee, booking, amountPaise, how }));
@@ -121,9 +137,9 @@ export function siteRoutes(env, conversation) {
 
   router.post('/me/bookings/:id/reschedule', requireDevotee, handle(async (req, res) => {
     const b = await herBooking(req, res); if (!b) return;
-    const problem = bookings.whyCannotReschedule(b);
+    const problem = bookings.ruleSentence(bookings.whyCannotReschedule(b));
     if (problem) return res.status(409).json({ error: problem });
-    if (!SLOT.test(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Choose the new time' });
+    if (!isValidSlotId(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Choose the new time' });
     await bookings.assertBookable(req.guru, req.body.slotId, { type: { id: b.session_type_id, minutes: b.minutes } }); // the same kind of sitting moves
     const moved = await bookings.rescheduleBooking({ bookingId: b.id, slotId: req.body.slotId });
     if (!moved) return res.status(409).json({ error: 'That time was just taken. Please choose another.' });
@@ -133,7 +149,7 @@ export function siteRoutes(env, conversation) {
 
   // She cancelled earlier and books again with the credit: confirmed at once, no payment page.
   router.post('/me/book-with-credit', requireDevotee, handle(async (req, res) => {
-    if (!SLOT.test(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Choose a time' });
+    if (!isValidSlotId(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Choose a time' });
     const type = await typeFrom(req);
     const credit = await creditFor(req.guru.id, req.devotee.id);
     if (credit.balancePaise < type.dakshina_paise) return res.status(409).json({ error: 'Your credit does not cover this dakshina. Please book and pay as usual.' });
@@ -187,8 +203,8 @@ export function siteRoutes(env, conversation) {
     const mine = rows.map((b) => ({
       id: b.id, slotId: b.slotId, when: describeSlot(b.slotId), status: b.status, minutes: b.minutes, dakshinaPaise: b.dakshina_paise,
       joinUrl: b.status === 'confirmed' ? conversation.joinLink(b, req.guru) : null,
-      cannotReschedule: bookings.whyCannotReschedule(b, now),
-      cannotCancel: bookings.whyCannotCancel(b, now),
+      cannotReschedule: bookings.ruleSentence(bookings.whyCannotReschedule(b, now)),
+      cannotCancel: bookings.ruleSentence(bookings.whyCannotCancel(b, now)),
     }));
     return {
       devotee: { name: req.devotee.name, phoneTail: req.devotee.phone.slice(-4) },

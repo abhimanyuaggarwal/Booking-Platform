@@ -15,7 +15,7 @@ const NOT_OPEN: Record<string, string> = {
   cancelled: 'This time was cancelled.',
   rescheduled: 'This time was moved. The newer link on your WhatsApp is the one to use.',
   refunded: 'Guruji could not sit at this time, and the dakshina was returned.',
-  completed: 'This session has already taken place.',
+  completed: 'This sitting has already taken place.',
   no_show: 'This time has passed.',
 };
 
@@ -25,7 +25,6 @@ export default function Pay() {
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<'ready' | 'opening' | 'confirming' | 'paid'>('ready');
   const [note, setNote] = useState<string | null>(null);
-  const base = guruSlug ? `/s/${guruSlug}` : '';
 
   const load = async () => {
     const res = await fetch(`/api/pay/${bookingId}`);
@@ -35,6 +34,8 @@ export default function Pay() {
     return body as PayView;
   };
   useEffect(() => { load(); }, [bookingId]);
+  // His own domain serves her pages at the root; the platform host serves them under /s/<slug>. The api knows which this is.
+  const base = guruSlug ? `/s/${guruSlug}` : (view?.siteBase ?? '');
 
   // After Checkout reports success, the api confirms with Razorpay; if the bank is still settling,
   // the page asks again every few seconds rather than leaving her guessing.
@@ -86,12 +87,12 @@ export default function Pay() {
         <h1>Your time is confirmed</h1>
         <p>{view.when} with {view.guru.name}. {view.dakshina} paid.</p>
         <p className="muted">Your booking is on your WhatsApp. The join link comes there ten minutes before your time.</p>
-        <Link className="primary" to={`${base}/booked/${bookingId}`}>See the details</Link>
+        <Link className="primary" to={`${base}/booked/${bookingId}?paid=1`}>See the details</Link>
       </Shell>
     );
   }
   if (view.status !== 'held') {
-    return <Shell><h1>This link is no longer open</h1><p className="muted">{NOT_OPEN[view.status] ?? 'This payment link is no longer open.'}</p><Link className="ghost" to={`/s/${view.guru.slug}`}>Choose a time</Link></Shell>;
+    return <Shell><h1>This link is no longer open</h1><p className="muted">{NOT_OPEN[view.status] ?? 'This payment link is no longer open.'}</p><Link className="ghost" to={base || '/'}>Choose a time</Link></Shell>;
   }
   return (
     <Shell>
@@ -100,7 +101,7 @@ export default function Pay() {
       <p>{view.when} with {view.guru.name}.</p>
       {phase === 'confirming'
         ? <p className="ok">Confirming with the bank. This takes a moment.</p>
-        : <button className="primary" disabled={phase === 'opening'} onClick={payNow}>{phase === 'opening' ? 'Opening UPI' : `Pay ${view.dakshina} by UPI`}</button>}
+        : <button className="primary" disabled={phase === 'opening'} onClick={payNow}>{phase === 'opening' ? 'Opening the payment' : `Pay ${view.dakshina}`}</button>}
       {note && <p className="muted">{note}</p>}
       <p className="held">This time is held for you for {view.holdMinutes} minutes. Nothing is booked until the dakshina is paid.</p>
     </Shell>

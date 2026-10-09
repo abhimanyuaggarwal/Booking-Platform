@@ -84,7 +84,7 @@ export async function startSession({ guru, bookingId, video }) {
 /** Guruji taps End. The booking is completed and her screen becomes the closing one. */
 export async function endSession({ guru, bookingId }) {
   const session = await findSessionByBooking(bookingId);
-  if (!session || session.guru_id !== guru.id) throw new Error(`Booking ${bookingId} has no session`);
+  if (!session || session.guru_id !== guru.id) throw new BookingRuleError('That sitting has no session to end. Reload his day.');
   if (!session.started_at) throw new BookingRuleError('That session has not started');
 
   const { rows: [ended] } = await query(
@@ -102,14 +102,16 @@ export async function endSession({ guru, bookingId }) {
  */
 export async function closeAbandonedSessions() {
   const { rows } = await query(
-    `update sessions set ended_at = now()
-      where started_at is not null and ended_at is null
-        and started_at < now() - make_interval(mins => $1::int)
-      returning booking_id, started_at, ended_at`,
+    `update sessions s set ended_at = now()
+       from bookings b
+      where b.id = s.booking_id and s.started_at is not null and s.ended_at is null
+        and s.started_at < now() - make_interval(mins => $1::int)
+      returning s.booking_id, s.started_at, s.ended_at, b.minutes`,
     [ABANDON_AFTER_MINUTES]);
 
   for (const row of rows) {
-    const minutes = Math.max(1, Math.round((row.ended_at - row.started_at) / 60000));
+    // Nobody tapped End, so the clock says 90; the sitting was as long as it was booked for.
+    const minutes = row.minutes ?? Math.max(1, Math.round((row.ended_at - row.started_at) / 60000));
     // A booking that was cancelled or refunded in the meantime cannot complete; the session is
     // closed either way, which is the part that matters.
     try {

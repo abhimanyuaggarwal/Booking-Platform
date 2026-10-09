@@ -77,7 +77,7 @@ test('the confirmed page says the join link went to WhatsApp, with no countdown'
 
 test('while the bank is slow she is told in words, and her time is safe', () => {
   const html = renderToStaticMarkup(<StaticRouter location="/s/guruji/booked/1">
-    <ConfirmedView base="/s/guruji" stillWaiting booking={{ id: '1', slotId: slots[0].id, when: slots[0].when, status: 'held', dakshinaPaise: 50000, guruName: guru.name, joinUrl: null }} />
+    <ConfirmedView base="/s/guruji" stillWaiting paid booking={{ id: '1', slotId: slots[0].id, when: slots[0].when, status: 'held', dakshinaPaise: 50000, guruName: guru.name, joinUrl: null }} />
   </StaticRouter>);
   expect(html).toContain('still waiting for the bank');
   expect(html).toContain('your time is safe');
@@ -162,4 +162,15 @@ test('with more than one kind of sitting the page asks how long, and the sheet p
   expect(html).toContain('30 minutes for ₹1,500');
   const sheet = renderToStaticMarkup(<BookSheetBody slot={slots[0]} guru={guru} minutes={10} dakshinaPaise={50000} />);
   expect(sheet).toContain('10 minutes with Guruji Vishwanath · dakshina ₹500');
+});
+
+test('the booked page tells the truth for a time that was never paid for, and for one that was cancelled', () => {
+  const held = renderToStaticMarkup(<StaticRouter location="/s/guruji/booked/1"><ConfirmedView base="/s/guruji" stillWaiting={false} booking={{ id: '1', slotId: slots[0].id, when: slots[0].when, status: 'held', dakshinaPaise: 50000, guruName: guru.name, joinUrl: null, payUrl: 'https://x/pay/1' }} /></StaticRouter>);
+  expect(held).toContain('Your time is held');
+  expect(held).toContain('Pay ₹500');
+  expect(held).not.toContain('Confirming your payment');
+  const gone = renderToStaticMarkup(<StaticRouter location="/s/guruji/booked/1"><ConfirmedView base="/s/guruji" stillWaiting={false} booking={{ id: '1', slotId: slots[0].id, when: slots[0].when, status: 'cancelled', dakshinaPaise: 50000, guruName: guru.name, joinUrl: null, refundDays: '5 to 7 working days' }} /></StaticRouter>);
+  expect(gone).toContain('This time was cancelled');
+  expect(gone).toContain('5 to 7 working days');
+  expect(gone).not.toContain('credit');
 });

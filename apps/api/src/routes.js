@@ -40,6 +40,16 @@ export function routes() {
     }
   });
 
+  // The platform's front door lists who is served here; a name and an address are public already.
+  router.get('/api/gurus', async (_req, res, next) => {
+    try {
+      const all = await gurus.listGurus();
+      res.json(all.filter((g) => !g.status || g.status === 'live').map((g) => ({ slug: g.slug, name: g.name, domain: g.domain ?? null })));
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // Open times, soonest first. Both doors — WhatsApp and his website — draw from this one list.
   router.get('/api/gurus/:slug/slots', async (req, res, next) => {
     try {
@@ -70,15 +80,6 @@ export function routes() {
       if (base) return res.redirect(302, `${base}/join/${booking.id}`);
       res.send(`<h2>Your session with ${guru.name}</h2><p>${describeSlot(booking.slotId)}</p>` +
                '<p>Set JOIN_LINK_BASE in the api .env, or his domain in the console, so this link opens the waiting room.</p>');
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  // Raw list for the team until the console exists. Session 2 puts this behind the console login.
-  router.get('/admin/bookings', async (_req, res, next) => {
-    try {
-      res.json(await bookings.listRecent(200));
     } catch (err) {
       next(err);
     }

@@ -16,11 +16,11 @@ import { defaultSessionType } from './session-types.js';
  */
 export async function assertBookable(guru, slotId, { team = false, type = null } = {}) {
   if (team) {
-    if (slotIdToInstant(slotId) < new Date()) throw new BookingRuleError('That time has already passed. Pick a later one.');
+    if (slotIdToInstant(slotId) < new Date()) throw Object.assign(new BookingRuleError(RULES.passed), { code: 'passed' });
     return;
   }
   const open = availableSlots(availabilityOf(guru), await takenIntervals(guru.id), undefined, { minutes: type?.minutes, typeId: type?.id });
-  if (!open.some((s) => s.id === slotId)) throw new BookingRuleError('That time is not open any more. Please choose one of the times shown.');
+  if (!open.some((s) => s.id === slotId)) throw Object.assign(new BookingRuleError(RULES.slot_gone), { code: 'slot_gone' });
 }
 
 export const HOLD_MINUTES = 10;
@@ -97,7 +97,7 @@ export async function confirmByPayment({ paymentLinkId, providerRef, amountPaise
   const found = await query('select * from bookings where payment_link_id = $1', [paymentLinkId]);
   const booking = found.rows[0];
   if (!booking) return null;
-  if (booking.status === 'confirmed') return withSlotId(booking);
+  if (booking.status === 'confirmed') return { ...withSlotId(booking), alreadyConfirmed: true };   // a second delivery: nothing to say again
 
   // She paid after the ten minutes ran out. The time is not hers — an expired hold is never
   // revived, or two people could hold the same slot. But the money is real, and a dakshina no one
@@ -162,7 +162,10 @@ async function recordPayment(booking, { providerRef, amountPaise }) {
 export async function attachQuestion({ guruId, devoteeId, text = null, mediaId = null }) {
   const { rows } = await query(
     `update bookings
-       set question_text = coalesce($3, question_text), question_media_id = coalesce($4, question_media_id)
+       set question_text = case when $3::text is null then question_text
+                                when question_text is null or question_text = '' then $3::text
+                                else question_text || E'\n' || $3::text end,
+           question_media_id = coalesce($4, question_media_id)
      where id = (select id from bookings
                  where guru_id = $1 and devotee_id = $2 and status = 'confirmed' and slot_start > now()
                  order by paid_at desc nulls last, created_at desc limit 1)
@@ -439,21 +442,38 @@ export async function listForDevotee(devoteeId) {
  * One move only: a booking that is itself the product of a reschedule cannot be moved again.
  */
 export function whyCannotReschedule(booking, now = new Date()) {
-  if (booking.status !== 'confirmed') return 'This time is not open to changes.';
-  if (booking.rescheduled_from_id) return 'This time has already been moved once. Ask his team if you need another.';
+  if (booking.status !== 'confirmed') return 'not_open';
+  if (booking.rescheduled_from_id) return 'moved_once';
   return tooLate(booking, now);
 }
 
-/** Pure. Why she cannot cancel this booking herself, or null if she can. */
+/** Pure. Why she cannot cancel this booking herself (a rule code), or null if she can. */
 export function whyCannotCancel(booking, now = new Date()) {
-  if (booking.status !== 'confirmed') return 'This time is not open to changes.';
+  if (booking.status !== 'confirmed') return 'not_open';
   return tooLate(booking, now);
 }
 
 function tooLate(booking, now) {
   const hoursAway = (new Date(booking.slot_start) - now) / 3600000;
-  if (hoursAway < SELF_SERVE_HOURS) return `Changes are open until ${SELF_SERVE_HOURS} hours before. Ask his team on WhatsApp.`;
+  if (hoursAway < SELF_SERVE_HOURS) return 'too_late';
   return null;
+}
+
+/**
+ * The rules, as codes, so each door words them in its own language: the WhatsApp door through
+ * devotee-words `rules`, the site and console through these English sentences.
+ */
+export const RULES = {
+  slot_gone: 'That time is not open any more. Please choose one of the times shown.',
+  passed: 'That time has already passed. Pick a later one.',
+  not_open: 'This time is not open to changes.',
+  moved_once: 'This time has already been moved once. Ask his team if you need another.',
+  too_late: `Changes are open until ${SELF_SERVE_HOURS} hours before. Ask his team on WhatsApp.`,
+};
+
+/** The English sentence for a rule code; null stays null. */
+export function ruleSentence(code) {
+  return code ? (RULES[code] ?? code) : null;
 }
 
 /**
@@ -543,4 +563,14 @@ export async function listRecent(limit) {
        from bookings b join devotees d on d.id = b.devotee_id
       order by b.slot_start desc limit $1`, [limit]);
   return rows.map(withSlotId);
+}
+
+
+/** Her hold that is still inside its ten minutes, if she has one: "Hi" should offer the pay link again, not a second time. */
+export async function openHoldFor(guruId, devoteeId) {
+  const { rows } = await query(
+    `select * from bookings where guru_id = $1 and devotee_id = $2 and status = 'held'
+        and created_at > now() - make_interval(mins => $3::int) order by created_at desc limit 1`,
+    [guruId, devoteeId, HOLD_MINUTES]);
+  return rows[0] ? withSlotId(rows[0]) : null;
 }

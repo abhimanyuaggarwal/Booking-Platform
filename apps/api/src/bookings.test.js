@@ -1,7 +1,7 @@
 // The state machine, as usage examples. Runs without a database.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { transition, whyCannotCancel, whyCannotReschedule, HOLD_MINUTES, SELF_SERVE_HOURS } from './bookings.js';
+import { transition, whyCannotCancel, whyCannotReschedule, ruleSentence, HOLD_MINUTES, SELF_SERVE_HOURS } from './bookings.js';
 
 test('a held slot becomes confirmed when she pays', () => {
   assert.equal(transition('held', 'pay'), 'confirmed');
@@ -42,19 +42,19 @@ test('she may move or cancel her own time up to four hours before', () => {
 });
 
 test('nearer than four hours she is sent to the team, in a sentence', () => {
-  assert.match(whyCannotReschedule(hoursAway(3)), /open until 4 hours before. Ask his team/);
-  assert.match(whyCannotCancel(hoursAway(3)), /Ask his team/);
+  assert.match(ruleSentence(whyCannotReschedule(hoursAway(3))), /open until 4 hours before. Ask his team/);
+  assert.match(ruleSentence(whyCannotCancel(hoursAway(3))), /Ask his team/);
 });
 
 test('a time already moved once cannot be moved again, but can still be cancelled', () => {
   const moved = { ...hoursAway(5), rescheduled_from_id: 'earlier-booking' };
-  assert.match(whyCannotReschedule(moved), /already been moved once/);
+  assert.match(ruleSentence(whyCannotReschedule(moved)), /already been moved once/);
   assert.equal(whyCannotCancel(moved), null);
 });
 
 test('only a confirmed time is hers to change', () => {
   for (const status of ['held', 'completed', 'cancelled', 'refunded', 'no_show', 'expired', 'rescheduled']) {
-    assert.match(whyCannotReschedule({ ...hoursAway(5), status }), /not open to changes/);
-    assert.match(whyCannotCancel({ ...hoursAway(5), status }), /not open to changes/);
+    assert.match(ruleSentence(whyCannotReschedule({ ...hoursAway(5), status })), /not open to changes/);
+    assert.match(ruleSentence(whyCannotCancel({ ...hoursAway(5), status })), /not open to changes/);
   }
 });

@@ -16,7 +16,7 @@ export async function api<T = void>(path: string, init: { method?: string; json?
   });
   if (res.status === 204) return undefined as T;
   const body = (await res.json().catch(() => ({}))) as { error?: string };
-  if (res.status === 401 && path !== '/me' && path !== '/login') {
+  if (res.status === 401 && path !== '/me' && !path.startsWith('/login')) {
     // The cookie expired mid-session: back to the sign-in screen rather than a page of errors.
     window.location.assign('/console');
   }

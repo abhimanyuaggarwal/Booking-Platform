@@ -36,7 +36,7 @@ export function guruRoutes(env) {
     const [start, end] = dayRange(date);
     const [sittings, events] = await Promise.all([
       query(
-        `select b.id, b.slot_start, b.status, b.question_text, b.question_media_id,
+        `select b.id, b.slot_start, b.status, b.question_text, b.question_media_id, b.minutes,
                 d.name, d.for_whom,
                 s.started_at, s.ended_at, s.devotee_joined_at,
                 (select count(*)::int from bookings x
@@ -155,9 +155,9 @@ function shortName(name) {
 
 function summarise(n) {
   if (n === 0) return 'No sittings today';
-  if (n === 1) return 'One session today';
+  if (n === 1) return 'One sitting today';
   const words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-  return `${capitalise(words[n] ?? String(n))} sessions today`;
+  return `${capitalise(words[n] ?? String(n))} sittings today`;
 }
 
 function capitalise(s) {

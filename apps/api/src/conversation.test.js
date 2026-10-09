@@ -8,7 +8,7 @@ const ctx = { guruName: 'Guruji Vishwanath', slotId: 'slot:2026-09-16T16:00', da
 test('every sentence names the time in words and never uses an exclamation mark', () => {
   for (const [name, value] of Object.entries(copy)) {
     // Sentence builders, button labels and the one-tap notes all live in one table now.
-    const texts = typeof value === 'function' ? [value(ctx)] : Array.isArray(value) ? value : [value];
+    const texts = typeof value === 'function' ? [value(ctx)] : Array.isArray(value) ? value : typeof value === 'object' ? Object.values(value) : [value];
     for (const text of texts) {
       assert.equal(typeof text, 'string', name);
       assert.ok(!text.includes('!'), `${name} has an exclamation mark`);

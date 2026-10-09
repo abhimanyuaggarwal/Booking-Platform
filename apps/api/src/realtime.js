@@ -12,12 +12,19 @@ const ROLES = ['devotee', 'guru', 'team'];
 let io = null;
 const presence = new Map(); // bookingId -> { devotee: Date|null, guru: Date|null, sockets: Map<socketId, role> }
 
-export function attachRealtime(httpServer, { corsOrigin }) {
-  io = new Server(httpServer, { cors: { origin: corsOrigin } });
+/**
+ * @param {{corsOrigin: string[], isTeam?: (cookieHeader: string) => boolean, isGuru?: (cookieHeader: string) => boolean}} deps
+ *   `isTeam` and `isGuru` read the console and guru cookies: a role is proven by its cookie, never
+ *   just claimed, so nobody with a booking id can listen as the team or mark her as present.
+ */
+export function attachRealtime(httpServer, { corsOrigin, isTeam = () => false, isGuru = () => false }) {
+  io = new Server(httpServer, { cors: { origin: corsOrigin, credentials: true } });
 
   io.on('connection', (socket) => {
     const { bookingId, role } = socket.handshake.auth ?? {};
-    if (typeof bookingId !== 'string' || !ROLES.includes(role)) {
+    const cookie = socket.handshake.headers?.cookie ?? '';
+    const proven = role === 'devotee' || (role === 'team' && isTeam(cookie)) || (role === 'guru' && isGuru(cookie));
+    if (typeof bookingId !== 'string' || !UUID.test(bookingId) || !ROLES.includes(role) || !proven) {
       socket.disconnect(true); // validate at the edge; nothing inside checks again
       return;
     }
@@ -25,7 +32,7 @@ export function attachRealtime(httpServer, { corsOrigin }) {
     arrive(bookingId, role, socket.id);
     io.to(roomFor(bookingId)).emit('waiting.joined', { bookingId, role, at: new Date().toISOString() });
 
-    if (role === 'devotee' && UUID.test(bookingId)) {
+    if (role === 'devotee') {
       noteDevoteeOpened(bookingId).catch((err) => console.error(`Could not record that ${bookingId} opened her link: ${err.message}`));
     }
     socket.on('disconnect', () => leave(bookingId, socket.id));

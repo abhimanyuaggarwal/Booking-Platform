@@ -186,11 +186,21 @@ export function HomeSections({ page, slots, showAll, onSeeAll, onChoose, typeId,
         </section>
 
         <section className="closing">
-          <h2>Thirty minutes with him, at a time you choose.</h2>
+          <h2>{closingLine(types.map((t) => t.minutes))}</h2>
           <a className="primary" href="#times">Choose a time</a>
           {hero?.credit && <p className="credit">{hero.credit}</p>}
         </section>
       </div>
     </>
   );
+}
+
+const MINUTE_WORDS: Record<number, string> = { 10: 'ten', 15: 'fifteen', 20: 'twenty', 30: 'thirty', 45: 'forty-five', 60: 'sixty' };
+
+/** Pure. "Ten, twenty or thirty minutes with him, at a time you choose." from the kinds on sale. */
+export function closingLine(minutes: number[]): string {
+  const words = [...new Set(minutes)].sort((a, b) => a - b).map((m) => MINUTE_WORDS[m] ?? String(m));
+  if (words.length === 0) return 'Time with him, at a time you choose.';
+  const list = words.length === 1 ? words[0] : `${words.slice(0, -1).join(', ')} or ${words[words.length - 1]}`;
+  return `${list.charAt(0).toUpperCase()}${list.slice(1)} minutes with him, at a time you choose.`;
 }

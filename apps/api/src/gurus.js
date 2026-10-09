@@ -74,6 +74,8 @@ const YMD = /^\d{4}-\d{2}-\d{2}$/;
  * Shape check for the pattern editor, at the edge. Returns an error sentence or null.
  * Accepts { pattern: { slotMinutes, gapMinutes, minimumNoticeMinutes, daysAhead, weeklyPattern }, closedDates, dakshinaPaise }.
  */
+const DAY_NAMES = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
+
 export function validatePattern(body) {
   const p = body?.pattern;
   if (!p) return 'Send the pattern';
@@ -89,7 +91,7 @@ export function validatePattern(body) {
     if (!Array.isArray(windows)) return `Windows for ${day} must be a list`;
     for (const w of windows) {
       if (!Array.isArray(w) || w.length < 2 || w.length > 3 || !HHMM.test(w[0]) || !HHMM.test(w[1])) return `Each ${day} window needs a start and end like 10:00 and 13:00`;
-      if (w[0] >= w[1]) return `A ${day} window ends before it starts (${w[0]} to ${w[1]})`;
+      if (w[0] >= w[1]) return `The ${DAY_NAMES[day] ?? day} window ends before it starts (${w[0]} to ${w[1]})`;
       // An optional third element: which session types this window is for. Absent means all of them.
       if (w.length === 3 && (!Array.isArray(w[2]) || w[2].some((id) => typeof id !== 'string'))) return `The session types for a ${day} window must be a list of ids`;
     }

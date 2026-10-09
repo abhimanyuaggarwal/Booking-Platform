@@ -3,7 +3,7 @@
 // sent to a devotee goes through conversation.js.
 
 import express from 'express';
-import { describeSlot } from '@expert-sessions/shared';
+import { describeSlot, isValidSlotId, isValidYmd } from '@expert-sessions/shared';
 import { consoleAuth, readCookie } from './console-auth.js';
 import { listUsers, validateUser, createUser, deactivateUser, findUser } from './console-users.js';
 import * as whatsapp from './whatsapp.js';
@@ -25,9 +25,7 @@ import * as razorpay from './razorpay.js';
 import { presenceFor } from './realtime.js';
 import { BookingRuleError, ProviderError } from './errors.js';
 
-const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const SLOT = /^slot:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const SOURCES = ['live', 'ashram', 'poster', 'page', 'direct'];
 // The one-tap notes follow the guru's language (devotee-words.js).
 
@@ -47,7 +45,7 @@ export function consoleRoutes(env, conversation) {
     const { username, phone, password } = req.body ?? {};
     if (username) {
       const token = auth.login(username, password);
-      if (!token) return res.status(401).json({ error: 'That username and password do not match. They are CONSOLE_USER and CONSOLE_PASSWORD in the api .env.' });
+      if (!token) return res.status(401).json({ error: 'That user name and password do not match.' });
       auth.setCookie(res, token);
       return res.status(204).end();
     }
@@ -411,15 +409,15 @@ export function consoleRoutes(env, conversation) {
   router.get('/waiting', handle(async (req, res) => res.json({ ...(await waitingBoard(req.guru, presenceFor)), oneTap: conversation.wordsFor(req.guru.language).oneTap })));
 
   router.get('/days/:date/close', handle(async (req, res) => {
-    if (!YMD.test(req.params.date)) return res.status(400).json({ error: 'Pick a date like 2026-09-17' });
+    if (!isValidYmd(req.params.date)) return res.status(400).json({ error: 'Pick a date like 2026-09-17' });
     res.json(await closeDayPreview(req.guru, req.params.date));
   }));
 
   router.post('/days/:date/close', handle(async (req, res) => {
     const date = req.params.date;
-    if (!YMD.test(date) || date < todayIst()) return res.status(400).json({ error: 'Pick today or a day ahead' });
+    if (!isValidYmd(date) || date < todayIst()) return res.status(400).json({ error: 'Pick today or a day ahead' });
     const moves = Array.isArray(req.body?.moves) ? req.body.moves : [];
-    if (moves.some((m) => !UUID.test(m?.bookingId ?? '') || !SLOT.test(m?.slotId ?? ''))) return res.status(400).json({ error: 'Each move needs a booking and a new time' });
+    if (moves.some((m) => !UUID.test(m?.bookingId ?? '') || !isValidSlotId(m?.slotId ?? ''))) return res.status(400).json({ error: 'Each move needs a booking and a new time' });
     if (moves.some((m) => m.slotId.startsWith(`slot:${date}`))) return res.status(400).json({ error: 'A new time cannot be on the day being closed' });
 
     const result = await bookings.closeDay({ guru: req.guru, date, moves });
@@ -457,24 +455,25 @@ export function consoleRoutes(env, conversation) {
     // How she pays: the link we send, cash or UPI already in hand, or nothing — guruji asked for this one to be free.
     if (paidOutside != null && paidOutside !== '' && !['cash', 'upi', 'complimentary'].includes(paidOutside)) return res.status(400).json({ error: 'Paid outside must be cash, upi or complimentary' });
     if (phone.length < 10 || phone.length > 15) return res.status(400).json({ error: 'Her WhatsApp number, with country code, like 919876543210' });
-    if (!SLOT.test(slotId ?? '')) return res.status(400).json({ error: 'Pick a time' });
+    if (!isValidSlotId(slotId ?? '')) return res.status(400).json({ error: 'Pick a time' });
     const type = typeId ? await findSessionType(req.guru.id, String(typeId)) : await defaultSessionType(req.guru.id);
     if (!type) return res.status(400).json({ error: 'Pick a kind of sitting' });
 
     let devotee = await devotees.findOrCreateDevotee(req.guru.id, phone);
-    if (name || forWhom) devotee = await devotees.updateDevotee(devotee.id, { name, forWhom });
+    const trimmed = (v) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 80) : undefined);   // the same cap as PUT /devotees/:id
+    if (trimmed(name) || trimmed(forWhom)) devotee = await devotees.updateDevotee(devotee.id, { name: trimmed(name), forWhom: trimmed(forWhom) });
     // She rang and will pay the link — or the team already has the dakshina in hand and confirms now.
     const booking = paidOutside
       ? await conversation.bookPaidOutside({ guru: req.guru, devotee, slotId, source, method: paidOutside, type })
       : await conversation.startPayment({ guru: req.guru, devotee, slotId, source, type, team: true });
     if (!booking) return res.status(409).json({ error: 'That time was just taken. Pick another.' });
     if (typeof question === 'string' && question.trim()) await bookings.setQuestion(booking.id, { text: question.trim() });
-    res.status(201).json({ ...bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }), notDelivered: booking.notDelivered ?? null });
+    res.status(201).json({ ...bookingRow({ ...booking, phone: devotee.phone, devotee_name: devotee.name }), notDelivered: booking.notDelivered ?? null, payUrl: booking.payUrl ?? null });
   }));
 
   router.post('/bookings/:id/reschedule', handle(async (req, res) => {
     const b = await ownBooking(req, res); if (!b) return;
-    if (!SLOT.test(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Pick the new time' });
+    if (!isValidSlotId(req.body?.slotId ?? '')) return res.status(400).json({ error: 'Pick the new time' });
     await bookings.assertBookable(req.guru, req.body.slotId, { team: true });
     const moved = await bookings.rescheduleBooking({ bookingId: b.id, slotId: req.body.slotId });
     if (!moved) return res.status(409).json({ error: 'That time was just taken. Pick another.' });
@@ -583,7 +582,14 @@ export function consoleRoutes(env, conversation) {
     const devotee = await devotees.findDevoteeById(b.devotee_id);
     const held = await conversation.startPayment({ guru: req.guru, devotee, slotId: b.slotId, source: b.source, team: true });
     if (!held) return res.status(409).json({ error: 'Someone else has that time now. Offer her another from Bookings.' });
-    res.status(201).json({ booking: bookingRow({ ...held, phone: devotee.phone, devotee_name: devotee.name }) });
+    res.status(201).json({ booking: bookingRow({ ...held, phone: devotee.phone, devotee_name: devotee.name }), notDelivered: held.notDelivered ?? null, payUrl: held.payUrl ?? null });
+  }));
+
+  // The team handed the dakshina back by hand: say so once, and the item leaves Today (reports.attentionQueue reads the trail).
+  router.post('/bookings/:id/handed-back', handle(async (req, res) => {
+    const b = await ownBooking(req, res); if (!b) return;
+    await audit({ guruId: req.guru.id, user: req.user, action: 'refund.handed_back', detail: { bookingId: b.id } });
+    res.status(204).end();
   }));
 
   router.get('/qr-codes', handle(async (req, res) => res.json(await listQrCodes(req.guru))));
@@ -632,7 +638,7 @@ function handle(fn) {
 }
 
 function dateParam(value) {
-  return typeof value === 'string' && YMD.test(value) ? value : null;
+  return typeof value === 'string' && isValidYmd(value) ? value : null;
 }
 
 function eventFields(b) {

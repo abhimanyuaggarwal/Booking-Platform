@@ -91,10 +91,10 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
               </div>
             )}
             <div className="row">
-              {can('cancel') && <button disabled={busy} onClick={() => { if (window.confirm(`Cancel ${name}'s time? The dakshina goes back to her, Razorpay or by hand, and she is told on WhatsApp.`)) act('Cancel', async () => {
+              {can('cancel') && <button disabled={busy} onClick={() => { if (window.confirm(d.complimentary ? `Cancel ${name}'s time? Nothing was paid; she is told on WhatsApp.` : `Cancel ${name}'s time? The dakshina goes back to her, Razorpay or by hand, and she is told on WhatsApp.`)) act('Cancel', async () => {
                 const r = await api<{ amountPaise: number; how: 'online' | 'byHand' | 'credit' | 'none'; notified: boolean }>(`/bookings/${d.id}/cancel`, { method: 'POST' });
                 return `Cancelled. ${r.how === 'online' ? `${formatRupees(r.amountPaise)} goes back to her account in 5 to 7 working days.` : r.how === 'byHand' ? `${formatRupees(r.amountPaise)} is to be handed back to her by the team.` : r.how === 'credit' ? `${formatRupees(r.amountPaise)} is back as her credit.` : 'Nothing was paid.'}${r.notified ? '' : ' WhatsApp did not deliver. Call her.'}`;
-              }); }}>{W.drawer.cancelKeep}</button>}
+              }); }}>{d.complimentary ? W.drawer.cancelFree : W.drawer.cancelKeep}</button>}
               {can('refund') && <button className="danger" disabled={busy} onClick={() => { if (window.confirm(d.paidWith?.providerRef?.startsWith('offline:') ? `Return ${name}'s dakshina? The team hands it back; she is told on WhatsApp. This cannot be undone.` : `Return ${name}'s dakshina? Razorpay sends it back and she is told on WhatsApp. This cannot be undone.`)) act('Refund', async () => {
                 const r = await api<{ amountPaise: number; notified: boolean; viaCredit: boolean; byHand?: boolean }>(`/bookings/${d.id}/refund`, { method: 'POST' });
                 return `${formatRupees(r.amountPaise)} ${r.viaCredit ? 'returned as a credit' : r.byHand ? 'to be handed back to her by the team' : 'is on its way back'}.${r.notified ? '' : ' WhatsApp did not deliver. Call her.'}`;
@@ -114,8 +114,8 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
                 return 'Guruji has a note about this sitting on his WhatsApp.';
               })}>{W.drawer.tellGuru}</button>}
               {can('send_link') && <button disabled={busy} onClick={() => act('Send link', async () => {
-                await api(`/bookings/${d.id}/send-link`, { method: 'POST' });
-                return 'The time is held again and the pay link is on her WhatsApp.';
+                const r = await api<{ notDelivered: string | null; payUrl: string | null }>(`/bookings/${d.id}/send-link`, { method: 'POST' });
+                return r.notDelivered ? `The time is held again, but WhatsApp could not deliver the pay link. Read it to her or send it yourself: ${r.payUrl}` : 'The time is held again and the pay link is on her WhatsApp.';
               })}>{W.drawer.sendLink}</button>}
             </div>
             {note && <p className={`banner ${note.tone}`}>{note.text}</p>}

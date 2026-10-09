@@ -3,12 +3,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { wordsFor, describeSlot, slotLabel } from './devotee-words.js';
 
-const ctx = { guruName: 'Bhagwat', slotId: 'slot:2026-09-30T16:10', dakshina: '₹500', minutes: 30, devoteeName: 'Meera', time: '4:10 pm', question: 'My mother is unwell', reason: 'Changes are open until 4 hours before.' };
+const ctx = { code: '482913', guruName: 'Bhagwat', slotId: 'slot:2026-09-30T16:10', dakshina: '₹500', minutes: 30, devoteeName: 'Meera', time: '4:10 pm', question: 'My mother is unwell', reason: 'Changes are open until 4 hours before.' };
 
 test('every Hindi sentence builds, has no exclamation mark, and says dakshina rather than fee', () => {
   const W = wordsFor('hi');
   for (const [name, value] of Object.entries(W)) {
-    const texts = typeof value === 'function' ? [value(ctx)] : Array.isArray(value) ? value : [value];
+    const texts = typeof value === 'function' ? [value(ctx)] : Array.isArray(value) ? value : typeof value === 'object' ? Object.values(value) : [value];
     for (const t of texts) {
       assert.equal(typeof t, 'string', name);
       assert.ok(!t.includes('!'), `${name} has an exclamation mark`);

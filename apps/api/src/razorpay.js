@@ -79,6 +79,7 @@ export function client(env) {
         };
       } catch (err) {
         const detail = err.response ? JSON.stringify(err.response.data) : err.message;
+        if (err.response?.status === 429 || /too many requests/i.test(detail)) throw new ProviderError(`Razorpay is rate limiting us; order ${ref} is asked about again next hour`);
         throw new ProviderError(`Razorpay could not find order ${ref}: ${detail}`);
       }
     },

@@ -80,6 +80,18 @@ const EN = {
     `Namaste 🙏 Booking with ${guruName} is not open just now. Please write again in a few days.`,
   slotTaken: () => 'That time was just taken. Here are the next ones:',
   paymentUnavailable: () => 'The payment page could not be opened just now, so nothing is booked. Please send Hi again in a few minutes, or write to his team.',
+  // The booking rules, one sentence per code (bookings.RULES has the English the site and console use).
+  rules: {
+    slot_gone: 'That time is not open any more. Please choose one of the times shown.',
+    passed: 'That time has already passed. Pick a later one.',
+    not_open: 'This time is not open to changes.',
+    moved_once: 'This time has already been moved once. Ask his team if you need another.',
+    too_late: 'Changes are open until 4 hours before. Ask his team on WhatsApp.',
+  },
+  signInCode: ({ code, guruName }) => `${code} is your code to see your times with ${guruName}. It works for ten minutes. Nobody from his team will ask you for it.`,
+  cancelFailed: () => 'Your time could not be cancelled just now. His team has been told and will do it for you; the dakshina comes back to your account in 5 to 7 working days.',
+  notYours: () => 'That time is not on your number. Write Hi to see your bookings.',
+  holdAgain: ({ guruName, slotId, dakshina }) => `Your time with ${guruName} on ${describeSlot(slotId)} is still held for you. Pay the dakshina of ${dakshina} to confirm it.`,
   refundedByHand: ({ guruName, slotId, dakshina }) =>
     `${guruName} could not sit at ${describeSlotEn(slotId)}. His team will return your dakshina of ${dakshina} to you directly.`,
   refundedAsCredit: ({ guruName, slotId, dakshina }) =>
@@ -169,6 +181,17 @@ const HI = {
     `नमस्ते 🙏 ${guruName} के साथ बुकिंग अभी खुली नहीं है। कृपया कुछ दिनों बाद फिर लिखें।`,
   slotTaken: () => 'वह समय अभी-अभी किसी और ने ले लिया। ये अगले समय हैं:',
   paymentUnavailable: () => 'भुगतान का पेज अभी नहीं खुल सका, इसलिए कुछ बुक नहीं हुआ। कृपया कुछ मिनट बाद फिर Hi भेजें, या उनकी टीम को लिखें।',
+  rules: {
+    slot_gone: 'वह समय अब खाली नहीं है। कृपया दिखाए गए समयों में से एक चुनें।',
+    passed: 'वह समय निकल चुका है। कोई बाद का समय चुनें।',
+    not_open: 'इस समय में अब बदलाव नहीं हो सकता।',
+    moved_once: 'यह समय एक बार बदला जा चुका है। एक और बदलाव के लिए उनकी टीम से कहें।',
+    too_late: 'बदलाव समय से 4 घंटे पहले तक ही हो सकता है। व्हाट्सऐप पर उनकी टीम से कहें।',
+  },
+  signInCode: ({ code, guruName }) => `${guruName} के साथ अपने समय देखने का आपका कोड ${code} है। यह दस मिनट चलेगा। उनकी टीम से कोई इसे नहीं पूछेगा।`,
+  cancelFailed: () => 'आपका समय अभी रद्द नहीं हो सका। उनकी टीम को बता दिया है, वे आपके लिए कर देंगे; दक्षिणा 5 से 7 कार्य दिवसों में आपके खाते में लौट आएगी।',
+  notYours: () => 'वह समय आपके नंबर पर नहीं है। अपनी बुकिंग देखने के लिए Hi लिखें।',
+  holdAgain: ({ guruName, slotId, dakshina }) => `${guruName} के साथ ${describeSlot(slotId, 'hi')} का आपका समय अभी भी आपके लिए रखा है। पक्का करने के लिए ${dakshina} की दक्षिणा दें।`,
   refundedByHand: ({ guruName, slotId, dakshina }) =>
     `${guruName} ${describeSlot(slotId, 'hi')} को नहीं बैठ सके। उनकी टीम आपकी ${dakshina} की दक्षिणा सीधे आपको लौटा देगी।`,
   refundedAsCredit: ({ guruName, slotId, dakshina }) =>

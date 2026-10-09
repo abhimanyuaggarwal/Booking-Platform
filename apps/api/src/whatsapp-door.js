@@ -17,7 +17,7 @@ import * as razorpay from './razorpay.js';
 import { ProviderError, BookingRuleError } from './errors.js';
 import { wordsFor, slotLabel } from './devotee-words.js';
 import { listSessionTypes, findSessionType, typeLabel } from './session-types.js';
-import { logMessage } from './messages-log.js';
+import { logMessage, alreadySeen } from './messages-log.js';
 import { copy } from './conversation.js';
 import { settlePaidLink } from './paid-link.js';
 import { cancelAndRefund } from './cancellations.js';
@@ -66,6 +66,7 @@ export function whatsappDoor(env, conversation) {
       // Guruji's own Yes or No to a change his team asked for: only from his number, nothing else happens.
       if ((msg.kind === 'button') && /^(approve|reject):/.test(msg.id)) return await decideApproval(guru, msg);
       const devotee = await devotees.findOrCreateDevotee(guru.id, msg.from, { name: msg.profileName });
+      if (msg.wamid && await alreadySeen(msg.wamid)) return;   // Meta redelivers when our 200 was slow; one answer per message
       await logMessage({ guruId: guru.id, devoteeId: devotee.id, direction: 'in', kind: msg.kind, payload: msg });
       const say = conversation.speak(guru, devotee);
       // A guru who is not live yet, or paused: one plain sentence, nothing booked.
@@ -94,6 +95,7 @@ export function whatsappDoor(env, conversation) {
       if (msg.kind === 'audio') return await attachVoiceNote(guru, devotee, say, msg.mediaId);
       if (msg.kind === 'text' && !isGreeting(msg.text) && await answerFromWhereSheStands(guru, devotee, say, msg.text)) return;
       // "Hi" with a time ahead: her booking, and what she may do with it. Otherwise she wants a time.
+      if (await offerHoldAgain(guru, devotee, say)) return;
       if (await sendBookingOptions(guru, devotee, say)) return;
       await sendNearestSlots(guru, devotee, say, sourceFromText(msg.text));
     } catch (err) {
@@ -142,7 +144,7 @@ export function whatsappDoor(env, conversation) {
     }
     const W = wordsFor(guru.language);
     for (const [day, rows] of [...byDay]) {
-      byDay.delete(day); byDay.set(slotLabel(day, guru.language), rows);
+      byDay.delete(day); byDay.set(slotLabel(day, guru.language).trim(), rows);
     }
     const sections = [...byDay].map(([title, rows]) => ({ title, rows }));
     await say.list(W.chooseTime, W.seeTimes, sections);
@@ -157,7 +159,7 @@ export function whatsappDoor(env, conversation) {
       booking = await conversation.startPayment({ guru, devotee, slotId, source, type });
     } catch (err) {
       if (err instanceof ProviderError) { console.error(err.message); return say.text(wordsFor(guru.language).paymentUnavailable()); }
-      if (err instanceof BookingRuleError) { await say.text(err.message); return sendNearestSlots(guru, devotee, say, source); }
+      if (err instanceof BookingRuleError) { await say.text(ruleWords(guru, err)); return sendNearestSlots(guru, devotee, say, source); }
       throw err;
     }
     if (!booking) {
@@ -251,6 +253,7 @@ export function whatsappDoor(env, conversation) {
   }
 
   async function herBooking(guru, devotee, bookingId) {
+    if (!/^[0-9a-f-]{36}$/i.test(String(bookingId))) return null;   // a crafted or broken id is simply not hers
     const b = await bookings.findById(bookingId);
     return b && b.guru_id === guru.id && b.devotee_id === devotee.id ? b : null;
   }
@@ -260,7 +263,7 @@ export function whatsappDoor(env, conversation) {
     if (!b) return sendNearestSlots(guru, devotee, say, 'direct');
     const W = wordsFor(guru.language);
     const problem = bookings.whyCannotReschedule(b);
-    if (problem) return say.buttons(W.cannotChange({ reason: problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
+    if (problem) return say.buttons(W.cannotChange({ reason: W.rules[problem] ?? problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
     const type = { id: b.session_type_id, minutes: b.minutes };
     const open = openFor(guru, type, await bookings.takenIntervals(guru.id)).slice(0, 10);
     if (open.length === 0) return say.text(W.noTimes({ guruName: guru.name }));
@@ -279,7 +282,7 @@ export function whatsappDoor(env, conversation) {
     if (!b) return sendNearestSlots(guru, devotee, say, 'direct');
     const W = wordsFor(guru.language);
     const problem = bookings.whyCannotReschedule(b);
-    if (problem) return say.buttons(W.cannotChange({ reason: problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
+    if (problem) return say.buttons(W.cannotChange({ reason: W.rules[problem] ?? problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
     try {
       await bookings.assertBookable(guru, slotId, { type: { id: b.session_type_id, minutes: b.minutes } });
     } catch (err) {
@@ -298,7 +301,7 @@ export function whatsappDoor(env, conversation) {
     if (!b) return sendNearestSlots(guru, devotee, say, 'direct');
     const W = wordsFor(guru.language);
     const problem = bookings.whyCannotCancel(b);
-    if (problem) return say.buttons(W.cannotChange({ reason: problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
+    if (problem) return say.buttons(W.cannotChange({ reason: W.rules[problem] ?? problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
     const paid = await bookings.paymentFor(b.id);
     const dakshina = formatRupees(paid?.amount_paise ?? 0);
     const words = !paid || paid.amount_paise === 0 ? W.confirmCancelFree
@@ -311,14 +314,15 @@ export function whatsappDoor(env, conversation) {
     if (!b) return sendNearestSlots(guru, devotee, say, 'direct');
     const W = wordsFor(guru.language);
     const problem = bookings.whyCannotCancel(b);
-    if (problem) return say.buttons(W.cannotChange({ reason: problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
+    if (problem) return say.buttons(W.cannotChange({ reason: W.rules[problem] ?? problem }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
     let result;
     try {
       result = await cancelAndRefund({ booking: b, pay: razorpay.clientFor(guru, env) });
     } catch (err) {
       if (!(err instanceof ProviderError)) throw err;
-      console.error(err.message);
-      return say.buttons(W.cannotChange({ reason: W.paymentUnavailable() }), [{ id: `tell:${b.id}`, title: W.tellTeam }, { id: 'keep', title: W.keepIt }]);
+      console.error(`Cancel of ${b.id} asked on WhatsApp, but the refund could not be started: ${err.message}`);
+      await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: b.id, direction: 'in', kind: 'asked.team', payload: { text: 'Asked on WhatsApp to cancel; the refund could not be started, cancel it here' } });
+      return say.text(W.cancelFailed());
     }
     await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: b.id, direction: 'in', kind: 'devotee.cancelled', payload: { amountPaise: result.amountPaise, how: result.how } });
     await conversation.sendCancelledNote({ guru, devotee, booking: result.booking, amountPaise: result.amountPaise, how: result.how });
@@ -327,7 +331,8 @@ export function whatsappDoor(env, conversation) {
   /** Inside the four hours, or moved once already: the team decides. The ask lands on Today under Needs you. */
   async function tellTheTeam(guru, devotee, say, bookingId) {
     const b = await herBooking(guru, devotee, bookingId);
-    if (b) await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: b.id, direction: 'in', kind: 'asked.team', payload: { text: 'Asked on WhatsApp to change or cancel this time' } });
+    if (!b) return say.text(wordsFor(guru.language).notYours());
+    await logMessage({ guruId: guru.id, devoteeId: devotee.id, bookingId: b.id, direction: 'in', kind: 'asked.team', payload: { text: 'Asked on WhatsApp to change or cancel this time' } });
     await say.text(wordsFor(guru.language).teamWillCall({ guruName: guru.name }));
   }
 
@@ -349,6 +354,21 @@ export function whatsappDoor(env, conversation) {
     await reply.text(from, decision.approved ? W.approvalThanks() : W.approvalDeclined());
   }
 
+  /** A booking rule, in her language; an unknown code keeps its English sentence rather than going silent. */
+  function ruleWords(guru, err) {
+    return wordsFor(guru.language).rules[err.code] ?? err.message;
+  }
+
+  /** She wrote while a hold of hers still stands: the same pay link again, never a second hold. */
+  async function offerHoldAgain(guru, devotee, say) {
+    const hold = await bookings.openHoldFor(guru.id, devotee.id);
+    if (!hold || !hold.payment_link_id) return false;
+    const W = wordsFor(guru.language);
+    const dakshina = formatRupees(hold.dakshina_paise);
+    await say.link(W.holdAgain({ guruName: guru.name, slotId: hold.slotId, dakshina }), W.pay({ dakshina }), conversation.payLink(hold, guru));
+    return true;
+  }
+
   // "Hi" always means she wants a time, whatever else is in flight.
   function isGreeting(text = '') {
     return /^\s*hi\b/i.test(text);
@@ -356,12 +376,8 @@ export function whatsappDoor(env, conversation) {
 
   // "Hi — from the live" / "Hi — ashram" come from the QR's pre-filled text (qr-codes.js GREETINGS).
   function sourceFromText(text = '') {
-    const t = text.toLowerCase();
-    if (t.includes('live')) return 'live';
-    if (t.includes('ashram')) return 'ashram';
-    if (t.includes('poster')) return 'poster';
-    if (t.includes('page')) return 'page';
-    return 'direct';
+    const m = /^\s*hi\s*[—–-]\s*(?:from\s+(?:the|his)\s+)?(live|ashram|poster|page)\b/i.exec(text);
+    return m ? m[1].toLowerCase() : 'direct';
   }
 
   return router;

@@ -129,6 +129,7 @@ export function parseInbound(body) {
     from: msg.from,
     to: value.metadata?.display_phone_number ?? null,
     profileName: value.contacts?.[0]?.profile?.name?.trim() || null,
+    wamid: msg.id ?? null,   // Meta's id for the message, so a redelivery is answered once
   };
   if (msg.type === 'text') return { ...who, kind: 'text', text: msg.text.body };
   if (msg.type === 'audio') return { ...who, kind: 'audio', mediaId: msg.audio.id };

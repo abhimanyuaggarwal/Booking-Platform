@@ -78,8 +78,16 @@ export function createConversation(env) {
     await bookings.attachPaymentLink(booking.id, order.id); // the column holds the order id now
     const payUrl = payLink(booking, guru);
     const W = wordsFor(guru.language);
-    if (notify) await speak(guru, devotee, booking.id).link(W.held({ guruName: guru.name, slotId, dakshina }), W.pay({ dakshina }), payUrl);
-    return { ...booking, payUrl };
+    // The hold and the order stand whether or not WhatsApp carries the link: the console shows the
+    // link to read out, and "Hi" on WhatsApp offers it again. The refusal is in messages_log.
+    if (!notify) return { ...booking, payUrl, notDelivered: null };
+    try {
+      await speak(guru, devotee, booking.id).link(W.held({ guruName: guru.name, slotId, dakshina }), W.pay({ dakshina }), payUrl);
+      return { ...booking, payUrl, notDelivered: null };
+    } catch (err) {
+      if (!(err instanceof ProviderError)) throw err;
+      return { ...booking, payUrl, notDelivered: err.message };
+    }
   }
 
   /**

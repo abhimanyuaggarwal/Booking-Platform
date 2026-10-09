@@ -15,7 +15,7 @@ test('the seeded pattern shape is accepted', () => {
 
 test('a window that ends before it starts is named, with the day', () => {
   const bad = structuredClone(good); bad.pattern.weeklyPattern.mon = [['13:00', '10:00']];
-  assert.match(validatePattern(bad), /mon window ends before it starts/);
+  assert.match(validatePattern(bad), /Monday window ends before it starts/);
 });
 
 test('times must look like HH:MM and dates like YYYY-MM-DD', () => {

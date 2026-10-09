@@ -90,7 +90,7 @@ function Shell() {
               onCancel={() => setBookFor({ open: false })}
               onDone={(b) => {
                 setBookFor({ open: false });
-                setNotice(b.notDelivered ? W.booking.doneNotDelivered(b.name, b.time) : b.paid ? W.booking.donePaid(b.name, b.time) : W.booking.doneLink(b.name, b.time));
+                setNotice(b.notDelivered ? W.booking.doneNotDelivered(b.name, b.time, b.payUrl) : b.paid ? W.booking.donePaid(b.name, b.time) : W.booking.doneLink(b.name, b.time));
                 announceChange();
                 openBooking(b.id);
               }}

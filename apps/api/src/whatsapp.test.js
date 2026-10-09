@@ -8,13 +8,13 @@ function inbound(message, contacts = [{ profile: { name: 'Priya Nair' }, wa_id: 
   return { entry: [{ changes: [{ value: {
     metadata: { display_phone_number: '15550001234', phone_number_id: '1234567890' },
     contacts,
-    messages: [{ from: '919829012345', ...message }],
+    messages: [{ from: '919829012345', ...message }],   // no id here: a redelivery check needs Meta's wamid, which the tests below add where they care
   } }] }] };
 }
 
 test('a text says who wrote, to which number, what, and the name she shows on WhatsApp', () => {
   assert.deepEqual(parseInbound(inbound({ type: 'text', text: { body: 'Hi — from the live' } })),
-    { from: '919829012345', to: '15550001234', profileName: 'Priya Nair', kind: 'text', text: 'Hi — from the live' });
+    { from: '919829012345', to: '15550001234', profileName: 'Priya Nair', wamid: null, kind: 'text', text: 'Hi — from the live' });
 });
 
 test('without a profile name the door still knows her number, and the name is null not blank', () => {

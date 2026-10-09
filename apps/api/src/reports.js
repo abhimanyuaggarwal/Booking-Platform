@@ -48,7 +48,7 @@ export function rangeLabel(from, to) {
 
 async function bookingsBetween(guruId, start, end, statuses) {
   const { rows } = await query(
-    `select b.id, b.slot_start, b.status, b.source, b.question_text, b.question_media_id, b.paid_at, b.created_at,
+    `select b.id, b.slot_start, b.status, b.source, b.question_text, b.question_media_id, b.paid_at, b.created_at, b.minutes, b.complimentary,
             d.name, d.phone, d.for_whom,
             (select count(*)::int from bookings x
               where x.devotee_id = b.devotee_id and x.status = 'completed' and x.slot_start < b.slot_start) as prior_visits
@@ -160,6 +160,7 @@ export async function attentionQueue(guru) {
       `select l.id, l.amount_paise, l.created_at, l.provider_ref, b.id as booking_id, b.slot_start, d.name, d.phone
          from ledger_entries l join devotees d on d.id = l.devotee_id left join bookings b on b.id = l.booking_id
         where l.guru_id = $1 and l.kind = 'refund' and l.created_at > now() - interval '7 days'
+          and not exists (select 1 from audit_log a where a.guru_id = l.guru_id and a.action = 'refund.handed_back' and a.detail->>'bookingId' = l.booking_id::text)
         order by l.created_at desc`, [guru.id]),
     // She opened her link and sat in the waiting room; the time passed and guruji never started.
     // This is his absence, not hers, so it is never marked a no-show: the team returns the
@@ -239,7 +240,7 @@ export async function attentionQueue(guru) {
       why: String(r.provider_ref ?? '').startsWith('offline:refund')
         ? `${formatRupees(r.amount_paise)} to be handed back to her by the team${r.slot_start ? ` for ${describeDate(instantToSlotId(r.slot_start).slice(5, 15)).split(',')[0]}` : ''}`
         : `${formatRupees(r.amount_paise)} returned${r.slot_start ? ` for ${describeDate(instantToSlotId(r.slot_start).slice(5, 15)).split(',')[0]}` : ''}, reaches her in 5 to 7 working days`,
-      action: String(r.provider_ref ?? '').startsWith('offline:refund') ? 'decide' : 'done',
+      action: String(r.provider_ref ?? '').startsWith('offline:refund') ? 'handed_back' : 'done',
     })),
   ];
 }
@@ -520,6 +521,7 @@ async function moneyKpis(guruId, { today, monday }) {
  * number; empty lists everyone, most recent first.
  */
 export async function listDevotees(guru, q = '', limit = 200) {
+  q = q.replace(/[\\%_]/g, (c) => `\\${c}`);   // typed text is text, not a pattern
   const text = q.trim();
   const digits = text.replace(/\D/g, '');
   const { rows } = await query(
@@ -532,7 +534,7 @@ export async function listDevotees(guru, q = '', limit = 200) {
               - coalesce((select sum(l.amount_paise) from ledger_entries l where l.devotee_id = d.id and l.kind = 'refund'), 0) as given_paise
        from devotees d left join bookings b on b.devotee_id = d.id
       where d.guru_id = $1
-        and ($2 = '' or d.name ilike '%' || $2 || '%' or ($3 <> '' and d.phone like '%' || $3 || '%'))
+        and ($2 = '' or d.name ilike '%' || $2 || '%' escape '\\' or ($3 <> '' and d.phone like '%' || $3 || '%'))
       group by d.id
       order by latest desc nulls last, d.name
       limit $4`, [guru.id, text, digits, limit]);

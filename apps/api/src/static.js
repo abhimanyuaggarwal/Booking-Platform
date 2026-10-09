@@ -29,6 +29,8 @@ export function serveWeb(dir) {
   }));
   router.get('*', (req, res, next) => {
     if (isApiPath(req.path)) return next();
+    // A path that names a file (a picture, a script) that is not on disk is missing, not a page.
+    if (/\.[a-z0-9]{2,8}$/i.test(req.path) && req.path !== '/index.html') return res.status(404).type('text').send('Not found');
     res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(index);
   });

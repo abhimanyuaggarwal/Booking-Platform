@@ -6,11 +6,11 @@ import { describeSlot, instantToSlotId } from '@expert-sessions/shared';
 const ESCAPE_AFTER_MINUTES = 10;
 // The link in her WhatsApp outlives the booking. Each ending gets its own sentence.
 const NOT_YOURS = {
-  cancelled: 'This time was cancelled. Your dakshina is kept as a credit for thirty days; book any other time with it.',
+  cancelled: 'This time was cancelled. Your dakshina comes back to your account in 5 to 7 working days.',
   rescheduled: 'This time was moved. Open the newer link on your WhatsApp for the new time.',
   refunded: 'Guruji could not sit at this time. Your dakshina is on its way back to you.',
   no_show: 'This time has passed. If you wish to book another, write Hi to his team on WhatsApp.',
-  held: 'This time is not paid for yet. The payment link is on your WhatsApp.',
+  held: 'This time is not paid for yet. Open the payment page from your WhatsApp or the website; the time is held for ten minutes.',
   expired: 'This time was not paid for in time and is no longer held. Write Hi on WhatsApp to choose again.',
 };
 // Opened this far ahead, "at your time" is not an answer; the sentence names the time instead.

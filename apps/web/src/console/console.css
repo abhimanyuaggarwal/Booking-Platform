@@ -127,7 +127,7 @@
 .console button.linklike { border: 0; background: none; padding: 0; height: auto; color: inherit; font-weight: 600; }
 .console button.linklike:hover { color: var(--accent); background: none; }
 .console button:disabled { opacity: .45; cursor: default; }
-.console button:focus-visible, .console input:focus-visible, .console select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.console button:focus-visible, .console input:focus-visible, .console select:focus-visible, .console a:focus-visible, .console tr[tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .console .segmented { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; background: var(--card); }
 .console .segmented button { border: 0; border-radius: 0; height: 34px; }
@@ -152,7 +152,7 @@
 .console .dayline { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line-soft); }
 .console .dayline b { padding-top: 8px; font-weight: 600; }
 .console .windows { display: flex; flex-direction: column; gap: 6px; }
-.console .window { display: flex; gap: 8px; align-items: center; }
+.console .window { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .console .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .console .chip { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 3px 6px 3px 10px; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
 .console .chip button { border: 0; background: none; padding: 0 4px; height: auto; color: var(--ink-3); }
@@ -228,7 +228,7 @@
 .console .drawer-scrim { justify-content: flex-end; padding: 0; align-items: stretch; }
 .console .drawer { width: 100%; max-width: 520px; background: var(--card); border-left: 1px solid var(--line); height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
 .console .drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 22px 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card); z-index: 1; }
-.console .drawer-head h2 { margin: 0 0 3px; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+.console .drawer-head h2 { margin: 0 0 3px; font-size: 18px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; overflow-wrap: anywhere; min-width: 0; }
 .console .drawer-head p { margin: 0; font-size: 13px; }
 .console .drawer-body { padding: 4px 22px 28px; }
 .console .drawer-body section { padding: 16px 0; border-bottom: 1px solid var(--line-soft); }
@@ -291,7 +291,7 @@
 .console .kind-row label { min-width: 120px; }
 .console label.check { display: flex; flex-direction: row; align-items: center; gap: 6px; }
 .console label.check input { width: auto; height: auto; }
-.console .kinds-in-window { display: flex; gap: 10px; align-items: center; }
+.console .kinds-in-window { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .console label.check.small { font-size: 12px; }
 
 /* ---- the redesign: page headers, the now strip, cards, the checklist, people -------------------- */
@@ -365,3 +365,5 @@
 .console .ok-line { display: flex; align-items: center; gap: 8px; color: var(--ok); margin: 0 0 10px; }
 .console .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; overflow-wrap: anywhere; margin: 0 0 12px; display: flex; align-items: center; gap: 6px; }
 .console .mono code { background: var(--hover); padding: 4px 8px; border-radius: 6px; }
+.console table.rows td, .console .person-cell b { overflow-wrap: anywhere; }
+.console .need .why { margin: 2px 0 0; }

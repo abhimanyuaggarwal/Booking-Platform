@@ -133,7 +133,7 @@ test('Money is three numbers, the pilot line, the exceptions, and the full ledge
   expect(html).toContain('₹2,500');
   expect(html).toContain('Settles Friday');
   expect(html).toContain('From his lives this week: 1 booking · ₹500');
-  expect(html).toContain('Returned to her');            // the exceptions list
+  expect(html).toContain('Returned to her account');            // the exceptions list
   expect(html).toContain('Kept as her credit');
   expect(html).toContain('Suresh B');
   expect(html).not.toContain('Paid by UPI');            // payments only in the full ledger
@@ -146,7 +146,7 @@ test('Money is three numbers, the pilot line, the exceptions, and the full ledge
   expect(full).toContain('₹500 credit');
   expect(full).toContain('Today');
   expect(full).toContain('Tuesday, 15 September');
-  expect(entryText(money.entries[1])).toBe('Returned to her');
+  expect(entryText(money.entries[1])).toBe('Returned to her account');
 });
 
 const settings: Settings = {

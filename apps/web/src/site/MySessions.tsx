@@ -102,7 +102,7 @@ export function MySessionsView({ sessions: s, base, onAct, onSignOut, slotsFor }
         {s.upcoming.map((b) => (
           <div className="card" key={b.id}>
             <h3 style={{ marginBottom: 2 }}>{b.when}</h3>
-            <p className="muted" style={{ fontSize: 14 }}>One to one · {s.guru.slotMinutes} minutes · dakshina paid</p>
+            <p className="muted" style={{ fontSize: 14 }}>One to one · {b.minutes ?? s.guru.slotMinutes} minutes · dakshina paid</p>
             {b.joinUrl && <a className="primary" href={b.joinUrl}>Join</a>}
             {!b.cannotReschedule && <button className="ghost" onClick={() => startMoving(b)}>Reschedule</button>}
             {!b.cannotCancel && <button className="ghost" onClick={() => cancel(b)}>Cancel this time</button>}

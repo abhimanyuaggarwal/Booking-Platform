@@ -24,13 +24,13 @@ export interface SitePage { guru: PublicGuru; sessionTypes: PublicSessionType[];
 
 export interface HeldBooking { bookingId: string; payUrl: string; holdMinutes: number }
 /** What /api/pay/:id says about the booking she is about to pay for. */
-export interface PayView {
+export interface PayView { siteBase?: string;
   status: string; orderId: string | null; keyId: string; amountPaise: number; dakshina: string; minutes?: number;
   guru: { name: string; slug: string }; when: string; phone: string; holdMinutes: number;
 }
 export interface BookingStatus {
   id: string; slotId: string; when: string; status: string;
-  minutes?: number; dakshinaPaise: number; guruName: string; joinUrl: string | null;
+  minutes?: number; dakshinaPaise: number; guruName: string; joinUrl: string | null; payUrl?: string | null; refundDays?: string;
 }
 
 export interface MyBooking {

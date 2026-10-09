@@ -6,6 +6,7 @@ import { useOnChange } from './changed';
 import { useBookForCaller, useOpenBooking } from './open-booking';
 import { useWords } from './lang';
 import { collapseOpen } from './runs';
+import { rowKeys } from './a11y';
 import WaitingPanel from './WaitingPanel';
 import CloseDay from './CloseDay';
 import { Link } from 'react-router-dom';
@@ -54,13 +55,13 @@ export default function Today() {
     <>
       {note && <p className={`banner ${note.tone}`}>{note.text}</p>}
       {closing && <CloseDay initialDate={todayYmd()} onDone={(r) => { setClosing(false); setNote({ text: W.closeDay.done({ date: r.date, moved: r.moved.filter((m) => m.ok).length, notified: r.notified, notDelivered: r.notDelivered.length, failed: r.moved.filter((m) => !m.ok).length, expiredHolds: r.expiredHolds }), tone: 'ok' }); reloadToday(); reloadAttention(); }} onCancel={() => setClosing(false)} />}
-      <TodayView report={today.data} attention={attention.data ?? []} setup={setup.data ?? undefined} onSendLink={sendLink} onTellGuru={tellGuru} onCannotSit={() => setClosing(true)} waitingPanel={<WaitingPanel />} />
+      <TodayView report={today.data} attention={attention.data ?? []} setup={setup.data ?? undefined} onSendLink={sendLink} onHandedBack={async (id) => { await api(`/bookings/${id}/handed-back`, { method: 'POST' }); reloadAttention(); }} onTellGuru={tellGuru} onCannotSit={() => setClosing(true)} waitingPanel={<WaitingPanel />} />
     </>
   );
 }
 
-export function TodayView({ report: r, attention, setup, onSendLink, onTellGuru, onCannotSit, waitingPanel, now = toSlotId(nowInIst()) }: {
-  report: TodayReport; attention: AttentionRow[]; setup?: SetupState; onSendLink?: (row: AttentionRow) => void; onTellGuru?: (b: SessionRow) => void; onCannotSit?: () => void; waitingPanel?: React.ReactNode; now?: string;
+export function TodayView({ report: r, attention, setup, onSendLink, onTellGuru, onCannotSit, onHandedBack, waitingPanel, now = toSlotId(nowInIst()) }: {
+  report: TodayReport; attention: AttentionRow[]; setup?: SetupState; onSendLink?: (row: AttentionRow) => void; onTellGuru?: (b: SessionRow) => void; onCannotSit?: () => void; onHandedBack?: (bookingId: string) => void; waitingPanel?: React.ReactNode; now?: string;
 }) {
   const W = useWords();
   const open = useOpenBooking();
@@ -107,7 +108,7 @@ export function TodayView({ report: r, attention, setup, onSendLink, onTellGuru,
 
       {toDecide.length === 0
         ? <p className="quiet-line">{W.today.nothingNeeds}</p>
-        : <NeedsYou rows={toDecide} onSendLink={onSendLink ?? (() => {})} onDecide={open} />}
+        : <NeedsYou rows={toDecide} onSendLink={onSendLink ?? (() => {})} onDecide={open} onHandedBack={onHandedBack} />}
 
       {waitingPanel}
 
@@ -118,13 +119,13 @@ export function TodayView({ report: r, attention, setup, onSendLink, onTellGuru,
             <thead><tr><th>{W.today.time}</th><th>{W.today.who}</th><th>{W.today.state}</th></tr></thead>
             <tbody>
               {collapseOpen(r.timeline).map((g) => g.kind === 'one' ? (
-                <tr key={g.item.slotId} className={`clickable ${g.item.booking!.id === nextId ? 'next' : ''}`} onClick={() => open(g.item.booking!.id)}>
+                <tr key={g.item.slotId} className={`clickable ${g.item.booking!.id === nextId ? 'next' : ''}`} onClick={() => open(g.item.booking!.id)} {...rowKeys(() => open(g.item.booking!.id))}>
                   <td className="time">{g.item.time}</td>
                   <td className="person-cell"><Initials name={g.item.booking!.name} size="s" /><span><b>{g.item.booking!.name}</b>{g.item.booking!.forWhom && <span className="muted"> · {g.item.booking!.forWhom}</span>}{g.item.booking!.minutes ? <span className="muted"> · {W.drawer.minutes(g.item.booking!.minutes)}</span> : null}</span></td>
                   <td><StateTag status={g.item.booking!.status} /></td>
                 </tr>
               ) : (
-                <tr key={g.items[0].slotId} className="clickable open" onClick={() => bookFor(g.items[0].slotId)}>
+                <tr key={g.items[0].slotId} className="clickable open" onClick={() => bookFor(g.items[0].slotId)} {...rowKeys(() => bookFor(g.items[0].slotId))}>
                   <td className="time">{g.items[0].time}</td>
                   <td className="muted" colSpan={2}>{g.items.length === 1 ? W.today.openSlot : W.today.openRun(g.items[0].time, g.items[g.items.length - 1].time, g.items.length)} · {W.today.bookIt}</td>
                 </tr>
@@ -138,7 +139,7 @@ export function TodayView({ report: r, attention, setup, onSendLink, onTellGuru,
 }
 
 // Each card is one decision with its button on it. She never has to go somewhere else to act.
-export function NeedsYou({ rows, onSendLink, onDecide }: { rows: AttentionRow[]; onSendLink: (r: AttentionRow) => void; onDecide: (bookingId: string) => void }) {
+export function NeedsYou({ rows, onSendLink, onDecide, onHandedBack = () => {} }: { rows: AttentionRow[]; onSendLink: (r: AttentionRow) => void; onDecide: (bookingId: string) => void; onHandedBack?: (bookingId: string) => void }) {
   const W = useWords();
   return (
     <section className="needs" aria-label={W.today.needsOne}>
@@ -148,11 +149,13 @@ export function NeedsYou({ rows, onSendLink, onDecide }: { rows: AttentionRow[];
           <Initials name={r.name} size="m" />
           <div className="what">
             <b>{r.name}</b><span className="muted"> · {r.when}</span>
-            <p title={r.why}><span className={`state ${ATTENTION_TONE[r.kind]}`}><i />{W.attention[r.kind]}</span></p>
+            <p><span className={`state ${ATTENTION_TONE[r.kind]}`}><i />{W.attention[r.kind]}</span></p>
+            <p className="muted small why">{r.why}</p>
           </div>
           <div className="do">
             {r.action === 'send_link' && <button onClick={() => onSendLink(r)}>{W.today.sendLinkAgain}</button>}
             {r.action === 'decide' && r.bookingId && <button className="primary" onClick={() => onDecide(r.bookingId!)}>{W.today.decide}</button>}
+            {r.action === 'handed_back' && r.bookingId && <button onClick={() => onHandedBack(r.bookingId!)}>{W.today.handedBack}</button>}
           </div>
         </div>
       ))}

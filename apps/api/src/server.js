@@ -16,6 +16,8 @@ import { guruRoutes } from './guru-routes.js';
 import { payRoutes } from './pay-routes.js';
 import { createConversation } from './conversation.js';
 import { attachRealtime } from './realtime.js';
+import { consoleAuth, readCookie, COOKIE_NAME } from './console-auth.js';
+import { guruAuth, GURU_COOKIE } from './guru-auth.js';
 import { startJobs } from './jobs.js';
 import * as razorpay from './razorpay.js';
 import { serveWeb } from './static.js';
@@ -25,6 +27,16 @@ const env = requireEnv(['WHATSAPP_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_
 
 const conversation = createConversation(env); // every word we send a devotee goes through this
 const app = express();
+app.disable('x-powered-by');
+// The few headers every page should carry. HSTS only where TLS is ours to promise (behind Caddy).
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
+  if (env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
 // Behind Caddy (deploy/), the client's scheme and address arrive in X-Forwarded-* headers.
 if (env.TRUST_PROXY) app.set('trust proxy', Number(env.TRUST_PROXY) || true);
 // Keep the raw body: Razorpay's signature is computed over the exact bytes.
@@ -46,9 +58,13 @@ app.use((err, _req, res, _next) => {
 });
 
 const server = http.createServer(app);
+const consoleSessions = consoleAuth(env);
+const guruSessions = guruAuth(env);
 attachRealtime(server, {
   // Every address we serve: the main one, and any older one kept alive for the provider webhooks.
   corsOrigin: [env.WEB_ORIGIN || 'http://localhost:5173', ...(env.EXTRA_HOSTS ?? '').split(',').map((h) => h.trim()).filter(Boolean).map((h) => `https://${h}`)],
+  isTeam: (cookie) => Boolean(consoleSessions.sessionFrom(readCookie(cookie, COOKIE_NAME))),
+  isGuru: (cookie) => guruSessions.isHim(readCookie(cookie, GURU_COOKIE)),
 });
 startJobs({ conversation, payFor: async (guruId) => razorpay.clientFor(await findGuruById(guruId), env) });
 

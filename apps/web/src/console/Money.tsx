@@ -1,3 +1,4 @@
+import { rowKeys } from './a11y';
 import { Fragment, useState } from 'react';
 import { describeDate, formatRupees } from '@expert-sessions/shared';
 import { useApi } from './api';
@@ -45,7 +46,7 @@ export function MoneyView({ report: r, today, showAllAtFirst = false }: { report
     <>
       <section className="kpis three">
         <Kpi label="Collected this week" value={formatRupees(r.kpis.collectedWeekPaise)} sub={`${formatRupees(r.kpis.collectedTodayPaise)} of it today`} />
-        <Kpi label="Returned this week" value={formatRupees(r.kpis.returnedWeekPaise)} sub={r.kpis.returnedWeekPaise === 0 ? 'nothing went back' : 'cash refunds only'} />
+        <Kpi label="Returned this week" value={formatRupees(r.kpis.returnedWeekPaise)} sub={r.kpis.returnedWeekPaise === 0 ? 'nothing went back' : 'online and by hand'} />
         <Kpi label={`Settles ${r.kpis.settlesOn}`} value={formatRupees(r.kpis.dueToSettlePaise)} sub="estimate, since last Friday" />
       </section>
       {r.account && <p className="muted small">{r.account.own ? W.gurus.payments.moneyOwn(r.account.keyId ?? '', W.gurus.payments.modeWords[r.account.mode ?? 'test']) : W.gurus.payments.moneyShared}</p>}
@@ -57,7 +58,7 @@ export function MoneyView({ report: r, today, showAllAtFirst = false }: { report
           <table>
             <tbody>
               {exceptions.map((e) => (
-                <tr key={e.id} className={e.bookingId ? 'clickable' : undefined} onClick={() => e.bookingId && open(e.bookingId)}>
+                <tr key={e.id} className={e.bookingId ? 'clickable' : undefined} onClick={() => e.bookingId && open(e.bookingId)} {...(e.bookingId ? rowKeys(() => open(e.bookingId!)) : {})}>
                   <td className="time">{e.date === today ? 'today' : shortDate(e.date)} {e.time}</td>
                   <td>{entryText(e)}</td>
                   <td>{e.name}{e.slotTime ? ` · ${e.slotTime}` : ''}</td>
@@ -81,7 +82,7 @@ export function MoneyView({ report: r, today, showAllAtFirst = false }: { report
                 <Fragment key={date}>
                   <tr className="daterow"><td colSpan={4}>{date === today ? 'Today' : describeDate(date)}</td></tr>
                   {entries.map((e) => (
-                    <tr key={e.id} className={e.bookingId ? 'clickable' : undefined} onClick={() => e.bookingId && open(e.bookingId)}>
+                    <tr key={e.id} className={e.bookingId ? 'clickable' : undefined} onClick={() => e.bookingId && open(e.bookingId)} {...(e.bookingId ? rowKeys(() => open(e.bookingId!)) : {})}>
                       <td className="time">{e.time}</td>
                       <td>{entryText(e)} {e.source === 'live' && <span className="tag g" title="This booking came from a live">live</span>}</td>
                       <td>{e.name}{e.slotTime ? ` · ${e.slotTime}` : ''}</td>
@@ -103,7 +104,7 @@ export function MoneyView({ report: r, today, showAllAtFirst = false }: { report
 export function entryText(e: LedgerEntry) {
   switch (e.kind) {
     case 'payment': return paymentWords(e.providerRef);
-    case 'refund': return 'Returned to her';
+    case 'refund': return e.providerRef?.startsWith('offline:refund') ? 'Handed back by the team' : 'Returned to her account';
     case 'credit_issued': return 'Kept as her credit';
     case 'credit_used': return 'Paid with her credit';
   }

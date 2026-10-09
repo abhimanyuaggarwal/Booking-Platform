@@ -142,3 +142,18 @@ export function describeSlot(slotId) {
   const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getUTCDay()];
   return `${dayName}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${formatTime(d)}`;
 }
+
+/** True only for a slot id that names a real minute: `slot:2026-13-45T99:99` is not one, however well shaped. */
+export function isValidSlotId(id) {
+  if (typeof id !== 'string' || !/^slot:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(id)) return false;
+  const d = parseSlotId(id);
+  return !Number.isNaN(d.getTime()) && toSlotId(d) === id;
+}
+
+/** True only for a date like 2026-09-17 that exists on the calendar. */
+export function isValidYmd(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y, m, d] = s.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}

@@ -46,7 +46,8 @@ export function sessionRoutes(env, conversation) {
       devotee: { name: booking.devotee_name },
       ...words,
       video: { ready: video.isConfigured() },
-      minutesTogether: session?.started_at && session?.ended_at ? Math.max(1, Math.round((session.ended_at - session.started_at) / 60000)) : null,
+      // An automatic close happens 90 minutes in; her screen should not call that the sitting's length.
+      minutesTogether: session?.started_at && session?.ended_at ? Math.min(Math.max(1, Math.round((session.ended_at - session.started_at) / 60000)), (booking.minutes ?? 30) + 15) : null,
       escapeAfter: new Date(booking.slot_start.getTime() + ESCAPE_AFTER_MINUTES * 60000).toISOString(),
       messages: await waitingConversation(booking.id),
       nextEvent,

@@ -79,8 +79,8 @@ export default function Login({ onSignedIn }: { onSignedIn: (me: Me) => void }) 
 
         {mode === 'admin' && (
           <form className="settings" onSubmit={signIn}>
-            <label>{W.login.username}<input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" /></label>
-            <label>{W.login.password}<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" autoFocus /></label>
+            <label>{W.login.username}<input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required /></label>
+            <label>{W.login.password}<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" autoFocus required /></label>
             {problem && <p className="problem">{problem}</p>}
             <div className="row"><button className="primary" disabled={busy}>{W.login.signIn}</button><button type="button" className="quiet" onClick={() => setMode('phone')}>{W.login.phoneDoor}</button></div>
           </form>

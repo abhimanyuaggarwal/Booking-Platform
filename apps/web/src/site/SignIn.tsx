@@ -8,7 +8,7 @@ export default function SignIn({ call, onSignedIn }: { call: ReturnType<typeof s
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [sentTo, setSentTo] = useState<string | null>(null);
-  const [mock, setMock] = useState(false);
+  const [mock, setMock] = useState<string | null>(null);   // outside production the api hands back the fixed code
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -17,9 +17,9 @@ export default function SignIn({ call, onSignedIn }: { call: ReturnType<typeof s
     setBusy(true);
     setProblem(null);
     try {
-      const r = await call<{ sentTo: string; mock: boolean }>('/otp/request', { method: 'POST', json: { phone } });
+      const r = await call<{ sentTo: string; mock: boolean; code?: string }>('/otp/request', { method: 'POST', json: { phone } });
       setSentTo(r.sentTo);
-      setMock(r.mock);
+      setMock(r.mock ? r.code ?? '1234' : null);
     } catch (err) {
       setProblem((err as Error).message);
     } finally {
@@ -54,12 +54,12 @@ export default function SignIn({ call, onSignedIn }: { call: ReturnType<typeof s
         </form>
       ) : (
         <form onSubmit={check}>
-          {mock ? <p className="muted">Enter the code for {sentTo}.</p> : <p className="muted">We sent a code to {sentTo}.</p>}
+          {mock ? <p className="muted">Enter the code for {sentTo}.</p> : <p className="muted">We sent a code on WhatsApp to {sentTo}. It works for ten minutes.</p>}
           <div className="field">
             <label htmlFor="code">Code</label>
             <input id="code" value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} autoFocus required />
           </div>
-          {mock && <p className="muted" style={{ fontSize: 14 }}>While we are testing, the code is 1234.</p>}
+          {mock && <p className="muted" style={{ fontSize: 14 }}>While we are testing, the code is {mock}.</p>}
           {problem && <p className="problem">{problem}</p>}
           <button className="primary" disabled={busy}>Continue</button>
           <button type="button" className="ghost" onClick={() => { setSentTo(null); setCode(''); setProblem(null); }}>Use another number</button>

@@ -23,6 +23,7 @@ export async function reconcilePayments({ payFor, conversation }) {
   const links = await bookings.unreconciledPaymentLinks();
   const result = { asked: links.length, settled: 0, failed: 0 };
   for (const row of links) {
+    if (result.asked > 1) await new Promise((r) => setTimeout(r, 300));   // Razorpay throttles a burst; one hour is plenty of time
     let link;
     try {
       link = await (await payFor(row.guru_id)).findPayments(row.payment_link_id);   // the account that collected it

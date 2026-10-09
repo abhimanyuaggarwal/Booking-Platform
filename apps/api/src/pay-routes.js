@@ -9,6 +9,7 @@ import * as gurus from './gurus.js';
 import * as devotees from './devotees.js';
 import * as razorpay from './razorpay.js';
 import { settlePaidLink } from './paid-link.js';
+import { resolveGuru } from './tenancy.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,16 +20,20 @@ export function payRoutes(env, conversation) {
     const b = await find(req, res); if (!b) return;
     const guru = await gurus.findGuruById(b.guru_id);
     const devotee = await devotees.findDevoteeById(b.devotee_id);
+    // On his own domain her pages are at the root; on the platform's host they live under /s/<slug>.
+    const hostGuru = await resolveGuru(req).catch(() => null);
+    const amount = b.complimentary ? 0 : b.dakshina_paise;
     res.json({
       status: b.status,
       orderId: b.status === 'held' ? b.payment_link_id : null,
       keyId: razorpay.clientFor(guru, env).keyId,   // his account's key when connected, the platform's otherwise
-      amountPaise: b.dakshina_paise,
-      dakshina: formatRupees(b.dakshina_paise),
+      amountPaise: amount,
+      dakshina: formatRupees(amount),
       minutes: b.minutes,
       guru: { name: guru.name, slug: guru.slug },
+      siteBase: hostGuru?.id === guru.id ? '' : `/s/${guru.slug}`,
       when: describeSlot(b.slotId),
-      phone: devotee.phone,
+      phone: b.status === 'held' ? devotee.phone : null,   // only while she is the one paying; the id travels further than she does
       holdMinutes: bookings.HOLD_MINUTES,
     });
   }));

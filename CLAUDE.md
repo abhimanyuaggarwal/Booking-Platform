@@ -65,8 +65,8 @@ If a task seems to need one of these, stop and say so instead of building it.
 - **Realtime:** one Socket.IO namespace on the api: `session:{bookingId}` rooms. Events:
   `waiting.joined`, `waiting.message`, `session.started`, `session.ended`.
 - **Jobs:** `node-cron` inside the api. Hold expiry every minute; reminders hourly (templates later).
-- **Auth (changed 2026-10-07, client decision):** devotee = phone + OTP (mock `1234` until an SMS provider is
-  wired); console = **phone + password** for everyone, two roles (`console_users.role`: `admin` at Slike sees every
+- **Auth (changed 2026-10-07, client decision; devotee code real since 2026-10-09):** devotee = phone + a six-digit code sent on
+  WhatsApp (`OTP_CODE` is a fixed mock outside production only; production never accepts it); console = **phone + password** for everyone, two roles (`console_users.role`: `admin` at Slike sees every
   guru and the Setup/Access screens, `team` sees one guru), first password and resets through a six-digit code on
   WhatsApp; `CONSOLE_USER`/`CONSOLE_PASSWORD` remain the admin's break-glass door; guru PWA = magic link for the pilot.
 - **Time:** everything is IST. See `packages/shared/slots.js` for the convention (IST wall-clock in UTC fields).

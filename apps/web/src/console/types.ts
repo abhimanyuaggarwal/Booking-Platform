@@ -107,7 +107,7 @@ export interface MessageResult { landed: 'room' | 'whatsapp' | 'failed'; reason?
 export interface AttentionRow {
   kind: 'hold_expired' | 'paid_too_late' | 'did_not_join' | 'waited_alone' | 'refund_sent' | 'waited_and_chose' | 'asked_team';
   bookingId: string | null; name: string; phone: string; slotId: string | null; when: string; why: string;
-  action: 'send_link' | 'decide' | 'done' | 'none';
+  action: 'send_link' | 'decide' | 'handed_back' | 'done' | 'none';
   expiredAt?: string; amountPaise?: number; providerRef?: string | null;
 }
 
@@ -116,7 +116,7 @@ export interface BookingRow {
   minutes?: number; dakshinaPaise?: number; complimentary?: boolean;
   name: string; phone: string; paid: boolean; question: string | null; hasVoiceNote: boolean;
   /** Set when the team booked and WhatsApp refused the confirmation: the booking stands, call her. */
-  notDelivered?: string | null;
+  notDelivered?: string | null; payUrl?: string | null;
 }
 export type BookingAction = 'message' | 'reschedule' | 'cancel' | 'refund' | 'no_show' | 'send_link' | 'mark_paid' | 'tell_guru';
 export interface BookingDetail {
