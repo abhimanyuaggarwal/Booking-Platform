@@ -33,3 +33,7 @@ export function availableSlots(availability: Availability, takenSlotIds: Set<str
 export function describeSlot(slotId: string): string;
 export function describeDate(date: string): string;
 export function formatRupees(paise: number): string;
+/** True only for a slot id naming a real minute (no month 13, no 99:99). */
+export function isValidSlotId(id: unknown): boolean;
+/** True only for a YYYY-MM-DD that exists on the calendar. */
+export function isValidYmd(s: unknown): boolean;
