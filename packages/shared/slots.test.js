@@ -1,7 +1,7 @@
 // Run with: pnpm test   (node --test picks up every *.test.js)
-import { isValidSlotId, isValidYmd, test } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { availableSlots, sittingStep, describeSlot, describeDate, slotIdToInstant, instantToSlotId } from './slots.js';
+import { availableSlots, sittingStep, describeSlot, describeDate, slotIdToInstant, instantToSlotId, isValidSlotId, isValidYmd } from './slots.js';
 
 const availability = {
   slotMinutes: 30, gapMinutes: 10, minimumNoticeMinutes: 60, daysAhead: 3,
