@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Circle, ExternalLink, Copy } from 'lucide-react';
 import { formatRupees } from '@expert-sessions/shared';
 import { api, useApi } from './api';
 import { useWords } from './lang';
+import { useConfirm } from './Confirm';
 import { StatusBadge } from './Gurus';
 import type { GuruDetail, Me, ReadinessStep, StepKey } from './types';
 
@@ -110,7 +111,7 @@ function Step({ n, step: st, g, onOpen, onGoLive }: { n: number; step: Readiness
         {st.key === 'business' && <a href="#business" className="btn">{words.action}</a>}
         {st.key === 'payments' && <a href="#payments" className="btn">{words.action}</a>}
         {st.key === 'whatsapp' && <a href="#whatsapp" className="btn">{words.action}</a>}
-        {st.key === 'live' && !st.done && <button className="primary" disabled={!g.readyToGoLive} onClick={onGoLive}>{words.action}</button>}
+        {st.key === 'live' && !st.done && <button disabled={!g.readyToGoLive} onClick={onGoLive}>{words.action}</button>}
         <span className={`muted small ${st.done ? 'ok' : ''}`}>{st.done ? W.gurus.done : W.gurus.todo}</span>
       </div>
     </div>
@@ -141,7 +142,7 @@ function SubscriptionCard({ g, onChanged }: { g: GuruDetail; onChanged: () => vo
         <label>{W.gurus.subStatus}<select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>{(['trial', 'active', 'overdue', 'cancelled'] as const).map((k) => <option key={k} value={k}>{W.gurus.subStatusWords[k]}</option>)}</select></label>
         <label>{W.gurus.nextDue}<input type="date" value={nextDueOn} onChange={(e) => setNextDueOn(e.target.value)} /></label>
       </div>
-      <div className="row" style={{ marginTop: 12 }}><button className="primary">{W.gurus.save}</button>{note && <span className="status">{note}</span>}</div>
+      <div className="row" style={{ marginTop: 12 }}><button>{W.gurus.save}</button>{note && <span className="status">{note}</span>}</div>
       {g.subscription.feePaise ? <p className="muted small">{formatRupees(g.subscription.feePaise)} / month</p> : null}
     </form>
   );
@@ -165,7 +166,7 @@ function BusinessCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }
         <label>{W.gurus.gst}<input value={b.gst} onChange={(e) => setB({ ...b, gst: e.target.value })} /></label>
         <label>{W.gurus.pan}<input value={b.pan} onChange={(e) => setB({ ...b, pan: e.target.value })} /></label>
       </div>
-      <div className="row" style={{ marginTop: 12 }}><button className="primary">{W.gurus.save}</button>{note && <span className="status">{note}</span>}</div>
+      <div className="row" style={{ marginTop: 12 }}><button>{W.gurus.save}</button>{note && <span className="status">{note}</span>}</div>
     </form>
   );
 }
@@ -183,13 +184,14 @@ function DomainCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }) 
       <h2>{W.gurus.domainTitle}</h2>
       <p className="muted">{W.gurus.domainLine(g.subdomain ?? `/s/${g.slug}`)}</p>
       <div className="row"><label>{W.gurus.newDomain}<input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="guruji.com" /></label></div>
-      <div className="row" style={{ marginTop: 12 }}><button className="primary">{W.gurus.save}</button>{note && <span className="status">{note}</span>}</div>
+      <div className="row" style={{ marginTop: 12 }}><button>{W.gurus.save}</button>{note && <span className="status">{note}</span>}</div>
     </form>
   );
 }
 
 function PaymentsCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }) {
   const W = useWords();
+  const confirmDialog = useConfirm();
   const P = W.gurus.payments;
   const pay = g.payments;
   const [keyId, setKeyId] = useState('');
@@ -205,7 +207,7 @@ function PaymentsCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }
   }
   const send = (e: FormEvent) => { e.preventDefault(); act(async () => { await api(`/admin/gurus/${g.slug}/payments`, { method: 'POST', json: { keyId, keySecret, webhookSecret } }); setKeySecret(''); setWebhookSecret(''); return P.sent; }); };
   const verify = () => act(async () => (await api<{ ok: boolean }>(`/admin/gurus/${g.slug}/payments/verify`, { method: 'POST' })).ok ? P.verifiedOk : P.verifiedBad);
-  const disconnect = () => { if (window.confirm(P.confirmDisconnect)) act(async () => { await api(`/admin/gurus/${g.slug}/payments`, { method: 'DELETE' }); return W.gurus.saved; }); };
+  const disconnect = async () => { if (await confirmDialog(P.confirmDisconnect, W.dialog.disconnect, true)) act(async () => { await api(`/admin/gurus/${g.slug}/payments`, { method: 'DELETE' }); return W.gurus.saved; }); };
 
   return (
     <section className="panel" id="payments">
@@ -234,7 +236,7 @@ function PaymentsCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }
             </div>
             <p className="muted small" style={{ marginTop: 8 }}>{P.webhook}</p>
             <p className="mono"><code>{pay.webhookUrl}</code></p>
-            <div className="row"><button className="primary" disabled={busy || !pay.canApprove || !pay.secretsReady}>{P.send}</button></div>
+            <div className="row"><button disabled={busy || !pay.canApprove || !pay.secretsReady}>{P.send}</button></div>
           </form>
         </>
       )}
@@ -244,6 +246,7 @@ function PaymentsCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }
 
 function WhatsappCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }) {
   const W = useWords();
+  const confirmDialog = useConfirm();
   const N = W.gurus.whatsapp;
   const wa = g.whatsapp;
   const [displayName, setDisplayName] = useState(wa.displayName ?? `Samvad · ${g.name}`);
@@ -268,7 +271,7 @@ function WhatsappCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }
       {stage === 'live' ? (
         <>
           <p className="ok-line"><Check size={16} aria-hidden="true" /> {N.live(wa.displayName ?? '', wa.number ?? '', when(wa.connectedAt!))}</p>
-          <div className="row"><button className="quiet" disabled={busy} onClick={() => { if (window.confirm(N.confirmDisconnect)) act(async () => { await api(`/admin/gurus/${g.slug}/whatsapp`, { method: 'DELETE' }); return W.gurus.saved; }); }}>{N.disconnect}</button></div>
+          <div className="row"><button className="quiet" disabled={busy} onClick={async () => { if (await confirmDialog(N.confirmDisconnect, W.dialog.sharedNumber)) act(async () => { await api(`/admin/gurus/${g.slug}/whatsapp`, { method: 'DELETE' }); return W.gurus.saved; }); }}>{N.disconnect}</button></div>
         </>
       ) : wa.pending ? (
         <p className="banner ok">{N.pending(wa.pending.summary, wa.pending.requestedBy ?? 'Slike', when(wa.pending.createdAt))}</p>
@@ -285,7 +288,7 @@ function WhatsappCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }
                   <label>{N.phone}<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="91 98765 43210" required /></label>
                 </div>
                 <p className="muted small">{N.displayNameNote}</p>
-                <div className="row"><button className="primary" disabled={busy || !wa.wabaReady}>{N.add}</button></div>
+                <div className="row"><button disabled={busy || !wa.wabaReady}>{N.add}</button></div>
               </form>
               <h3 style={{ marginTop: 18 }}>{N.manualTitle}</h3>
               <p className="muted small">{N.manualLine}</p>
@@ -300,12 +303,12 @@ function WhatsappCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }
             </>
           )}
           {stage === 'added' && (
-            <div className="row"><button className="primary" disabled={busy} onClick={() => act(async () => { await post('/code', { method: 'SMS' }); return N.codeSent; })}>{N.sendSms}</button><button disabled={busy} onClick={() => act(async () => { await post('/code', { method: 'VOICE' }); return N.codeSent; })}>{N.sendCall}</button></div>
+            <div className="row"><button disabled={busy} onClick={() => act(async () => { await post('/code', { method: 'SMS' }); return N.codeSent; })}>{N.sendSms}</button><button disabled={busy} onClick={() => act(async () => { await post('/code', { method: 'VOICE' }); return N.codeSent; })}>{N.sendCall}</button></div>
           )}
           {(stage === 'code_sent' || stage === 'verified') && (
             <form onSubmit={(e) => { e.preventDefault(); act(async () => { await post('/verify', { code }); return N.registered; }); }}>
               <div className="row"><label>{N.code}<input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} required /></label></div>
-              <div className="row"><button className="primary" disabled={busy}>{N.verify}</button><button type="button" className="quiet" disabled={busy} onClick={() => act(async () => { await post('/code', { method: 'SMS' }); return N.codeSent; })}>{N.sendSms}</button></div>
+              <div className="row"><button disabled={busy}>{N.verify}</button><button type="button" className="quiet" disabled={busy} onClick={() => act(async () => { await post('/code', { method: 'SMS' }); return N.codeSent; })}>{N.sendSms}</button></div>
             </form>
           )}
           {stage === 'registered' && (
@@ -313,7 +316,7 @@ function WhatsappCard({ g, onChanged }: { g: GuruDetail; onChanged: () => void }
               <p className="muted">{N.registered}</p>
               <form onSubmit={(e) => { e.preventDefault(); act(async () => { await post('/go-live', { phone }); return N.sentToGuru; }); }}>
                 <div className="row"><label>{N.phone}<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="91 98765 43210" required /></label></div>
-                <div className="row"><button className="primary" disabled={busy || !wa.canApprove}>{N.goLive}</button><button type="button" className="quiet" disabled={busy} onClick={() => { if (window.confirm(N.confirmDisconnect)) act(async () => { await api(`/admin/gurus/${g.slug}/whatsapp`, { method: 'DELETE' }); return W.gurus.saved; }); }}>{N.disconnect}</button></div>
+                <div className="row"><button disabled={busy || !wa.canApprove}>{N.goLive}</button><button type="button" className="quiet" disabled={busy} onClick={async () => { if (await confirmDialog(N.confirmDisconnect, W.dialog.sharedNumber)) act(async () => { await api(`/admin/gurus/${g.slug}/whatsapp`, { method: 'DELETE' }); return W.gurus.saved; }); }}>{N.disconnect}</button></div>
                 {!wa.canApprove && <p className="banner problem">{W.gurus.payments.noPhone}</p>}
               </form>
             </>

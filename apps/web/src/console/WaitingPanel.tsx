@@ -4,6 +4,7 @@ import { api, useApi } from './api';
 import { useOnChange } from './changed';
 import { useOpenBooking } from './open-booking';
 import { useWords } from './lang';
+import { useConfirm } from './Confirm';
 import { Initials } from './words';
 import type { MessageResult, WaitingBoard, WaitingPerson } from './types';
 
@@ -81,6 +82,7 @@ export function WaitingPanelView({ board, onChanged, dakshinaPaise }: { board: W
 
 function PersonRow({ person: p, board, onChanged, dakshinaPaise }: { person: WaitingPerson; board: WaitingBoard; onChanged: () => void; dakshinaPaise?: number }) {
   const W = useWords();
+  const confirmDialog = useConfirm();
   const open = useOpenBooking();
   const [custom, setCustom] = useState('');
   const [busy, setBusy] = useState(false);
@@ -103,7 +105,7 @@ function PersonRow({ person: p, board, onChanged, dakshinaPaise }: { person: Wai
   }
 
   async function move(slotId: string, label: string) {
-    if (!window.confirm(W.waiting.moveConfirm(p.name, label))) return;
+    if (!await confirmDialog(W.waiting.moveConfirm(p.name, label), W.dialog.moveHer)) return;
     setBusy(true);
     try {
       const r = await api<{ notified: boolean; notDelivered: string | null }>(`/bookings/${p.id}/reschedule`, { method: 'POST', json: { slotId } });
@@ -117,7 +119,7 @@ function PersonRow({ person: p, board, onChanged, dakshinaPaise }: { person: Wai
   }
 
   async function refund() {
-    if (!window.confirm(W.waiting.refundConfirm(p.name))) return;
+    if (!await confirmDialog(W.waiting.refundConfirm(p.name), W.dialog.returnDakshina, true)) return;
     setBusy(true);
     try {
       const r = await api<{ amountPaise: number; notified: boolean }>(`/bookings/${p.id}/refund`, { method: 'POST' });

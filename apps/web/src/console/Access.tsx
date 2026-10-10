@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { api, useApi } from './api';
 import { useWords } from './lang';
+import { useConfirm } from './Confirm';
 import { Initials } from './words';
 import type { ConsoleUser, Me, Settings } from './types';
 
@@ -8,6 +9,7 @@ import type { ConsoleUser, Me, Settings } from './types';
 // choose a password. Teams see this read-only; only an admin changes it.
 export default function Access({ settings, me }: { settings: Settings; me: Me }) {
   const W = useWords();
+  const confirmDialog = useConfirm();
   const admin = me.user.role === 'admin';
   const users = useApi<ConsoleUser[]>(admin ? '/admin/users' : '/me');
   const [name, setName] = useState('');
@@ -27,7 +29,7 @@ export default function Access({ settings, me }: { settings: Settings; me: Me })
     } catch (err) { setNote({ text: (err as Error).message, tone: 'problem' }); } finally { setBusy(false); }
   }
   async function remove(u: ConsoleUser) {
-    if (!window.confirm(W.access.confirmRemove(u.name || u.phone))) return;
+    if (!await confirmDialog(W.access.confirmRemove(u.name || u.phone), W.dialog.removeAccess, true)) return;
     try { await api(`/admin/users/${u.id}`, { method: 'DELETE' }); setNote({ text: W.access.removed, tone: 'ok' }); users.reload(); }
     catch (err) { setNote({ text: (err as Error).message, tone: 'problem' }); }
   }

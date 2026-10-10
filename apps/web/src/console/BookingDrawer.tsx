@@ -3,6 +3,7 @@ import { describeSlot, formatRupees } from '@expert-sessions/shared';
 import { api, useApi } from './api';
 import SlotPicker from './SlotPicker';
 import { useWords } from './lang';
+import { useConfirm } from './Confirm';
 import { Initials, StateTag, sourceWords } from './words';
 import type { BookingDetail } from './types';
 
@@ -19,7 +20,7 @@ export default function BookingDrawer({ id, guruSlug, onClose, onChanged }: { id
   }, [onClose]);
   return (
     <div className="scrim drawer-scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <aside className="drawer" aria-label="Booking">
+      <aside className="drawer" role="dialog" aria-modal="true" aria-label={W.drawer.booking}>
         {error && <><header className="drawer-head"><h2>{W.drawer.booking}</h2><button className="quiet" onClick={onClose}>{W.drawer.close}</button></header><p className="banner problem">{error}</p></>}
         {!data && !error && <header className="drawer-head"><h2 className="muted">{W.drawer.opening}</h2><button className="quiet" onClick={onClose}>{W.drawer.close}</button></header>}
         {data && <BookingDetailView detail={data} guruSlug={guruSlug} onClose={onClose} onChanged={() => { reload(); onChanged(); }} />}
@@ -30,6 +31,7 @@ export default function BookingDrawer({ id, guruSlug, onClose, onChanged }: { id
 
 export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: { detail: BookingDetail; guruSlug: string; onChanged: () => void; onClose?: () => void }) {
   const W = useWords();
+  const confirmDialog = useConfirm();
   const [slotId, setSlotId] = useState('');
   const [text, setText] = useState('');
   const [note, setNote] = useState<{ text: string; tone: 'ok' | 'problem' } | null>(null);
@@ -81,8 +83,8 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
             {can('reschedule') && (
               <div className="row">
                 <SlotPicker guruSlug={guruSlug} value={slotId} onChange={setSlotId} />
-                <button disabled={busy || !slotId} onClick={() => {
-                  if (!window.confirm(`Move ${name} to ${describeSlot(slotId)}? She is told on WhatsApp and the dakshina moves with the booking.`)) return;
+                <button disabled={busy || !slotId} onClick={async () => {
+                  if (!await confirmDialog(`Move ${name} to ${describeSlot(slotId)}? She is told on WhatsApp and the dakshina moves with the booking.`, W.dialog.move)) return;
                   act('Move', async () => {
                     const r = await api<{ notified: boolean }>(`/bookings/${d.id}/reschedule`, { method: 'POST', json: { slotId } });
                     return `Moved to ${describeSlot(slotId)}.${r.notified ? ' She has the new time on WhatsApp.' : ' WhatsApp did not deliver. Call her.'}`;
@@ -91,20 +93,20 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
               </div>
             )}
             <div className="row">
-              {can('cancel') && <button disabled={busy} onClick={() => { if (window.confirm(d.complimentary ? `Cancel ${name}'s time? Nothing was paid; she is told on WhatsApp.` : `Cancel ${name}'s time? The dakshina goes back to her, Razorpay or by hand, and she is told on WhatsApp.`)) act('Cancel', async () => {
+              {can('cancel') && <button disabled={busy} onClick={async () => { if (await confirmDialog(d.complimentary ? `Cancel ${name}'s time? Nothing was paid; she is told on WhatsApp.` : `Cancel ${name}'s time? The dakshina goes back to her, Razorpay or by hand, and she is told on WhatsApp.`, W.dialog.cancelTime, true)) act('Cancel', async () => {
                 const r = await api<{ amountPaise: number; how: 'online' | 'byHand' | 'credit' | 'none'; notified: boolean }>(`/bookings/${d.id}/cancel`, { method: 'POST' });
                 return `Cancelled. ${r.how === 'online' ? `${formatRupees(r.amountPaise)} goes back to her account in 5 to 7 working days.` : r.how === 'byHand' ? `${formatRupees(r.amountPaise)} is to be handed back to her by the team.` : r.how === 'credit' ? `${formatRupees(r.amountPaise)} is back as her credit.` : 'Nothing was paid.'}${r.notified ? '' : ' WhatsApp did not deliver. Call her.'}`;
               }); }}>{d.complimentary ? W.drawer.cancelFree : W.drawer.cancelKeep}</button>}
-              {can('refund') && <button className="danger" disabled={busy} onClick={() => { if (window.confirm(d.paidWith?.providerRef?.startsWith('offline:') ? `Return ${name}'s dakshina? The team hands it back; she is told on WhatsApp. This cannot be undone.` : `Return ${name}'s dakshina? Razorpay sends it back and she is told on WhatsApp. This cannot be undone.`)) act('Refund', async () => {
+              {can('refund') && <button className="danger" disabled={busy} onClick={async () => { if (await confirmDialog(d.paidWith?.providerRef?.startsWith('offline:') ? `Return ${name}'s dakshina? The team hands it back; she is told on WhatsApp. This cannot be undone.` : `Return ${name}'s dakshina? Razorpay sends it back and she is told on WhatsApp. This cannot be undone.`, W.dialog.returnDakshina, true)) act('Refund', async () => {
                 const r = await api<{ amountPaise: number; notified: boolean; viaCredit: boolean; byHand?: boolean }>(`/bookings/${d.id}/refund`, { method: 'POST' });
                 return `${formatRupees(r.amountPaise)} ${r.viaCredit ? 'returned as a credit' : r.byHand ? 'to be handed back to her by the team' : 'is on its way back'}.${r.notified ? '' : ' WhatsApp did not deliver. Call her.'}`;
               }); }}>{W.drawer.refund}</button>}
-              {can('no_show') && <button disabled={busy} onClick={() => { if (window.confirm(`Mark ${name} as did not join? The dakshina stands.`)) act('No-show', async () => {
+              {can('no_show') && <button disabled={busy} onClick={async () => { if (await confirmDialog(`Mark ${name} as did not join? The dakshina stands.`, W.dialog.noShow)) act('No-show', async () => {
                 await api(`/bookings/${d.id}/no-show`, { method: 'POST' });
                 return 'Marked as did not join.';
               }); }}>{W.drawer.noShow}</button>}
               {can('mark_paid') && ['cash', 'upi', 'complimentary'].map((method) => (
-                <button key={method} disabled={busy} onClick={() => { if (window.confirm(method === 'complimentary' ? `Confirm ${name}'s time as complimentary, with no dakshina? She gets the join link on WhatsApp.` : `Confirm ${name}'s time as paid ${method === 'cash' ? 'in cash' : 'by UPI to the ashram'}? She gets the join link on WhatsApp.`)) act('Mark paid', async () => {
+                <button key={method} disabled={busy} onClick={async () => { if (await confirmDialog(method === 'complimentary' ? `Confirm ${name}'s time as complimentary, with no dakshina? She gets the join link on WhatsApp.` : `Confirm ${name}'s time as paid ${method === 'cash' ? 'in cash' : 'by UPI to the ashram'}? She gets the join link on WhatsApp.`, W.dialog.confirmPaid)) act('Mark paid', async () => {
                   const r = await api<{ notified: boolean }>(`/bookings/${d.id}/mark-paid`, { method: 'POST', json: { method } });
                   return `Confirmed, ${method === 'complimentary' ? 'complimentary' : method === 'cash' ? 'paid in cash' : 'paid by UPI to the ashram'}.${r.notified ? ' She has the join link on WhatsApp.' : ' WhatsApp did not deliver. Call her.'}`;
                 }); }}>{method === 'cash' ? W.drawer.paidCash : method === 'upi' ? W.drawer.paidUpi : W.drawer.paidFree}</button>
@@ -156,7 +158,7 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
                   <td><span className={`tag ${m.direction === 'in' ? 'g' : 'n'}`}>{m.direction === 'in' ? W.drawer.her : W.drawer.us}</span></td>
                   <td>
                     {messageWords(m.kind, m.payload)}
-                    {deliveryOf(m) && <span className="tag r" title={String(m.payload.reason ?? '')}>{deliveryOf(m)}</span>}
+                    {deliveryOf(m) && <span className="tag r" title={String(m.payload.reason ?? '')}>{W.drawer.notDelivered}</span>}
                   </td>
                 </tr>
               ))}
@@ -179,6 +181,7 @@ export function BookingDetailView({ detail: d, guruSlug, onChanged, onClose }: {
 
 // Her WhatsApp name is a start, not a record. The team corrects it, or notes who the time is for.
 function EditDevotee({ detail: d, onDone, onCancel }: { detail: BookingDetail; onDone: () => void; onCancel: () => void }) {
+  const W = useWords();
   const [name, setName] = useState(d.devotee.name ?? '');
   const [forWhom, setForWhom] = useState(d.devotee.forWhom ?? '');
   const [problem, setProblem] = useState<string | null>(null);
@@ -197,13 +200,13 @@ function EditDevotee({ detail: d, onDone, onCancel }: { detail: BookingDetail; o
   return (
     <div className="edit">
       <div className="row">
-        <label>Her name<input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoFocus /></label>
-        <label>Who the time is for<input value={forWhom} onChange={(e) => setForWhom(e.target.value)} maxLength={120} placeholder="for my mother" /></label>
+        <label>{W.drawer.herName}<input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoFocus /></label>
+        <label>{W.drawer.whoFor}<input value={forWhom} onChange={(e) => setForWhom(e.target.value)} maxLength={80} /></label>
       </div>
       {problem && <p className="banner problem">{problem}</p>}
       <div className="row">
-        <button className="primary" disabled={busy} onClick={save}>Save</button>
-        <button className="quiet" onClick={onCancel}>Cancel</button>
+        <button className="primary" disabled={busy} onClick={save}>{W.drawer.save}</button>
+        <button className="quiet" onClick={onCancel}>{W.drawer.cancelEdit}</button>
       </div>
     </div>
   );

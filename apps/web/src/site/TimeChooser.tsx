@@ -13,14 +13,14 @@ export default function TimeChooser({ slots, chosen, onChoose }: { slots: Public
 
   return (
     <div className="chooser">
-      <div className="days" role="tablist">
+      <div className="days">
         {days.map((d) => (
-          <button key={d.date} type="button" role="tab" aria-selected={d.date === current.date} className={d.date === current.date ? 'on' : undefined} onClick={() => setPicked(d.date)}>
+          <button key={d.date} type="button" aria-pressed={d.date === current.date} className={d.date === current.date ? 'on' : undefined} onClick={() => setPicked(d.date)}>
             <b>{d.word}</b><span>{d.slots.length}</span>
           </button>
         ))}
       </div>
-      <div className="chips" role="list">
+      <div className="chips">
         {current.slots.map((s) => (
           <button key={s.id} type="button" className={s.id === chosen ? 'chip on' : 'chip'} aria-pressed={s.id === chosen} onClick={() => onChoose(s)}>{timeOf(s.label)}</button>
         ))}

@@ -3,16 +3,17 @@
    people shown as initials in a circle, a state as a dot and a word, one action per row. No icons. */
 
 .console { min-height: 100vh; background: var(--console-paper); color: var(--console-nav); font-family: var(--sans); font-size: 15px; line-height: 1.5;
-  --line: #E3DED3; --line-soft: #EFEBE2; --ink-2: #6D6659; --ink-3: #8F887B; --hover: #F7F4EE; --card: #FFFFFF; --tint: #FBF7F1; --radius: 10px; --radius-s: 8px; }
+  --line: #E3DED3; --line-soft: #EFEBE2; --ink-2: #6D6659; --ink-3: #6F6858; --hover: #F7F4EE; --card: #FFFFFF; --tint: #FBF7F1; --radius: 8px; --radius-s: 6px; }
+  /* ink-3 was #8F887B (3.0:1 on paper); #6F6858 reads 4.7:1. Corners stepped down to 8/6 with Slike's consoles. */
 .console * { box-sizing: border-box; }
 .console h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
 .console h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
 .console h2 i { font-style: normal; float: right; font-size: 13px; color: var(--ink-3); font-weight: 400; }
-.console h3 { font-size: 11.5px; font-weight: 600; margin: 0 0 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .07em; }
+.console h3 { font-size: 13px; font-weight: 600; margin: 0 0 10px; color: var(--ink-2); }   /* section names in sentence case; small capitals stay on table heads */
 .console .muted { color: var(--ink-3); }
 .console .small { font-size: 13px; }
 .console .foot { margin: 12px 0 0; font-size: 13px; }
-.console .eyebrow { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; font-weight: 600; }
+.console .eyebrow { font-size: 12.5px; color: var(--ink-2); margin: 0 0 8px; font-weight: 600; }
 .console a { color: var(--accent); }
 
 /* ---- frame: top bar, side rail, main ------------------------------------------------------------ */
@@ -367,3 +368,11 @@
 .console .mono code { background: var(--hover); padding: 4px 8px; border-radius: 6px; }
 .console table.rows td, .console .person-cell b { overflow-wrap: anywhere; }
 .console .need .why { margin: 2px 0 0; }
+
+/* ---- the house confirm: the act as a question, its consequence, two acts ---------------------- */
+.console .dlg-veil { position: fixed; inset: 0; background: rgba(34, 30, 24, .42); display: flex; align-items: center; justify-content: center; z-index: 60; padding: 16px; }
+.console .dlg { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 16px 40px rgba(34, 30, 24, .2); width: 440px; max-width: 100%; padding: 22px 24px; }
+.console .dlg h3 { font-size: 18px; font-weight: 600; color: var(--console-nav); margin: 0 0 8px; }
+.console .dlg p { margin: 0 0 18px; color: var(--ink-2); font-size: 14.5px; line-height: 1.55; }
+.console .dlg .foot { display: flex; justify-content: flex-end; gap: 8px; }
+.console .dlg .foot button.danger { background: var(--card); }

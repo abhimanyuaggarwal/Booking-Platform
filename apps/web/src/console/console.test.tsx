@@ -3,6 +3,7 @@ import { expect, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
 import { TodayView, NeedsYou, nextSitting } from './Today';
+import { ConfirmDialog, splitAsk } from './Confirm';
 import { WeekGrid, WeekList } from './Week';
 import { MoneyView, entryText } from './Money';
 import { askedAbout, groupAttention, stateWord } from './words';
@@ -425,4 +426,13 @@ test('a stretch of five-minute open times reads as one line on Today, not a row 
   const html = renderToStaticMarkup(<TodayView report={report} attention={[]} now="slot:2026-09-16T10:30" />);
   expect(html).toContain('4 open times, 4:00 pm to 4:15 pm');
   expect(html.split('open times').length).toBe(2);
+});
+
+test('a confirm is the house dialog: the act as a question, the consequence under it, Not now and the act by its verb', () => {
+  expect(splitAsk("Cancel Meera's time? The dakshina goes back to her.")).toEqual({ title: "Cancel Meera's time?", body: 'The dakshina goes back to her.' });
+  const html = renderToStaticMarkup(<ConfirmDialog ask={{ text: "Return Meera's dakshina? Razorpay sends it back.", act: 'Return the dakshina', danger: true }} onAnswer={() => {}} />);
+  expect(html).toContain('role="dialog"');
+  expect(html).toContain("Return Meera&#x27;s dakshina?");
+  expect(html).toContain('Not now');
+  expect(html).toContain('class="danger"');
 });

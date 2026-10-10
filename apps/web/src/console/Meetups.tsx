@@ -1,3 +1,5 @@
+import { useConfirm } from './Confirm';
+import { useWords } from './lang';
 import { FormEvent, useState } from 'react';
 import { describeSlot, instantToSlotId, slotIdToInstant } from '@expert-sessions/shared';
 import { api, useApi } from './api';
@@ -16,8 +18,10 @@ export default function Meetups() {
   const [editing, setEditing] = useState<string | 'new' | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
+  const W = useWords();
+  const confirmDialog = useConfirm();
   async function remove(e: EventRow) {
-    if (!window.confirm(`Remove "${e.title}" from his schedule?`)) return;
+    if (!await confirmDialog(W.meetups.confirmRemove(e.title), W.dialog.remove, true)) return;
     try {
       await api(`/events/${e.id}`, { method: 'DELETE' });
       reload();

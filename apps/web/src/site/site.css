@@ -13,7 +13,7 @@
 .site .top { background: #EDE8DD; border-bottom: 1px solid #E2DBCB; }
 .site .top .wrap { display: flex; align-items: center; gap: 12px; padding-top: 16px; padding-bottom: 16px; }
 .site .top b { font-family: var(--serif); font-weight: 500; font-size: 17px; flex: 1; }
-.site .top a { text-decoration: none; font-size: 14px; }
+.site .top a { text-decoration: none; font-size: 14px; display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; margin: -10px -6px; }
 
 /* The top of his page: a wide picture, his portrait over its lower edge, then his name. The words
    sit on the warm paper below the picture, never on top of it, so they read on any phone. */
@@ -98,14 +98,14 @@
 .site button.primary, .site a.primary { display: block; width: 100%; box-sizing: border-box; text-align: center; text-decoration: none; background: var(--accent); color: #fff; border: 0; border-radius: 26px; padding: 15px 0; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .site button.primary:disabled { opacity: .45; cursor: default; }
 .site button.ghost, .site a.ghost { display: block; width: 100%; box-sizing: border-box; text-align: center; text-decoration: none; background: #fff; color: #6B6459; border: 1px solid #DDD5C6; border-radius: 26px; padding: 13px 0; font: inherit; font-size: 14.5px; margin-top: 10px; cursor: pointer; }
-.site button.plain { background: none; border: 0; color: var(--accent); font: inherit; font-size: 14px; padding: 0; cursor: pointer; text-decoration: underline; }
+.site button.plain { background: none; border: 0; color: var(--accent); font: inherit; font-size: 14px; padding: 11px 0; cursor: pointer; text-decoration: underline; }
 .site .whatsapp { border-color: #CFE4DC; color: #0B6B57; font-weight: 600; }
 .site .orline { text-align: center; font-size: 12px; letter-spacing: .08em; color: #B0A794; margin: 18px 0 12px; }
 
 .site label { display: block; font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--warm-muted); margin-bottom: 6px; }
-.site input { width: 100%; box-sizing: border-box; font: inherit; font-size: 17px; padding: 12px 14px; border: 1px solid #DDD5C6; border-radius: 10px; background: #fff; color: var(--warm-ink); }
+.site input { width: 100%; box-sizing: border-box; font: inherit; font-size: 17px; padding: 12px 14px; border: 1px solid #DDD5C6; border-radius: var(--r-control); background: #fff; color: var(--warm-ink); }
 .site .field { margin-bottom: 16px; }
-.site .problem { color: #8E3120; }
+.site .problem { color: var(--bad); }
 .site .ok { color: var(--ok); }
 
 /* The booking sheet: a short sheet, not a new page */
@@ -192,3 +192,7 @@
 .site .pay .primary { margin-top: 18px; }
 .site .pay .held { text-align: left; }
 .site .banner-quiet { background: #fff; border: 1px solid #E4DBC9; border-radius: 12px; padding: 14px 16px; color: var(--warm-muted); font-size: 15px; margin: 0 0 12px; }
+
+/* One focus ring on every devotee screen: the accent, never the browser's blue. */
+.site :is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.site input:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 0; }

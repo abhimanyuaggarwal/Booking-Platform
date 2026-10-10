@@ -33,7 +33,7 @@ export function DevoteeView({ d }: { d: DevoteeDetail }) {
           <h1>{d.name}</h1>
           <p className="muted">+{d.phone}{d.forWhom ? ` · ${W.devotees.forWhom} ${d.forWhom}` : ''} · {W.devotees.visitsOf(d.visits)} · {formatRupees(d.givenPaise)}</p>
         </div>
-        <button className="primary" onClick={() => bookFor(undefined, d.phone)}>{W.devotees.book}</button>
+        <button onClick={() => bookFor(undefined, d.phone)}>{W.devotees.book}</button>
       </header>
       <section className="panel">
         <h2>{W.devotees.history}</h2>

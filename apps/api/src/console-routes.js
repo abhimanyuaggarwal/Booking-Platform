@@ -27,6 +27,8 @@ import { BookingRuleError, ProviderError } from './errors.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SOURCES = ['live', 'ashram', 'poster', 'page', 'direct'];
+/** The language the console reads in; its dates and day words follow (reports.js). */
+const langOf = (req) => (req.get('x-lang') === 'hi' ? 'hi' : 'en');
 // The one-tap notes follow the guru's language (devotee-words.js).
 
 export function consoleRoutes(env, conversation) {
@@ -335,7 +337,7 @@ export function consoleRoutes(env, conversation) {
   }));
 
   router.get('/today', handle(async (req, res) => {
-    res.json(await todayReport(req.guru, dateParam(req.query.date) ?? todayIst()));
+    res.json(await todayReport(req.guru, dateParam(req.query.date) ?? todayIst(), langOf(req)));
   }));
 
   router.get('/week', handle(async (req, res) => {
@@ -404,7 +406,7 @@ export function consoleRoutes(env, conversation) {
 
   // ---- Needs attention, the waiting panel, close a day ------------------------------------------
 
-  router.get('/attention', handle(async (req, res) => res.json(await attentionQueue(req.guru))));
+  router.get('/attention', handle(async (req, res) => res.json(await attentionQueue(req.guru, langOf(req)))));
 
   router.get('/waiting', handle(async (req, res) => res.json({ ...(await waitingBoard(req.guru, presenceFor)), oneTap: conversation.wordsFor(req.guru.language).oneTap })));
 
@@ -442,7 +444,7 @@ export function consoleRoutes(env, conversation) {
 
   router.get('/bookings/:id', handle(async (req, res) => {
     if (!UUID.test(req.params.id)) return res.status(404).json({ error: 'No such booking' });
-    const detail = await bookingDetail(req.guru, req.params.id);
+    const detail = await bookingDetail(req.guru, req.params.id, langOf(req));
     if (!detail) return res.status(404).json({ error: 'No such booking' });
     res.json(detail);
   }));
@@ -638,7 +640,10 @@ function handle(fn) {
 }
 
 function dateParam(value) {
-  return typeof value === 'string' && isValidYmd(value) ? value : null;
+  if (value == null || value === '') return null;
+  // A date that does not exist is a typo, not "this week": say so rather than guessing.
+  if (typeof value !== 'string' || !isValidYmd(value)) throw Object.assign(new BookingRuleError('Pick a date like 2026-09-17'), { status: 400 });
+  return value;
 }
 
 function eventFields(b) {

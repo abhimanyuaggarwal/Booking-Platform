@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Link, Route, Routes, useParams } from 'react-router-dom';
 import { siteApi, useSite } from './api';
 import HomePage from './HomePage';
@@ -26,6 +26,7 @@ export default function SiteShell() {
     <div className="site">
       <header className="top">
         <div className="wrap">
+          <Title name={data.guru.name} />
           <b>{data.guru.name}</b>
           <Link to={`${base}/sessions`}>My sessions</Link>
         </div>
@@ -38,4 +39,10 @@ export default function SiteShell() {
       </Routes>
     </div>
   );
+}
+
+/** The browser tab says whose site this is. */
+function Title({ name }: { name: string }) {
+  useEffect(() => { document.title = `${name} · Samvad`; }, [name]);
+  return null;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { parseSlotId } from '@expert-sessions/shared';
 import type { PublicSlots } from './types';
+import { useWords } from './lang';
 
 // The open times, from the same list both doors offer: first the day, then the time of that day.
 // Two short lists instead of one long one, so a guru whose doors offer every five-minute mark
@@ -8,6 +9,7 @@ import type { PublicSlots } from './types';
 export default function SlotPicker({ guruSlug, value, onChange, excludeDate, name, typeId }: {
   guruSlug: string; value: string; onChange: (slotId: string) => void; excludeDate?: string; name?: string; typeId?: string;
 }) {
+  const W = useWords();
   const [slots, setSlots] = useState<PublicSlots['slots'] | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [day, setDay] = useState<string>(value ? value.slice(5, 15) : '');
@@ -23,11 +25,11 @@ export default function SlotPicker({ guruSlug, value, onChange, excludeDate, nam
   }, [guruSlug, typeId]);
 
   if (problem) return <span className="problem">{problem}</span>;
-  if (!slots) return <span className="muted">Loading open times.</span>;
+  if (!slots) return <span className="muted">{W.slotPicker.loading}</span>;
   const usable = slots.filter((s) => !excludeDate || !s.id.startsWith(`slot:${excludeDate}`));
-  if (usable.length === 0) return <span className="muted">No open times in the days ahead. Open more in Settings.</span>;
+  if (usable.length === 0) return <span className="muted">{W.slotPicker.none}</span>;
 
-  const days = daysOf(usable);
+  const days = daysOf(usable, W);
   const current = days.find((d) => d.date === day) ?? days[0];
   return (
     <span className="slotpicker">
@@ -35,21 +37,21 @@ export default function SlotPicker({ guruSlug, value, onChange, excludeDate, nam
         {days.map((d) => <option key={d.date} value={d.date}>{d.word}</option>)}
       </select>
       <select name={name} aria-label="Time" value={value} onChange={(e) => onChange(e.target.value)} required>
-        <option value="">Pick a time</option>
+        <option value="">{W.slotPicker.pick}</option>
         {current.slots.map((s) => <option key={s.id} value={s.id}>{s.label.split(' ').slice(1).join(' ')}</option>)}
       </select>
     </span>
   );
 }
 
-function daysOf(slots: PublicSlots['slots']) {
+function daysOf(slots: PublicSlots['slots'], W: ReturnType<typeof useWords>) {
   const days: { date: string; word: string; slots: PublicSlots['slots'] }[] = [];
   for (const s of slots) {
     const date = s.id.slice(5, 15);
     let d = days.find((x) => x.date === date);
     if (!d) {
       const word = s.label.split(' ')[0];
-      d = { date, word: word === 'Today' || word === 'Tomorrow' ? word : `${word} ${parseSlotId(s.id).getUTCDate()}`, slots: [] };
+      d = { date, word: word === 'Today' ? W.slotPicker.today : word === 'Tomorrow' ? W.slotPicker.tomorrow : `${W.slotPicker.days[word] ?? word} ${parseSlotId(s.id).getUTCDate()}`, slots: [] };
       days.push(d);
     }
     d.slots.push(s);

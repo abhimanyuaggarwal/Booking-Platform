@@ -100,7 +100,7 @@ export function TodayView({ report: r, attention, setup, onSendLink, onTellGuru,
           </div>
           <p className="ask">{next.booking.question ? <>{W.today.wishes}: “{next.booking.question}”</> : next.booking.hasVoiceNote ? W.today.voiceNote : null}</p>
           <div className="row">
-            <button className="primary" onClick={() => open(next.booking!.id)}>{W.today.open}</button>
+            <button onClick={() => open(next.booking!.id)}>{W.today.open}</button>
             {onTellGuru && <button onClick={() => onTellGuru(next.booking!)}>{W.today.tellGuru}</button>}
           </div>
         </section>
@@ -154,7 +154,7 @@ export function NeedsYou({ rows, onSendLink, onDecide, onHandedBack = () => {} }
           </div>
           <div className="do">
             {r.action === 'send_link' && <button onClick={() => onSendLink(r)}>{W.today.sendLinkAgain}</button>}
-            {r.action === 'decide' && r.bookingId && <button className="primary" onClick={() => onDecide(r.bookingId!)}>{W.today.decide}</button>}
+            {r.action === 'decide' && r.bookingId && <button onClick={() => onDecide(r.bookingId!)}>{W.today.decide}</button>}
             {r.action === 'handed_back' && r.bookingId && <button onClick={() => onHandedBack(r.bookingId!)}>{W.today.handedBack}</button>}
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { useEscape } from './useEscape';
 import { FormEvent, useState } from 'react';
 import { formatRupees } from '@expert-sessions/shared';
 import { siteApi } from './api';
@@ -8,6 +9,7 @@ import type { HeldBooking, PublicGuru, PublicSessionType, PublicSlot } from './t
 export default function BookSheet({ slot, type, guru, call, base, onClose }: {
   slot: PublicSlot; type?: PublicSessionType | null; guru: PublicGuru; call: ReturnType<typeof siteApi>; base: string; onClose: () => void;
 }) {
+  useEscape(onClose);
   const minutes = type?.minutes ?? guru.slotMinutes;
   const dakshinaPaise = type?.dakshinaPaise ?? guru.dakshinaPaise;
   const [phone, setPhone] = useState('');
@@ -32,7 +34,7 @@ export default function BookSheet({ slot, type, guru, call, base, onClose }: {
 
   return (
     <div className="scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <form className="sheet" onSubmit={submit}>
+      <form className="sheet" onSubmit={submit} role="dialog" aria-modal="true" aria-label="Book this time">
         <div className="grab" />
         <BookSheetBody slot={slot} guru={guru} minutes={minutes} dakshinaPaise={dakshinaPaise} />
         <div className="field">

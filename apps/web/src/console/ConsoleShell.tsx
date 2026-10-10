@@ -18,6 +18,7 @@ import BookForCaller from './BookForCaller';
 import { BookForCallerContext, OpenBookingContext } from './open-booking';
 import { announceChange } from './changed';
 import { LangProvider, useWords } from './lang';
+import { ConfirmProvider } from './Confirm';
 import './console.css';
 
 // The team's working tool. One shared login; the api says who the guru is. Five named places —
@@ -25,7 +26,7 @@ import './console.css';
 // The two things she does while someone is on the phone — find a person, book a time — live in the
 // top bar and work from every screen; the one booking drawer opens over whatever she was looking at.
 export default function ConsoleShell() {
-  return <LangProvider><Shell /></LangProvider>;
+  return <LangProvider><ConfirmProvider><Shell /></ConfirmProvider></LangProvider>;
 }
 
 function Shell() {

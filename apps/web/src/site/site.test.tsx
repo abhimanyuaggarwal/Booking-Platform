@@ -149,7 +149,7 @@ test('every other time is offered a day at a time, as chips, so a five-minute st
   ];
   expect(groupByDay(fine).map((d) => `${d.word}:${d.slots.length}`)).toEqual(['Today:2', 'Tomorrow:1', 'Fri 18:1']);
   const html = renderToStaticMarkup(<HomeSections page={page} slots={fine} showAll={true} onSeeAll={() => {}} onChoose={() => {}} />);
-  expect(html).toContain('role="tab"');
+  expect(html).toContain('aria-pressed="true"');
   expect(html).toContain('>4:05 pm<');
   expect(html).not.toContain('>10:00 am<');   // tomorrow's times wait behind its tab
   expect(html).not.toContain('See other times');

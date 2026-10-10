@@ -10,6 +10,7 @@ import { sittingGridOf } from './gurus.js';
 import * as bookings from './bookings.js';
 import { currentSession, findSessionByBooking } from './sessions.js';
 import { listEvents } from './events.js';
+import { describeSlot as describeSlotIn } from './devotee-words.js';
 
 const DAY = 86400000;
 const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -74,7 +75,7 @@ function timeOf(instant) {
 
 // ---- Today ---------------------------------------------------------------------------------------
 
-export async function todayReport(guru, date) {
+export async function todayReport(guru, date, lang = 'en') {
   const [start, end] = dayRange(date);
   const [rows, week, money, attention] = await Promise.all([
     bookingsBetween(guru.id, start, end, ON_CALENDAR),
@@ -95,7 +96,7 @@ export async function todayReport(guru, date) {
     .map((t) => ({ ...t, time: formatTime(parseSlotId(t.slotId)) }));
 
   return {
-    date, dateLabel: describeDate(date), guru: { name: guru.name },
+    date, dateLabel: describeDateIn(date, lang), guru: { name: guru.name },
     attention: attentionStrip(attention),
     kpis: { ...money, slotsFilled: week.filled, slotsTotal: week.total },
     timeline,
@@ -128,7 +129,7 @@ function sessionRow(r) {
  * Where money used to leak: holds that expired with the slot still ahead, people who paid and never
  * opened their link, refunds on their way. Each item names the one action the team can take.
  */
-export async function attentionQueue(guru) {
+export async function attentionQueue(guru, lang = 'en') {
   const [expired, paidTooLate, missed, refunds, alone, waited, asked, taken] = await Promise.all([
     query(
       `select b.id, b.slot_start, b.created_at, b.source, b.payment_link_id, d.name, d.phone
@@ -193,13 +194,13 @@ export async function attentionQueue(guru) {
   return [
     ...asked.rows.map((r) => ({
       kind: 'asked_team', bookingId: r.booking_id, name: displayName(r), phone: r.phone,
-      slotId: instantToSlotId(r.slot_start), when: whenLabel(r.slot_start),
+      slotId: instantToSlotId(r.slot_start), when: whenLabel(r.slot_start, lang),
       why: 'Asked on WhatsApp to change or cancel this time, inside the four hours. Call her, then move or cancel it here',
       action: 'decide',
     })),
     ...paidTooLate.rows.map((r) => ({
       kind: 'paid_too_late', bookingId: r.id, name: displayName(r), phone: r.phone,
-      slotId: instantToSlotId(r.slot_start), when: whenLabel(r.slot_start),
+      slotId: instantToSlotId(r.slot_start), when: whenLabel(r.slot_start, lang),
       amountPaise: r.amount_paise, providerRef: r.provider_ref,
       why: `Paid ${formatRupees(r.amount_paise)} after the hold ran out — the time was not kept. Return the dakshina, or offer another time`,
       action: 'decide',
@@ -208,7 +209,7 @@ export async function attentionQueue(guru) {
       const slotId = instantToSlotId(r.slot_start);
       const slotFree = !taken.has(slotId);
       return {
-        kind: 'hold_expired', bookingId: r.id, name: displayName(r), phone: r.phone, slotId, when: whenLabel(r.slot_start),
+        kind: 'hold_expired', bookingId: r.id, name: displayName(r), phone: r.phone, slotId, when: whenLabel(r.slot_start, lang),
         expiredAt: timeOf(new Date(r.created_at.getTime() + bookings.HOLD_MINUTES * 60000)),
         why: !r.payment_link_id ? 'Chose the time, but our payment page could not be opened — send her the link again'
           : slotFree ? 'Chose the time, did not finish paying — the slot is open again' : 'Chose the time, did not finish paying — someone else has the slot now',
@@ -216,11 +217,11 @@ export async function attentionQueue(guru) {
       };
     }),
     ...alone.rows.map((r) => ({
-      kind: 'waited_alone', bookingId: r.id, name: displayName(r), phone: r.phone, slotId: instantToSlotId(r.slot_start), when: whenLabel(r.slot_start),
+      kind: 'waited_alone', bookingId: r.id, name: displayName(r), phone: r.phone, slotId: instantToSlotId(r.slot_start), when: whenLabel(r.slot_start, lang),
       why: 'Opened her link and waited; guruji did not sit — return the dakshina, or offer another time', action: 'decide',
     })),
     ...missed.rows.map((r) => ({
-      kind: 'did_not_join', bookingId: r.id, name: displayName(r), phone: r.phone, slotId: instantToSlotId(r.slot_start), when: whenLabel(r.slot_start),
+      kind: 'did_not_join', bookingId: r.id, name: displayName(r), phone: r.phone, slotId: instantToSlotId(r.slot_start), when: whenLabel(r.slot_start, lang),
       why: r.status === 'no_show'
         ? 'Paid, never opened the link — marked as did not join, the dakshina stands'
         : 'Paid, never opened the link — becomes a no-show an hour after her time unless you offer another',
@@ -228,7 +229,7 @@ export async function attentionQueue(guru) {
     })),
     ...waited.rows.map((r) => ({
       kind: 'waited_and_chose', bookingId: r.booking_id, name: displayName(r), phone: r.phone,
-      slotId: r.slot_start ? instantToSlotId(r.slot_start) : null, when: whenLabel(r.created_at),
+      slotId: r.slot_start ? instantToSlotId(r.slot_start) : null, when: whenLabel(r.created_at, lang),
       why: r.payload_json.choice === 'another_time'
         ? 'Waited, guruji did not come, and asked for another time'
         : 'Waited, guruji did not come, and asked for the dakshina back',
@@ -236,7 +237,7 @@ export async function attentionQueue(guru) {
     })),
     ...refunds.rows.map((r) => ({
       kind: 'refund_sent', bookingId: r.booking_id, name: displayName(r), phone: r.phone, slotId: r.slot_start ? instantToSlotId(r.slot_start) : null,
-      when: whenLabel(r.created_at), amountPaise: r.amount_paise, providerRef: r.provider_ref,
+      when: whenLabel(r.created_at, lang), amountPaise: r.amount_paise, providerRef: r.provider_ref,
       why: String(r.provider_ref ?? '').startsWith('offline:refund')
         ? `${formatRupees(r.amount_paise)} to be handed back to her by the team${r.slot_start ? ` for ${describeDate(instantToSlotId(r.slot_start).slice(5, 15)).split(',')[0]}` : ''}`
         : `${formatRupees(r.amount_paise)} returned${r.slot_start ? ` for ${describeDate(instantToSlotId(r.slot_start).slice(5, 15)).split(',')[0]}` : ''}, reaches her in 5 to 7 working days`,
@@ -246,11 +247,18 @@ export async function attentionQueue(guru) {
 }
 
 /** "today 4:00 pm", "yesterday 11:00 am", "Wednesday 10:00 am" */
-function whenLabel(instant) {
+function whenLabel(instant, lang = 'en') {
   const date = instantToSlotId(instant).slice(5, 15);
   const today = todayIst();
-  const day = date === today ? 'today' : date === addDays(today, -1) ? 'yesterday' : date === addDays(today, 1) ? 'tomorrow' : describeDate(date).split(',')[0];
+  const near = { en: { today: 'today', yesterday: 'yesterday', tomorrow: 'tomorrow' }, hi: { today: 'आज', yesterday: 'बीता कल', tomorrow: 'कल' } }[lang] ?? { today: 'today', yesterday: 'yesterday', tomorrow: 'tomorrow' };
+  const day = date === today ? near.today : date === addDays(today, -1) ? near.yesterday : date === addDays(today, 1) ? near.tomorrow : describeDateIn(date, lang).split(',')[0];
   return `${day} ${timeOf(instant)}`;
+}
+
+/** "Tuesday, 6 October" in the console's language (devotee-words knows the Hindi day and month names). */
+function describeDateIn(date, lang = 'en') {
+  if (lang === 'en') return describeDate(date);
+  return describeSlotIn(`slot:${date}T00:00`, lang).replace(/,\s*[^,]*$/, '');
 }
 
 // ---- The waiting panel ---------------------------------------------------------------------------
@@ -335,7 +343,7 @@ export function suggestMoves(bookingSlotIds, openSlotIds) {
 
 // ---- One booking, fully ----------------------------------------------------------------------------
 
-export async function bookingDetail(guru, id) {
+export async function bookingDetail(guru, id, lang = 'en') {
   const b = await bookings.findWithDevotee(id);
   if (!b || b.guru_id !== guru.id) return null;
   const [ledger, messages, session, history, paid] = await Promise.all([
@@ -346,7 +354,7 @@ export async function bookingDetail(guru, id) {
     bookings.paymentFor(id),
   ]);
   return {
-    id: b.id, slotId: b.slotId, time: timeOf(b.slot_start), date: b.slotId.slice(5, 15), dateLabel: describeDate(b.slotId.slice(5, 15)),
+    id: b.id, slotId: b.slotId, time: timeOf(b.slot_start), date: b.slotId.slice(5, 15), dateLabel: describeDateIn(b.slotId.slice(5, 15), lang),
     status: b.status, source: b.source, question: b.question_text, hasVoiceNote: !!b.question_media_id,
     minutes: b.minutes, dakshinaPaise: b.dakshina_paise, complimentary: !!b.complimentary, sessionTypeId: b.session_type_id,
     paidAt: b.paid_at ? b.paid_at.toISOString() : null, createdAt: b.created_at.toISOString(), rescheduledFromId: b.rescheduled_from_id,

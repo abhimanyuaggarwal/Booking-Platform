@@ -1,3 +1,4 @@
+import { useEscape } from './useEscape';
 import { useState } from 'react';
 import TimeChooser from './TimeChooser';
 import type { PublicSlot } from './types';
@@ -7,13 +8,14 @@ export default function PickTime({ title, note, slots, confirmLabel, onConfirm, 
   title: string; note: string; slots: PublicSlot[]; confirmLabel: string;
   onConfirm: (slotId: string) => void | Promise<void>; onCancel: () => void;
 }) {
+  useEscape(onCancel);
   const [chosen, setChosen] = useState('');
   const [busy, setBusy] = useState(false);
   const chosenSlot = slots.find((s) => s.id === chosen) ?? null;
 
   return (
     <div className="scrim" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <div className="sheet">
+      <div className="sheet" role="dialog" aria-modal="true" aria-label="Choose a time">
         <div className="grab" />
         <h2>{title}</h2>
         <p className="muted">{note}</p>

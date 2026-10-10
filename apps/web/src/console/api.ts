@@ -7,11 +7,14 @@ export class ApiError extends Error {
 
 const BASE = '/api/console';
 
+/** The language the console reads in (lang.tsx keeps it), so the api words its dates the same way. */
+function langHeader() { try { return localStorage.getItem('samvad-console-lang') === 'hi' ? 'hi' : 'en'; } catch { return 'en'; } }
+
 export async function api<T = void>(path: string, init: { method?: string; json?: unknown } = {}): Promise<T> {
   const res = await fetch(BASE + path, {
     method: init.method ?? 'GET',
     credentials: 'same-origin',
-    headers: init.json !== undefined ? { 'content-type': 'application/json' } : undefined,
+    headers: { 'x-lang': langHeader(), ...(init.json !== undefined ? { 'content-type': 'application/json' } : {}) },
     body: init.json !== undefined ? JSON.stringify(init.json) : undefined,
   });
   if (res.status === 204) return undefined as T;

@@ -3,9 +3,15 @@
   /* Product screens the devotee and guruji see: warm and quiet */
   --warm-bg: #F4F1EA;
   --warm-ink: #231F19;
-  --warm-muted: #7C756A;
+  --warm-muted: #675F53;   /* 5.6:1 on the warm ground; the old #7C756A was 4.0 */
   --accent: #9C5A2C;
-  --ok: #3E7D5F;
+  --ok: #2F6A4C;           /* 5.7:1; the old #3E7D5F was 4.3 */
+  --ok-soft: #E4EFE8;
+  --bad: #8E3120;
+  /* one family of corners on every devotee and guru screen */
+  --r-card: 14px;
+  --r-control: 12px;
+  --r-pill: 26px;
   /* The console: a cool working tool */
   --console-paper: #EFEDE7;
   --console-nav: #221E18;

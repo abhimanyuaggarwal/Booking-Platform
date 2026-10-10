@@ -1,5 +1,5 @@
 import { formatRupees } from '@expert-sessions/shared';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect } from 'react';
 import { api, useApi } from './api';
 import SlotPicker from './SlotPicker';
 import { useWords } from './lang';
@@ -12,6 +12,11 @@ export default function BookForCaller({ guruSlug, initialSlotId, initialPhone, o
   guruSlug: string; initialSlotId?: string; initialPhone?: string; onDone: (b: BookingRow) => void; onCancel: () => void;
 }) {
   const W = useWords();
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
+    document.addEventListener('keydown', esc);
+    return () => document.removeEventListener('keydown', esc);
+  }, [onCancel]);
   const [phone, setPhone] = useState(initialPhone ?? '');
   const [name, setName] = useState('');
   const [forWhom, setForWhom] = useState('');
@@ -40,7 +45,7 @@ export default function BookForCaller({ guruSlug, initialSlotId, initialPhone, o
 
   return (
     <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
-      <form className="sheet" onSubmit={submit} aria-label={W.booking.title}>
+      <form className="sheet" onSubmit={submit} role="dialog" aria-modal="true" aria-label={W.booking.title}>
         <header className="sheet-head">
           <h2>{W.booking.title}</h2>
           <button type="button" className="quiet" onClick={onCancel}>{W.booking.close}</button>

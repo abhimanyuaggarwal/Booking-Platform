@@ -120,9 +120,14 @@ ledger are views of the same rows.
 ## Design language
 
 Two palettes, deliberately. **Product screens the devotee and guruji see** are warm and quiet:
-background `#F4F1EA`, ink `#231F19`, muted `#7C756A`, accent `#9C5A2C`, ok `#3E7D5F`; serif headings
+background `#F4F1EA`, ink `#231F19`, muted `#675F53`, accent `#9C5A2C`, ok `#2F6A4C` (muted and ok darkened 2026-10-09 to pass
+4.5:1; the old `#7C756A` and `#3E7D5F` read 4.0 and 4.3); serif headings
 (Iowan Old Style / Palatino / Georgia). Generous space, few words, status in sentences not timers.
-**The console** is a cool working tool: paper `#EFEDE7`, nav `#221E18`, same accent; dense but calm.
+**The console** is a cool working tool: paper `#EFEDE7`, nav `#221E18`, same accent; dense but calm. Since 2026-10-09 it
+follows the principles of Slike's Player Console design system (claude.ai artifact XZnAh4ZPTW3mTpsiAMUsht), not its look:
+one primary act per screen (New booking in the top bar), never a native `confirm` (the house dialog in `Confirm.tsx`:
+the act as a question, its consequence, Not now and the act by its verb), status as a dot and a word, section names in
+sentence case, refusals greyed in place with the reason, every muted ink at 4.5:1 or better.
 Guruji's screen never shows money. The devotee's session screens never show a countdown.
 
 Copy rules: "dakshina" not "fee"; "time" not "appointment"; "guruji" lowercase mid-sentence; plain

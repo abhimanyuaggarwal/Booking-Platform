@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from './api';
 import { addDays, todayYmd } from './format';
 import { useWords } from './lang';
+import { useConfirm } from './Confirm';
 import { Initials } from './words';
 import type { CloseDayPreview, CloseDayResult } from './types';
 
@@ -9,6 +10,7 @@ import type { CloseDayPreview, CloseDayResult } from './types';
 // From Today the day is today; from Week it is any day ahead.
 export default function CloseDay({ initialDate, onDone, onCancel }: { initialDate?: string; onDone: (r: CloseDayResult) => void; onCancel: () => void }) {
   const W = useWords();
+  const confirmDialog = useConfirm();
   const [date, setDate] = useState(initialDate ?? addDays(todayYmd(), 1));
   const [preview, setPreview] = useState<CloseDayPreview | null>(null);
   const [choices, setChoices] = useState<Record<string, string>>({});
@@ -29,7 +31,7 @@ export default function CloseDay({ initialDate, onDone, onCancel }: { initialDat
     if (!preview) return;
     const moves = preview.bookings.filter((b) => choices[b.id]).map((b) => ({ bookingId: b.id, slotId: choices[b.id] }));
     const unmoved = preview.bookings.length - moves.length;
-    if (!window.confirm(W.closeDay.confirm(preview.dateLabel, moves.length, unmoved))) return;
+    if (!await confirmDialog(W.closeDay.confirm(preview.dateLabel, moves.length, unmoved), W.dialog.closeDay, true)) return;
     setBusy(true);
     setProblem(null);
     try {
